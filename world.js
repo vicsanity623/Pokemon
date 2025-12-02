@@ -100,6 +100,11 @@ class NPC {
         this.dialog = dialog;
         this.color = '#f1c40f'; // Yellow
         this.lastMove = Date.now();
+
+        // Quest tracking
+        this.questGiven = false;
+        this.questCompleted = false;
+        this.questRequirement = type === 'quest' ? { herb: 10 } : null;
     }
 
     update(world) {
@@ -286,6 +291,16 @@ class Renderer {
         // Draw Player (Always Center)
         const px = this.canvas.width / 2 - TILE_SIZE / 2;
         const py = this.canvas.height / 2 - TILE_SIZE / 2;
+
+        // Atmospheric Effects (Fog/Clouds)
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        for (let i = 0; i < 5; i++) {
+            let cloudX = (Date.now() / 1000 + i * 200) % this.canvas.width;
+            let cloudY = i * 100;
+            this.ctx.beginPath();
+            this.ctx.arc(cloudX, cloudY, 80, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
 
         // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.3)';

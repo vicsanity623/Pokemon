@@ -576,10 +576,33 @@ canvas {
 
 #hud-xp-fill {
     height: 100%;
-    background: #3498db;
-    /* WoW Blue */
-    width: 0%;
-    transition: width 0.5s;
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    transition: width 0.3s ease;
+}
+
+#npc-prompt {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -100px);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 14px;
+    z-index: 100;
+    animation: bounce 0.5s infinite alternate;
+}
+
+@keyframes bounce {
+    from {
+        transform: translate(-50%, -100px);
+    }
+
+    to {
+        transform: translate(-50%, -105px);
+    }
 }
 
 #hud-xp-text {

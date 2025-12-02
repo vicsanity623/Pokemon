@@ -139,6 +139,18 @@ function gameLoop(timestamp) {
         renderer.draw();
         updateHUD();
 
+        // Check NPC proximity
+        let nearbyNPC = world.npcs.find(npc => {
+            let dist = Math.sqrt(Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2));
+            return dist < 1;
+        });
+
+        if (nearbyNPC && !battleSystem.isActive) {
+            document.getElementById('npc-prompt').classList.remove('hidden');
+        } else {
+            document.getElementById('npc-prompt').classList.add('hidden');
+        }
+
         // Egg Hatching Logic
         player.team.forEach(p => {
             if (p.isEgg) {
@@ -170,13 +182,22 @@ function handleNPCInteraction(npc) {
     if (npc.type === 'talk') {
         showDialog(`${npc.name}: "${npc.dialog}"`, 3000);
     } else if (npc.type === 'quest') {
-        if (player.inventory['Herb'] >= 10) {
+        if (npc.questCompleted) {
+            showDialog("Herbalist: Thanks again for the herbs!", 3000);
+        } else if (npc.questGiven && player.inventory['Herb'] >= 10) {
             player.inventory['Herb'] -= 10;
             player.money += 500;
             player.team[0].exp += 200;
-            showDialog("Herbalist: Thanks! Here is $500 and XP.", 3000);
+            npc.questCompleted = true;
+            npc.color = '#2ecc71'; // Green when complete
+            showDialog("Herbalist: Perfect! Here is $500 and XP. Quest complete!", 3000);
+        } else if (npc.questGiven) {
+            let remaining = 10 - (player.inventory['Herb'] || 0);
+            showDialog(`Herbalist: Still need ${remaining} more Herbs!`, 3000);
         } else {
-            showDialog("Herbalist: Bring me 10 Herbs. I pay well!", 3000);
+            npc.questGiven = true;
+            npc.color = '#e74c3c'; // Red when quest active
+            showDialog("Herbalist: Bring me 10 Herbs for $500 and XP!", 3000);
         }
     } else if (npc.type === 'daycare') {
         if (player.team.length < 2) {

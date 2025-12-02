@@ -215,17 +215,27 @@ class GameClock {
     update(player) {
         let now = Date.now();
         let diff = now - this.startTime;
-        // 1 Game Day = 6 Real Hours = 21600000ms
-        // For testing/playability in this demo, we speed it up: 1 Game Day = 1 Real Minute
-        // CHANGE THIS VALUE TO 21600000 for strict prompt adherence
-        const DAY_LENGTH = 21600000;
+        // 1 Game Day = 1 Real Minute for playability
+        const DAY_LENGTH = 60000;
 
         if (diff > (this.gameDays + 1) * DAY_LENGTH) {
             this.gameDays++;
             player.surviveLevelUp();
         }
 
-        document.getElementById('meta-time').innerText = this.gameDays + "d " + Math.floor((diff % DAY_LENGTH) / 1000) + "s";
+        // Format time as HH:MM:SS
+        let totalSeconds = Math.floor((diff % DAY_LENGTH) / 1000);
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+
+        let timeStr = '';
+        if (this.gameDays > 0) {
+            timeStr = `${this.gameDays}d `;
+        }
+        timeStr += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        document.getElementById('meta-time').innerText = timeStr;
     }
 }
 
