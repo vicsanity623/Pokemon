@@ -16,6 +16,36 @@ class BattleSystem {
 
     delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    // Comic Book Style Attack Text
+    async showAttackText(text) {
+        const attackText = document.getElementById('attack-text');
+        attackText.innerText = text.toUpperCase();
+        attackText.classList.remove('anim-attack-text');
+
+        // Force reflow to restart animation
+        void attackText.offsetWidth;
+
+        attackText.classList.add('anim-attack-text');
+        await this.delay(1500); // Duration matches animation
+        attackText.classList.remove('anim-attack-text');
+    }
+
+    // Floating Damage Number
+    async showDamageNumber(damage, x, y) {
+        const damageText = document.getElementById('damage-text');
+        damageText.innerText = `-${damage}`;
+        damageText.style.left = `${x}%`;
+        damageText.style.top = `${y}%`;
+        damageText.classList.remove('anim-damage-float');
+
+        // Force reflow to restart animation
+        void damageText.offsetWidth;
+
+        damageText.classList.add('anim-damage-float');
+        await this.delay(1800); // Duration matches animation
+        damageText.classList.remove('anim-damage-float');
+    }
+
     async startBattle(isTrainer = false, bossLevelBonus = 0) {
         this.isActive = true;
         this.ui.classList.remove('hidden');
@@ -160,7 +190,10 @@ class BattleSystem {
         let move = getMove(p.type, tier);
 
         showDialog(`${p.name} used ${move.name}!`);
-        await this.delay(1000);
+        await this.delay(500);
+
+        // COMIC BOOK STYLE ATTACK TEXT!
+        this.showAttackText(move.name);
 
         // Player Attack Animation
         // We don't have a DOM element for player sprite (it's on canvas), 
@@ -180,6 +213,10 @@ class BattleSystem {
 
         // Enemy Shake (Visual feedback on UI box)
         document.getElementById('enemy-stat-box').classList.add('anim-shake');
+
+        // FLOATING DAMAGE NUMBER! (Position near enemy sprite - top right)
+        this.showDamageNumber(dmg, 70, 25);
+
         await this.delay(500);
         document.getElementById('enemy-stat-box').classList.remove('anim-shake');
 
@@ -199,7 +236,10 @@ class BattleSystem {
     async enemyTurn() {
         let p = this.player.team[0];
         showDialog(`${this.enemy.name} attacked!`);
-        await this.delay(1000);
+        await this.delay(500);
+
+        // COMIC BOOK STYLE ATTACK TEXT for enemy!
+        this.showAttackText('ATTACK');
 
         // Enemy Attack Animation
         document.getElementById('flash-overlay').classList.add('anim-flash');
@@ -214,6 +254,10 @@ class BattleSystem {
 
         // Player Shake
         document.getElementById('player-stat-box').classList.add('anim-shake');
+
+        // FLOATING DAMAGE NUMBER! (Position near player sprite - bottom left)
+        this.showDamageNumber(dmg, 25, 60);
+
         await this.delay(500);
         document.getElementById('player-stat-box').classList.remove('anim-shake');
 
