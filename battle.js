@@ -46,6 +46,32 @@ class BattleSystem {
         damageText.classList.remove('anim-damage-float');
     }
 
+    // Show Effectiveness Text
+    async showEffectivenessText(multiplier) {
+        const effectText = document.getElementById('effectiveness-text');
+        effectText.classList.remove('super', 'weak', 'immune', 'anim-effectiveness');
+
+        if (multiplier >= 2.0) {
+            effectText.innerText = 'SUPER EFFECTIVE!';
+            effectText.classList.add('super');
+        } else if (multiplier === 0) {
+            effectText.innerText = 'NO EFFECT...';
+            effectText.classList.add('immune');
+        } else if (multiplier < 1.0) {
+            effectText.innerText = 'Not Very Effective...';
+            effectText.classList.add('weak');
+        } else {
+            return; // No message for neutral
+        }
+
+        // Force reflow to restart animation
+        void effectText.offsetWidth;
+
+        effectText.classList.add('anim-effectiveness');
+        await this.delay(1500);
+        effectText.classList.remove('anim-effectiveness');
+    }
+
     async startBattle(isTrainer = false, bossLevelBonus = 0) {
         this.isActive = true;
         this.ui.classList.remove('hidden');
@@ -119,6 +145,14 @@ class BattleSystem {
             }
 
             let pPoke = this.player.team[0];
+
+            // CHECK IF FIRST POKEMON IS FAINTED
+            if (pPoke.hp <= 0) {
+                showDialog(`${pPoke.name} is fainted! Heal or swap Pokemon first!`, 3000);
+                this.endBattle();
+                return;
+            }
+
             const playerImg = document.getElementById('player-sprite');
             playerImg.src = pPoke.backSprite;
             playerImg.classList.remove('hidden');
@@ -205,11 +239,17 @@ class BattleSystem {
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        // Damage calc
-        let dmg = Math.floor(move.power * (p.level / this.enemy.level));
+        // TYPE EFFECTIVENESS DAMAGE CALC!
+        let baseDmg = Math.floor(move.power * (p.level / this.enemy.level));
+        let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
+        let dmg = Math.floor(baseDmg * effectiveness);
+
         this.enemy.hp -= dmg;
         if (this.enemy.hp < 0) this.enemy.hp = 0;
         this.updateBattleUI();
+
+        // Show Effectiveness Message
+        this.showEffectivenessText(effectiveness);
 
         // Enemy Shake (Visual feedback on UI box)
         document.getElementById('enemy-stat-box').classList.add('anim-shake');
@@ -505,6 +545,7 @@ class BattleSystem {
             p.exp -= p.level * 100;
             p.level++;
             p.maxHp += 5;
+            // Only heal on level up, not regular wins!
             p.hp = p.maxHp;
         }
 
@@ -519,8 +560,7 @@ class BattleSystem {
             showDialog("You whited out...");
             setTimeout(() => {
                 this.endBattle();
-                // Respawn logic could go here
-                this.player.team.forEach(p => p.hp = p.maxHp); // Heal all for demo
+                // NO AUTO-HEAL! Pokemon stay fainted until healed at Poke Center
             }, 2000);
         }, 2000);
     }

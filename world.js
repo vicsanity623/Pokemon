@@ -7,6 +7,7 @@ class World {
         this.rng = new SeededRandom(seed);
         this.items = {}; // Store items by "x,y" key
         this.npcs = [];
+        this.buildings = []; // Poke Centers and other buildings
         this.initItems();
         this.initNPCs();
     }
@@ -45,6 +46,33 @@ class World {
 
     removeItem(x, y) {
         delete this.items[`${x},${y}`];
+    }
+
+    // Poke Center Building System
+    spawnPokeCenter(x, y) {
+        // Ensure not on water
+        if (this.getTile(x, y) === 'water') {
+            // Find nearby valid spot
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dy = -2; dy <= 2; dy++) {
+                    if (this.getTile(x + dx, y + dy) !== 'water') {
+                        x += dx;
+                        y += dy;
+                        break;
+                    }
+                }
+            }
+        }
+
+        this.buildings.push({
+            type: 'pokecenter',
+            x: x,
+            y: y
+        });
+    }
+
+    getBuildingAt(x, y) {
+        return this.buildings.find(b => Math.round(b.x) === x && Math.round(b.y) === y);
     }
 
     getTile(x, y) {
@@ -139,9 +167,19 @@ class Player {
         // Stats
         this.pLevel = 1; // Survival Level
         this.team = []; // Pokemon objects
-        this.team = []; // Pokemon objects
         this.bag = { 'Potion': 5, 'Pokeball': 10 };
         this.inventory = { 'Herb': 0 };
+
+        // Track last Poke Center spawn for interval
+        this.lastPokeCenterStep = -500; // Spawn first one soon
+    }
+
+    healAllPokemon() {
+        this.team.forEach(p => {
+            if (!p.isEgg) {
+                p.hp = p.maxHp;
+            }
+        });
     }
 
     surviveLevelUp() {
@@ -269,6 +307,31 @@ class Renderer {
                 }
             }
         }
+
+        // Draw Poke Centers (Buildings)
+        this.world.buildings.forEach(building => {
+            if (building.type === 'pokecenter') {
+                let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+                let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+                // Draw building platform/base
+                this.ctx.fillStyle = '#e74c3c';
+                this.ctx.fillRect(Math.floor(drawX) - 10, Math.floor(drawY) - 10, TILE_SIZE + 20, TILE_SIZE + 20);
+
+                // Glow effect
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = '#3498db';
+
+                // Hospital emoji
+                this.ctx.font = '50px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('🏥', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
+
+                // Reset shadow
+                this.ctx.shadowBlur = 0;
+            }
+        });
 
         // Draw NPCs
         this.world.npcs.forEach(npc => {

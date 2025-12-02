@@ -1,6 +1,36 @@
 // Pokemon Types & Moves Logic
 const TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon'];
 
+// Type Effectiveness Chart
+// Key: Attacking Type -> Defending Type: Multiplier
+const TYPE_CHART = {
+    fire: { grass: 2.0, ice: 2.0, bug: 2.0, water: 0.5, fire: 0.5, rock: 0.5, dragon: 0.5 },
+    water: { fire: 2.0, ground: 2.0, rock: 2.0, water: 0.5, grass: 0.5, dragon: 0.5 },
+    grass: { water: 2.0, ground: 2.0, rock: 2.0, fire: 0.5, grass: 0.5, poison: 0.5, flying: 0.5, bug: 0.5, dragon: 0.5 },
+    electric: { water: 2.0, flying: 2.0, electric: 0.5, grass: 0.5, dragon: 0.5, ground: 0 },
+    ice: { grass: 2.0, ground: 2.0, flying: 2.0, dragon: 2.0, fire: 0.5, water: 0.5, ice: 0.5 },
+    fighting: { normal: 2.0, ice: 2.0, rock: 2.0, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0 },
+    poison: { grass: 2.0, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5 },
+    ground: { fire: 2.0, electric: 2.0, poison: 2.0, rock: 2.0, grass: 0.5, bug: 0.5, flying: 0 },
+    flying: { grass: 2.0, fighting: 2.0, bug: 2.0, electric: 0.5, rock: 0.5 },
+    psychic: { fighting: 2.0, poison: 2.0, psychic: 0.5 },
+    bug: { grass: 2.0, psychic: 2.0, poison: 0.5, fighting: 0.5, fire: 0.5, flying: 0.5, ghost: 0.5 },
+    rock: { fire: 2.0, ice: 2.0, flying: 2.0, bug: 2.0, fighting: 0.5, ground: 0.5 },
+    ghost: { ghost: 2.0, psychic: 0.5, normal: 0 },
+    dragon: { dragon: 2.0 },
+    normal: { rock: 0.5, ghost: 0 }
+};
+
+// Get Type Effectiveness Multiplier
+function getTypeEffectiveness(attackType, defenderType) {
+    if (!attackType || !defenderType) return 1.0;
+
+    const chart = TYPE_CHART[attackType];
+    if (!chart) return 1.0;
+
+    return chart[defenderType] || 1.0;
+}
+
 // Procedurally generated moves so we don't need a 5MB database
 function getMove(type, powerTier) {
     const moves = {
@@ -8,7 +38,17 @@ function getMove(type, powerTier) {
         'water': ['Bubble', 'Water Gun', 'Surf', 'Hydro Pump'],
         'grass': ['Vine Whip', 'Razor Leaf', 'Mega Drain', 'Solar Beam'],
         'normal': ['Scratch', 'Tackle', 'Slam', 'Hyper Beam'],
-        'electric': ['Thundershock', 'Spark', 'Thunderbolt', 'Thunder']
+        'electric': ['Thundershock', 'Spark', 'Thunderbolt', 'Thunder'],
+        'ice': ['Ice Shard', 'Ice Beam', 'Blizzard', 'Freeze'],
+        'fighting': ['Karate Chop', 'Low Kick', 'Submission', 'Hi Jump Kick'],
+        'poison': ['Poison Sting', 'Smog', 'Sludge', 'Sludge Bomb'],
+        'ground': ['Mud Slap', 'Dig', 'Earthquake', 'Fissure'],
+        'flying': ['Gust', 'Wing Attack', 'Drill Peck', 'Sky Attack'],
+        'psychic': ['Confusion', 'Psybeam', 'Psychic', 'Dream Eater'],
+        'bug': ['String Shot', 'Pin Missile', 'Twineedle', 'Megahorn'],
+        'rock': ['Rock Throw', 'Rock Slide', 'Stone Edge', 'Rock Wrecker'],
+        'ghost': ['Lick', 'Confuse Ray', 'Shadow Ball', 'Shadow Claw'],
+        'dragon': ['Dragon Rage', 'Dragon Breath', 'Dragon Claw', 'Draco Meteor']
     };
 
     let list = moves[type] || moves['normal'];

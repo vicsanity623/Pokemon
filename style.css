@@ -755,3 +755,143 @@ canvas {
 .anim-damage-float {
     animation: damage-float 1.8s ease-out;
 }
+
+/* Effectiveness Text */
+#effectiveness-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 40px;
+    font-family: 'Press Start 2P', cursive;
+    font-weight: bold;
+    z-index: 300;
+    pointer-events: none;
+    opacity: 0;
+    text-align: center;
+}
+
+#effectiveness-text.super {
+    color: #2ecc71;
+    text-shadow:
+        2px 2px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000,
+        0 0 15px #FFD700,
+        0 0 30px #2ecc71;
+}
+
+#effectiveness-text.weak {
+    color: #95a5a6;
+    text-shadow:
+        2px 2px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+}
+
+#effectiveness-text.immune {
+    color: #e74c3c;
+    text-shadow:
+        3px 3px 0 #000,
+        -3px -3px 0 #000,
+        3px -3px 0 #000,
+        -3px 3px 0 #000,
+        0 0 20px #FF0000;
+}
+
+@keyframes effectiveness-pop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}
+
+.anim-effectiveness {
+    animation: effectiveness-pop 1.5s ease-out;
+}
+
+/* Player Bag Menu */
+.bag-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px;
+    background: #333;
+    color: white;
+    border: 2px solid #555;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: #000;
+    border-color: #f1c40f;
+}
+
+#bag-content {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.pokemon-item {
+    padding: 15px;
+    border: 2px solid #555;
+    margin-bottom: 10px;
+    background: #222;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pokemon-item.fainted {
+    opacity: 0.5;
+    border-color: #e74c3c;
+}
+
+.pokemon-info {
+    flex: 1;
+}
+
+.pokemon-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.pokemon-actions button {
+    padding: 8px 12px;
+    font-size: 10px;
+    font-family: 'Press Start 2P', cursive;
+    background: #3498db;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.pokemon-actions button:active {
+    background: #2980b9;
+}
