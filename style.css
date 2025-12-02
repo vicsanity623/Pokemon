@@ -208,6 +208,8 @@ canvas {
     padding: 20px;
     box-sizing: border-box;
     color: white;
+    pointer-events: auto;
+    /* Override parent's pointer-events: none */
 }
 
 .menu-header {
