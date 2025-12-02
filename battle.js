@@ -2,6 +2,7 @@ class BattleSystem {
     constructor(player) {
         this.player = player;
         this.isActive = false;
+        this.isAttacking = false; // Prevent spam
         this.enemy = null;
         this.turn = 0; // 0: Player, 1: Enemy
         this.ui = document.getElementById('battle-ui');
@@ -74,6 +75,7 @@ class BattleSystem {
 
     async startBattle(isTrainer = false, bossLevelBonus = 0) {
         this.isActive = true;
+        this.isAttacking = false;
         this.ui.classList.remove('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
 
@@ -113,13 +115,19 @@ class BattleSystem {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
             let data = await res.json();
 
+            let type = data.types[0].type.name;
+            // Assign a move for the enemy
+            let tier = Math.floor(level / 20);
+            let enemyMove = getMove(type, tier);
+
             this.enemy = {
                 name: data.name.toUpperCase(),
                 sprite: data.sprites.front_default,
                 maxHp: level * 5 + 20,
                 hp: level * 5 + 20,
                 level: level,
-                type: data.types[0].type.name
+                type: type,
+                move: enemyMove // Store move
             };
 
             // Render Enemy
@@ -194,6 +202,9 @@ class BattleSystem {
     }
 
     attackBtn() {
+        if (this.isAttacking) return; // Prevent spam
+        if (this.enemy.hp <= 0) return; // Prevent attacking fainted enemy
+
         document.getElementById('move-selector').classList.remove('hidden');
         let p = this.player.team[0];
         // Generate moves based on level tier
@@ -218,6 +229,9 @@ class BattleSystem {
     }
 
     async useMove(slot) {
+        if (this.isAttacking) return;
+        this.isAttacking = true;
+
         this.closeMoves();
         let p = this.player.team[0];
         let tier = Math.floor(p.level / 20);
@@ -275,11 +289,13 @@ class BattleSystem {
 
     async enemyTurn() {
         let p = this.player.team[0];
-        showDialog(`${this.enemy.name} attacked!`);
+        let moveName = this.enemy.move ? this.enemy.move.name : 'ATTACK';
+
+        showDialog(`${this.enemy.name} used ${moveName}!`);
         await this.delay(500);
 
         // COMIC BOOK STYLE ATTACK TEXT for enemy!
-        this.showAttackText('ATTACK');
+        this.showAttackText(moveName);
 
         // Enemy Attack Animation
         document.getElementById('flash-overlay').classList.add('anim-flash');
@@ -307,10 +323,12 @@ class BattleSystem {
         } else {
             // Reset to player turn prompt
             showDialog("What will you do?");
+            this.isAttacking = false; // Unlock input
         }
     }
 
     bagBtn() {
+        if (this.isAttacking) return;
         document.getElementById('bag-menu').classList.remove('hidden');
         const list = document.getElementById('bag-list');
         list.innerHTML = '';
@@ -362,6 +380,7 @@ class BattleSystem {
     }
 
     async throwPokeball() {
+        this.isAttacking = true; // Lock input
         showDialog(`Player used Pokeball!`);
         await this.delay(1000);
 
@@ -448,6 +467,7 @@ class BattleSystem {
     }
 
     pokemonBtn() {
+        if (this.isAttacking) return;
         document.getElementById('pokemon-menu').classList.remove('hidden');
         const list = document.getElementById('pokemon-list');
         list.innerHTML = '';
@@ -503,6 +523,7 @@ class BattleSystem {
     }
 
     runBtn() {
+        if (this.isAttacking) return;
         showDialog("Got away safely!");
         setTimeout(() => this.endBattle(), 1000);
     }
@@ -533,6 +554,11 @@ class BattleSystem {
                 p.level++;
                 p.maxHp += 5;
                 p.hp = p.maxHp;
+
+                // VISUAL RESET
+                document.getElementById('player-exp-bar').style.width = '0%';
+                await this.delay(200); // Pause to show empty bar
+
                 this.updateBattleUI();
             }
 
@@ -567,6 +593,7 @@ class BattleSystem {
 
     endBattle() {
         this.isActive = false;
+        this.isAttacking = false;
         hideDialog(); // Force hide dialog
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');

@@ -9,15 +9,29 @@ const clock = new GameClock();
 
 // Safe Spawn Logic
 function findSafeSpawn() {
-    let radius = 0;
-    while (true) {
+    let attempts = 0;
+    while (attempts < 100) {
+        attempts++;
         // Spiral check (simplified to random attempts for speed)
         // If current tile is water, move randomly
-        let tile = world.getTile(Math.round(player.x), Math.round(player.y));
-        if (tile !== 'water') break;
+        let x = Math.floor(Math.random() * 20) - 10;
+        let y = Math.floor(Math.random() * 20) - 10;
 
-        player.x = Math.floor(Math.random() * 20) - 10;
-        player.y = Math.floor(Math.random() * 20) - 10;
+        let tile = world.getTile(x, y);
+        if (tile !== 'water') {
+            // Check neighbors to ensure not isolated
+            let neighbors = 0;
+            if (world.getTile(x + 1, y) !== 'water') neighbors++;
+            if (world.getTile(x - 1, y) !== 'water') neighbors++;
+            if (world.getTile(x, y + 1) !== 'water') neighbors++;
+            if (world.getTile(x, y - 1) !== 'water') neighbors++;
+
+            if (neighbors >= 2) {
+                player.x = x;
+                player.y = y;
+                break;
+            }
+        }
     }
 }
 findSafeSpawn();
