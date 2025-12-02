@@ -218,7 +218,7 @@ class GameClock {
         // 1 Game Day = 6 Real Hours = 21600000ms
         // For testing/playability in this demo, we speed it up: 1 Game Day = 1 Real Minute
         // CHANGE THIS VALUE TO 21600000 for strict prompt adherence
-        const DAY_LENGTH = 60000;
+        const DAY_LENGTH = 21600000;
 
         if (diff > (this.gameDays + 1) * DAY_LENGTH) {
             this.gameDays++;

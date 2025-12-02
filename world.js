@@ -6,7 +6,24 @@ class World {
     constructor(seed) {
         this.rng = new SeededRandom(seed);
         this.items = {}; // Store items by "x,y" key
+        this.npcs = [];
         this.initItems();
+        this.initNPCs();
+    }
+
+    initNPCs() {
+        // Herbalist
+        this.npcs.push(new NPC(5, 5, 'Herbalist', 'quest', 'Bring me 10 Herbs for $500!'));
+
+        // Daycare Man
+        this.npcs.push(new NPC(-5, -5, 'Daycare Man', 'daycare', 'I can raise your Pokemon.'));
+
+        // Wandering Villager
+        this.npcs.push(new NPC(2, -2, 'Villager', 'talk', 'Nice weather today!'));
+    }
+
+    updateNPCs() {
+        this.npcs.forEach(npc => npc.update(this));
     }
 
     initItems() {
@@ -14,7 +31,10 @@ class World {
         for (let i = 0; i < 50; i++) {
             let x = Math.floor(Math.random() * 200) - 100;
             let y = Math.floor(Math.random() * 200) - 100;
-            let type = Math.random() > 0.5 ? 'Potion' : 'Pokeball';
+            let r = Math.random();
+            let type = 'Potion';
+            if (r > 0.7) type = 'Pokeball';
+            if (r > 0.9) type = 'Herb'; // 10% chance for Herb
             this.items[`${x},${y}`] = type;
         }
     }
@@ -64,7 +84,40 @@ class World {
     }
 
     getItemColor(type) {
+        if (type === 'Herb') return '#2ecc71';
         return type === 'Potion' ? '#9b59b6' : '#e74c3c';
+    }
+}
+
+class NPC {
+    constructor(x, y, name, type, dialog) {
+        this.x = x;
+        this.y = y;
+        this.startX = x;
+        this.startY = y;
+        this.name = name;
+        this.type = type; // 'quest', 'daycare', 'talk'
+        this.dialog = dialog;
+        this.color = '#f1c40f'; // Yellow
+        this.lastMove = Date.now();
+    }
+
+    update(world) {
+        // Wander randomly every 2-5 seconds
+        if (Date.now() - this.lastMove > 2000 + Math.random() * 3000) {
+            let dx = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+            let dy = Math.floor(Math.random() * 3) - 1;
+
+            // Keep within radius of 5 from start
+            if (Math.abs(this.x + dx - this.startX) < 5 && Math.abs(this.y + dy - this.startY) < 5) {
+                // Check collision
+                if (world.getTile(this.x + dx, this.y + dy) !== 'water') {
+                    this.x += dx;
+                    this.y += dy;
+                }
+            }
+            this.lastMove = Date.now();
+        }
     }
 }
 
@@ -81,7 +134,9 @@ class Player {
         // Stats
         this.pLevel = 1; // Survival Level
         this.team = []; // Pokemon objects
+        this.team = []; // Pokemon objects
         this.bag = { 'Potion': 5, 'Pokeball': 10 };
+        this.inventory = { 'Herb': 0 };
     }
 
     surviveLevelUp() {
@@ -192,16 +247,41 @@ class Renderer {
                 // Draw Item
                 let item = this.world.getItem(worldX, worldY);
                 if (item) {
-                    this.ctx.fillStyle = this.world.getItemColor(item);
-                    this.ctx.beginPath();
-                    this.ctx.arc(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2, 10, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.stroke();
+                    if (item === 'Herb') {
+                        this.ctx.font = '20px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText('🌿', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
+                    } else {
+                        this.ctx.fillStyle = this.world.getItemColor(item);
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = '#fff';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.stroke();
+                    }
                 }
             }
         }
+
+        // Draw NPCs
+        this.world.npcs.forEach(npc => {
+            let drawX = (npc.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+            let drawY = (npc.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+            // Simple NPC Render (Circle with Name)
+            this.ctx.fillStyle = npc.color;
+            this.ctx.beginPath();
+            this.ctx.arc(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Name
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '10px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(npc.name, Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) - 10);
+        });
 
         // Draw Player (Always Center)
         const px = this.canvas.width / 2 - TILE_SIZE / 2;

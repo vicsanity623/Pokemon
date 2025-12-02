@@ -103,9 +103,15 @@ function gameLoop(timestamp) {
                 let item = world.getItem(Math.round(player.x), Math.round(player.y));
                 if (item) {
                     world.removeItem(Math.round(player.x), Math.round(player.y));
-                    if (player.bag[item]) player.bag[item]++;
-                    else player.bag[item] = 1;
-                    showDialog(`Found a ${item}!`, 2000);
+                    if (item === 'Herb') {
+                        if (player.inventory['Herb']) player.inventory['Herb']++;
+                        else player.inventory['Herb'] = 1;
+                        showDialog(`Gathered a Herb! (Total: ${player.inventory['Herb']})`, 2000);
+                    } else {
+                        if (player.bag[item]) player.bag[item]++;
+                        else player.bag[item] = 1;
+                        showDialog(`Found a ${item}!`, 2000);
+                    }
                 }
 
                 // Update Direction for sprites (if we had them)
@@ -129,10 +135,87 @@ function gameLoop(timestamp) {
         }
 
         clock.update(player);
+        world.updateNPCs(); // Update NPC movement
         renderer.draw();
         updateHUD();
+
+        // Egg Hatching Logic
+        player.team.forEach(p => {
+            if (p.isEgg) {
+                p.eggSteps--;
+                if (p.eggSteps <= 0) {
+                    p.isEgg = false;
+                    p.name = p.species; // Hatch!
+                    showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
+                }
+            }
+        });
     }
     requestAnimationFrame(gameLoop);
+}
+
+// Interaction Handler (A Button)
+input.press = (key) => {
+    input.keys[key] = true;
+    if (key === 'Enter') { // 'A' button mapped to Enter
+        // Check for nearby NPC
+        let nearbyNPC = world.npcs.find(npc => Math.abs(npc.x - player.x) < 1.5 && Math.abs(npc.y - player.y) < 1.5);
+        if (nearbyNPC) {
+            handleNPCInteraction(nearbyNPC);
+        }
+    }
+};
+
+function handleNPCInteraction(npc) {
+    if (npc.type === 'talk') {
+        showDialog(`${npc.name}: "${npc.dialog}"`, 3000);
+    } else if (npc.type === 'quest') {
+        if (player.inventory['Herb'] >= 10) {
+            player.inventory['Herb'] -= 10;
+            player.money += 500;
+            player.team[0].exp += 200;
+            showDialog("Herbalist: Thanks! Here is $500 and XP.", 3000);
+        } else {
+            showDialog("Herbalist: Bring me 10 Herbs. I pay well!", 3000);
+        }
+    } else if (npc.type === 'daycare') {
+        if (player.team.length < 2) {
+            showDialog("Daycare: Come back with at least 2 Pokemon.", 3000);
+            return;
+        }
+        // Simplified Breeding: First 2 Pokemon
+        let p1 = player.team[0];
+        let p2 = player.team[1];
+
+        if (p1.isEgg || p2.isEgg) {
+            showDialog("Daycare: Eggs cannot breed!", 3000);
+            return;
+        }
+
+        // Check Type Match (Very simple: same primary type)
+        // Note: In real game, egg groups. Here: Type.
+        if (p1.type === p2.type) {
+            if (player.team.length >= 6) {
+                showDialog("Daycare: Your party is full.", 3000);
+            } else {
+                showDialog("Daycare: They get along great! Here is an Egg!", 3000);
+                player.team.push({
+                    name: 'EGG',
+                    species: p1.name, // Offspring is mother's species (p1 for simplicity)
+                    level: 1,
+                    maxHp: 15,
+                    hp: 15,
+                    exp: 0,
+                    type: p1.type,
+                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png', // Placeholder
+                    isEgg: true,
+                    eggSteps: 500
+                });
+            }
+        } else {
+            showDialog("Daycare: They don't seem to like each other...", 3000);
+        }
+    }
 }
 
 // Init
@@ -227,7 +310,16 @@ function updateHUD() {
     document.getElementById('hud-money').innerText = `$${player.money}`;
 
     // XP (Active Pokemon)
+    if (player.team.length === 0) return; // No Pokemon
+
     let p = player.team[0];
+    if (!p || typeof p.exp === 'undefined' || typeof p.level === 'undefined') {
+        // Pokemon missing required properties
+        document.getElementById('hud-xp-text').innerText = 'XP: --';
+        document.getElementById('hud-xp-fill').style.width = '0%';
+        return;
+    }
+
     let maxExp = p.level * 100;
     let pct = (p.exp / maxExp) * 100;
 

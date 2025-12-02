@@ -21,10 +21,36 @@ class BattleSystem {
         this.ui.classList.remove('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
 
-        // Determine Enemy
-        // Procedurally generate ID between 1 and 151
-        let id = Math.floor(Math.random() * 151) + 1;
-        let level = Math.max(1, this.player.pLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus);
+        // Filter lists for balanced spawning
+        const LEGENDARY_IDS = [144, 145, 146, 150, 151];
+        const EVOLVED_IDS = [2, 3, 5, 6, 8, 9, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 31, 34, 36, 38, 40, 42, 44, 45, 47, 49, 51, 53, 55, 57, 59, 61, 62, 64, 65, 67, 68, 71, 73, 75, 76, 78, 80, 82, 83, 85, 87, 89, 91, 93, 94, 97, 99, 101, 103, 105, 106, 107, 108, 110, 112, 113, 114, 115, 117, 119, 121, 122, 123, 127, 130, 131, 132, 134, 135, 136, 137, 139, 141, 142, 143, 148, 149];
+
+        let id;
+        let attempts = 0;
+
+        // Smart Pokemon selection
+        do {
+            id = Math.floor(Math.random() * 151) + 1;
+            attempts++;
+
+            // If player level < 40, avoid evolved and legendary
+            if (this.player.pLevel < 40) {
+                if (LEGENDARY_IDS.includes(id) || EVOLVED_IDS.includes(id)) {
+                    continue; // Try again
+                }
+            }
+            break; // Valid Pokemon found
+        } while (attempts < 20);
+
+        // Calculate level based on team average
+        let avgLevel = 1;
+        if (this.player.team.length > 0) {
+            let totalLevel = this.player.team.reduce((sum, p) => sum + (p.level || 1), 0);
+            avgLevel = Math.floor(totalLevel / this.player.team.length);
+        }
+
+        // Wild level = avg ± 2 random variance
+        let level = Math.max(1, avgLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus);
 
         // Fetch Data (Simplified fetch)
         try {
@@ -89,6 +115,11 @@ class BattleSystem {
         document.getElementById('player-level').innerText = `Lv.${p.level}`;
         document.getElementById('player-hp-text').innerText = `${p.hp}/${p.maxHp}`;
         document.getElementById('player-hp-fill').style.width = `${(p.hp / p.maxHp) * 100}%`;
+
+        // XP Bar
+        let maxExp = p.level * 100;
+        let expPct = (p.exp / maxExp) * 100;
+        document.getElementById('player-exp-bar').style.width = `${expPct}%`;
 
         // Enemy Stats
         document.getElementById('enemy-name').innerText = this.enemy.name;
@@ -310,8 +341,14 @@ class BattleSystem {
         showDialog(`Gotcha! ${this.enemy.name} was caught!`);
         await this.delay(1000);
 
-        // Add to team
-        this.player.addPokemon({ ...this.enemy, hp: this.enemy.maxHp });
+        // Add to team (IMPORTANT: Initialize exp property!)
+        let caughtPokemon = {
+            ...this.enemy,
+            hp: this.enemy.maxHp,
+            exp: 0, // Initialize XP
+            backSprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.sprite.match(/\/pokemon\/(\d+)\.png/)[1]}.png`
+        };
+        this.player.addPokemon(caughtPokemon);
         questSystem.update('hunt');
 
         // Show Stats
@@ -361,20 +398,22 @@ class BattleSystem {
         this.player.team[0] = this.player.team[index];
         this.player.team[index] = temp;
 
-        // Redraw Player Sprite
-        const ctx = document.getElementById('gameCanvas').getContext('2d');
-        // Clear player area (simple hack, better to redraw whole scene but this works for now)
-        // Actually we need to redraw the sprite.
-        let pImg = new Image();
-        pImg.src = this.player.team[0].backSprite;
-        pImg.onload = () => {
-            // Clear rect where player is
-            ctx.fillStyle = '#000';
-            ctx.fillRect(50, window.innerHeight - 250, 150, 150);
-            ctx.drawImage(pImg, 50, window.innerHeight - 250, 150, 150);
-        };
+        // Update Player Sprite (DOM element) - Force reload
+        const playerImg = document.getElementById('player-sprite');
+        if (playerImg && this.player.team[0].backSprite) {
+            // Force browser to reload image by setting to empty first
+            playerImg.src = '';
+            setTimeout(() => {
+                playerImg.src = this.player.team[0].backSprite + '?t=' + Date.now();
+            }, 10);
+        }
 
+        // Update Battle UI (includes XP bar)
         this.updateBattleUI();
+
+        // Update World HUD as well
+        updateHUD();
+
         await this.delay(1000);
         this.enemyTurn();
     }
@@ -385,40 +424,51 @@ class BattleSystem {
     }
 
     async win(caught) {
-        // If caught, we already showed "Gotcha!"
-        // If defeated, we already showed "Fainted!" in useMove
-
-        // XP Gain
+        // XP and Money Gain
         let xpGain = this.enemy.level * 10;
         let p = this.player.team[0];
-        p.exp += xpGain;
-
-        // Money Gain
+        let startExp = p.exp;
         let moneyGain = 100;
-        this.player.money += moneyGain;
 
-        // Quest Update (Defeat or Catch counts as 'hunt' progress)
+        this.player.money += moneyGain;
         questSystem.update('hunt');
 
-        showDialog(`${p.name} gained ${xpGain} XP!`);
-        await this.delay(1500);
+        // Animate XP bar filling up
+        let expPerFrame = Math.ceil(xpGain / 30); // Animate over ~30 frames
+        for (let i = 0; i < xpGain; i += expPerFrame) {
+            p.exp = Math.min(startExp + i + expPerFrame, startExp + xpGain);
 
-        showDialog(`Player looted $${moneyGain}!`);
-        await this.delay(1500);
+            // Update XP bar
+            let maxExp = p.level * 100;
+            let expPct = (p.exp / maxExp) * 100;
+            document.getElementById('player-exp-bar').style.width = `${expPct}%`;
 
-        // Level Up Check (Simple: 100 XP per level)
-        if (p.exp >= p.level * 100) {
+            // Check for level up during animation
+            if (p.exp >= p.level * 100) {
+                p.exp -= p.level * 100;
+                p.level++;
+                p.maxHp += 5;
+                p.hp = p.maxHp;
+                this.updateBattleUI();
+            }
+
+            await this.delay(50); // Smooth animation
+        }
+
+        // Final update
+        p.exp = startExp + xpGain;
+        while (p.exp >= p.level * 100) {
             p.exp -= p.level * 100;
             p.level++;
             p.maxHp += 5;
-            p.hp = p.maxHp; // Full heal on level up
-            showDialog(`${p.name} grew to Lv. ${p.level}!`);
-            await this.delay(1500);
+            p.hp = p.maxHp;
         }
+
+        this.updateBattleUI();
+        await this.delay(500);
 
         this.endBattle();
     }
-
     lose() {
         showDialog(`${this.player.team[0].name} fainted!`);
         setTimeout(() => {
