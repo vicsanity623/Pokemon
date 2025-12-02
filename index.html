@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Post-Apoc PokeWorld</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-layer">
+            <div id="dialog-box" class="hidden">
+                <p id="dialog-text"></p>
+                <div id="dialog-arrow">▼</div>
+            </div>
+
+            <div id="battle-ui" class="hidden">
+                <div id="enemy-stat-box">
+                    <span id="enemy-name"></span> <span id="enemy-level"></span>
+                    <div class="hp-bar-bg">
+                        <div id="enemy-hp-bar" class="hp-bar-fill"></div>
+                    </div>
+                </div>
+                <div id="player-stat-box">
+                    <span id="player-pokename"></span> <span id="player-level"></span>
+                    <div class="hp-bar-bg">
+                        <div id="player-hp-bar" class="hp-bar-fill"></div>
+                    </div>
+                    <div class="exp-bar-bg">
+                        <div id="player-exp-bar" class="exp-bar-fill"></div>
+                    </div>
+                </div>
+                <div id="battle-menu">
+                    <div id="battle-text">What will you do?</div>
+                    <div class="battle-options">
+                        <button onclick="battleSystem.attackBtn()">FIGHT</button>
+                        <button onclick="battleSystem.bagBtn()">BAG</button>
+                        <button onclick="battleSystem.pokemonBtn()">PKMN</button>
+                        <button onclick="battleSystem.runBtn()">RUN</button>
+                    </div>
+                </div>
+                <div id="move-selector" class="hidden">
+                    <!-- Moves generated dynamically -->
+                    <button onclick="battleSystem.useMove(0)" id="move-0">-</button>
+                    <button onclick="battleSystem.useMove(1)" id="move-1">-</button>
+                    <button onclick="battleSystem.useMove(2)" id="move-2">-</button>
+                    <button onclick="battleSystem.useMove(3)" id="move-3">-</button>
+                    <button onclick="battleSystem.closeMoves()">BACK</button>
+                </div>
+            </div>
+
+            <div id="quest-tracker">
+                <small>QUEST</small><br>
+                <span id="quest-desc">Loading...</span>
+            </div>
+
+            <div id="stats-overlay">
+                LVL: <span id="meta-level">1</span> | Time: <span id="meta-time">0h</span>
+            </div>
+        </div>
+
+        <div id="mobile-controls">
+            <div id="dpad">
+                <div class="dpad-btn up" ontouchstart="input.press('ArrowUp')" ontouchend="input.release('ArrowUp')">▲
+                </div>
+                <div class="dpad-btn left" ontouchstart="input.press('ArrowLeft')"
+                    ontouchend="input.release('ArrowLeft')">◀</div>
+                <div class="dpad-btn right" ontouchstart="input.press('ArrowRight')"
+                    ontouchend="input.release('ArrowRight')">▶</div>
+                <div class="dpad-btn down" ontouchstart="input.press('ArrowDown')"
+                    ontouchend="input.release('ArrowDown')">▼</div>
+            </div>
+            <div id="action-btns">
+                <div class="action-btn b-btn" ontouchstart="input.press('b')" ontouchend="input.release('b')">B</div>
+                <div class="action-btn a-btn" ontouchstart="input.press('Enter')" ontouchend="input.release('Enter')">A
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Load Order is Vital -->
+    <script src="utils.js"></script>
+    <script src="data.js"></script>
+    <script src="world.js"></script>
+    <script src="battle.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
