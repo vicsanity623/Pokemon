@@ -202,7 +202,7 @@ canvas {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.9);
-    z-index: 20;
+    z-index: 60;
     display: flex;
     flex-direction: column;
     padding: 20px;
@@ -843,7 +843,11 @@ canvas {
     border: 2px solid #555;
     font-family: 'Press Start 2P', cursive;
     font-size: 12px;
+    font-size: 12px;
     cursor: pointer;
+    position: relative;
+    z-index: 10;
+    touch-action: manipulation;
 }
 
 .tab-btn.active {
@@ -895,6 +899,7 @@ canvas {
 .pokemon-actions button:active {
     background: #2980b9;
 }
+
 /* Level Up Overlay */
 #level-up-overlay {
     position: absolute;
@@ -916,8 +921,15 @@ canvas {
 }
 
 @keyframes popIn {
-    0% { transform: scale(0); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .levelup-header {
@@ -958,6 +970,7 @@ canvas {
     padding: 10px;
     cursor: pointer;
 }
+
 .forget-btn:active {
     background: #555;
 }
