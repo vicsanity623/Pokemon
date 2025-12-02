@@ -120,9 +120,13 @@ class BattleSystem {
             let tier = Math.floor(level / 20);
             let enemyMove = getMove(type, tier);
 
+            // Try to get animated sprite, fallback to static
+            let animatedSprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || data.sprites.front_default;
+
             this.enemy = {
                 name: data.name.toUpperCase(),
-                sprite: data.sprites.front_default,
+                sprite: data.sprites.front_default, // Keep static for battle (cleaner) or use animated if preferred. User asked for animated on catch screen.
+                animatedSprite: animatedSprite,
                 maxHp: level * 5 + 20,
                 hp: level * 5 + 20,
                 level: level,
@@ -246,6 +250,20 @@ class BattleSystem {
         // Player Attack Animation
         // We don't have a DOM element for player sprite (it's on canvas), 
         // so we'll just flash the screen or shake the enemy UI
+        if (move.category === 'status') {
+            // SHINY ANIMATION FOR STATUS MOVES
+            document.getElementById('flash-overlay').style.backgroundColor = 'rgba(255, 255, 0, 0.5)'; // Yellow glow
+            document.getElementById('flash-overlay').classList.add('anim-flash');
+            await this.delay(500);
+            document.getElementById('flash-overlay').classList.remove('anim-flash');
+            document.getElementById('flash-overlay').style.backgroundColor = ''; // Reset
+
+            showDialog(`${p.name}'s stats rose!`);
+            await this.delay(1000);
+            this.enemyTurn();
+            return; // Skip damage
+        }
+
         document.getElementById('gameCanvas').classList.add('anim-shake'); // Shake screen
         document.getElementById('flash-overlay').classList.add('anim-flash');
 
@@ -319,7 +337,19 @@ class BattleSystem {
 
         if (p.hp <= 0) {
             await this.delay(1000);
-            this.lose();
+
+            // Check if any other pokemon are alive
+            let hasAlive = this.player.team.some(poke => poke.hp > 0);
+
+            if (hasAlive) {
+                showDialog(`${p.name} fainted! Choose another Pokemon!`);
+                await this.delay(1000);
+                this.pokemonBtn(); // Open menu
+                // Hide back button to force switch
+                document.querySelector('#pokemon-menu .back-btn').classList.add('hidden');
+            } else {
+                this.lose();
+            }
         } else {
             // Reset to player turn prompt
             showDialog("What will you do?");
@@ -344,100 +374,103 @@ class BattleSystem {
         }
     }
 
-    async useItem(item) {
-        this.pendingItem = item;
-        document.getElementById('bag-menu').classList.add('hidden'); // Hide bag, show confirm
-        document.getElementById('confirmation-dialog').classList.remove('hidden');
-        document.getElementById('confirm-text').innerText = `Use ${item}?`;
-    }
+    async useItem(itemName) {
+        if (this.isAttacking) return;
+        this.isAttacking = true;
 
-    async confirmAction(confirmed) {
-        document.getElementById('confirmation-dialog').classList.add('hidden');
-        if (!confirmed) {
-            this.updateBattleUI(); // Return to main menu state effectively
+        let itemData = ITEMS[itemName];
+        if (!itemData) {
+            this.isAttacking = false;
             return;
         }
 
-        let item = this.pendingItem;
-        this.pendingItem = null;
-
-        if (item === 'Potion') {
-            let p = this.player.team[0];
-            if (p.hp === p.maxHp) {
-                showDialog("HP is full!");
-                return;
-            }
-            this.player.bag[item]--;
-            p.hp = Math.min(p.hp + 20, p.maxHp);
-            showDialog(`Used Potion! ${p.name} healed.`);
-            this.updateBattleUI();
-            await this.delay(1000);
-            this.enemyTurn();
-        } else if (item === 'Pokeball') {
-            this.player.bag[item]--;
-            await this.throwPokeball();
+        if (itemData.type === 'ball') {
+            await this.throwPokeball(itemName);
+            return;
         }
+
+        if (this.player.bag[itemName] > 0) {
+            this.player.bag[itemName]--;
+            if (this.player.bag[itemName] === 0) delete this.player.bag[itemName];
+        } else {
+            this.isAttacking = false;
+            return;
+        }
+
+        let p = this.player.team[0];
+        let heal = itemData.val;
+        let oldHp = p.hp;
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        let healedAmt = p.hp - oldHp;
+
+        this.updateBattleUI();
+        showDialog(`Used ${itemName}! Healed ${healedAmt} HP!`);
+
+        await this.delay(1000);
+        this.enemyTurn();
     }
 
-    async throwPokeball() {
-        this.isAttacking = true; // Lock input
-        showDialog(`Player used Pokeball!`);
-        await this.delay(1000);
+    async throwPokeball(ballType) {
+        if (this.isAttacking) return;
+        this.isAttacking = true;
 
-        // Animation: Throw
-        const ball = document.getElementById('pokeball-anim');
-        const enemySprite = document.getElementById('enemy-sprite');
-
-        ball.classList.remove('hidden');
-        ball.classList.add('anim-throw');
-
-        await this.delay(1000); // Wait for throw to land
-
-        // Animation: Capture (Enemy Shrink)
-        enemySprite.classList.add('anim-shrink');
-        await this.delay(500); // Wait for shrink
-
-        ball.classList.remove('anim-throw'); // Stop throw anim, keep position
-
-        // Calculate Catch Rate
-        // Base: 25%. If HP < 20%, Boost to 90%
-        let catchRate = 0.25;
-        if (this.enemy.hp / this.enemy.maxHp < 0.2) {
-            catchRate = 0.9;
+        // Consume Ball
+        if (this.player.bag[ballType] > 0) {
+            this.player.bag[ballType]--;
+            if (this.player.bag[ballType] === 0) delete this.player.bag[ballType];
+        } else {
+            this.isAttacking = false;
+            return;
         }
 
-        // Shake Logic (3 Checks)
-        let caught = true;
-        for (let i = 0; i < 3; i++) {
-            await this.delay(500);
-            // Shake Animation
-            ball.classList.add(i % 2 === 0 ? 'anim-shake-left' : 'anim-shake-right');
-            await this.delay(500);
-            ball.classList.remove('anim-shake-left', 'anim-shake-right');
+        showDialog(`Go! ${ballType}!`);
 
-            if (Math.random() > catchRate) {
-                caught = false;
-                break;
+        // Animation
+        const ballAnim = document.getElementById('pokeball-anim');
+        ballAnim.classList.remove('hidden');
+        ballAnim.classList.add('anim-throw');
+
+        await this.delay(1000);
+
+        // Hide enemy sprite (captured visual)
+        document.getElementById('enemy-sprite').classList.add('anim-shrink');
+
+        await this.delay(500);
+        ballAnim.classList.remove('anim-throw');
+        ballAnim.classList.add('anim-shake');
+
+        // Catch Logic
+        let ballData = ITEMS[ballType];
+        let catchRate = ballData.val; // 1.0, 1.5, 2.0, 255
+
+        // Master Ball Check
+        if (catchRate >= 255) {
+            await this.delay(500); // Short suspense
+            this.catchSuccess();
+            return;
+        }
+
+        // Standard Catch Formula (Simplified)
+        let hpFactor = (3 * this.enemy.maxHp - 2 * this.enemy.hp) / (3 * this.enemy.maxHp);
+        let catchChance = (catchRate * hpFactor) / (this.enemy.tier || 1); // Harder for higher tiers
+
+        // 3 Shakes
+        for (let i = 0; i < 3; i++) {
+            await this.delay(800);
+            if (Math.random() > catchChance * 0.8) { // 80% base chance factor
+                // Break free
+                ballAnim.classList.remove('anim-shake');
+                ballAnim.classList.add('hidden');
+                document.getElementById('enemy-sprite').classList.remove('anim-shrink');
+                showDialog("Darn! It broke free!");
+                await this.delay(1000);
+                this.enemyTurn();
+                return;
             }
         }
 
-        if (caught) {
-            // Flash
-            const overlay = document.getElementById('flash-overlay');
-            overlay.classList.add('anim-flash');
-            await this.delay(500);
-            overlay.classList.remove('anim-flash');
-
-            ball.classList.add('hidden');
-            await this.catchSuccess();
-        } else {
-            // Break Free
-            ball.classList.add('hidden');
-            enemySprite.classList.remove('anim-shrink'); // Grow back
-            showDialog("Dang! It escaped...");
-            await this.delay(1500);
-            this.enemyTurn();
-        }
+        // Caught!
+        this.catchSuccess();
     }
 
     async catchSuccess() {
@@ -457,6 +490,7 @@ class BattleSystem {
         // Show Stats
         const stats = document.getElementById('catch-stats');
         stats.innerHTML = `
+            <img src="${this.enemy.animatedSprite}" style="width: 96px; height: 96px; image-rendering: pixelated; margin-bottom: 10px;">
             <h3>${this.enemy.name}</h3>
             <p>Level: ${this.enemy.level}</p>
             <p>Type: ${this.enemy.type}</p>
@@ -560,6 +594,9 @@ class BattleSystem {
                 await this.delay(200); // Pause to show empty bar
 
                 this.updateBattleUI();
+
+                // LEVEL UP UI
+                await this.showLevelUpScreen(p);
             }
 
             await this.delay(50); // Smooth animation
@@ -573,6 +610,9 @@ class BattleSystem {
             p.maxHp += 5;
             // Only heal on level up, not regular wins!
             p.hp = p.maxHp;
+
+            this.updateBattleUI();
+            await this.showLevelUpScreen(p);
         }
 
         this.updateBattleUI();
@@ -580,6 +620,84 @@ class BattleSystem {
 
         this.endBattle();
     }
+
+    async showLevelUpScreen(p) {
+        const overlay = document.getElementById('level-up-overlay');
+        const content = document.getElementById('levelup-content');
+        const moveContainer = document.getElementById('move-learn-container');
+        const continueBtn = document.getElementById('levelup-continue-btn');
+
+        overlay.classList.remove('hidden');
+        moveContainer.classList.add('hidden');
+        continueBtn.classList.remove('hidden');
+
+        content.innerHTML = `
+            <strong style="color:cyan; font-size: 24px;">${p.name} grew to Lv.${p.level}!</strong><br><br>
+            Max HP +5<br>
+            Stats increased!
+        `;
+
+        // Check for new move (Every 5 levels for demo)
+        if (p.level % 5 === 0) {
+            let tier = Math.floor(p.level / 20) + 1; // Unlock next tier
+            // For demo, just get a move from next tier or same tier
+            let newMove = getMove(p.type, Math.min(3, Math.floor(p.level / 15)));
+
+            // Check if we already have it
+            // We need to store moves in pokemon object now.
+            // If not present, we assume they have 1 move based on level.
+            if (!p.moves) p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
+
+            let hasMove = p.moves.find(m => m.name === newMove.name);
+            if (!hasMove) {
+                if (p.moves.length < 4) {
+                    p.moves.push(newMove);
+                    content.innerHTML += `<br><br><span style="color:yellow;">Learned ${newMove.name}!</span>`;
+                } else {
+                    // Move Learning UI
+                    continueBtn.classList.add('hidden'); // Hide continue until decision
+                    moveContainer.classList.remove('hidden');
+                    document.getElementById('new-move-name').innerText = newMove.name;
+
+                    const list = document.getElementById('move-forget-list');
+                    list.innerHTML = '';
+
+                    p.moves.forEach((m, i) => {
+                        let btn = document.createElement('div');
+                        btn.className = 'forget-btn';
+                        btn.innerText = `Forget ${m.name}`;
+                        btn.onclick = () => {
+                            p.moves[i] = newMove;
+                            this.closeLevelUp();
+                            showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
+                        };
+                        list.appendChild(btn);
+                    });
+
+                    // Wait for user interaction
+                    return new Promise(resolve => {
+                        this.closeLevelUp = () => {
+                            overlay.classList.add('hidden');
+                            resolve();
+                        };
+                        this.skipLearnMove = () => {
+                            showDialog(`Gave up on learning ${newMove.name}.`, 2000);
+                            this.closeLevelUp();
+                        };
+                    });
+                }
+            }
+        }
+
+        // Wait for Continue
+        return new Promise(resolve => {
+            this.closeLevelUp = () => {
+                overlay.classList.add('hidden');
+                resolve();
+            };
+        });
+    }
+
     lose() {
         showDialog(`${this.player.team[0].name} fainted!`);
         setTimeout(() => {
@@ -598,6 +716,7 @@ class BattleSystem {
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('bottom-hud').classList.remove('hud-battle'); // Reset HUD
+        document.getElementById('level-up-overlay').classList.add('hidden'); // Ensure closed
 
         // Clear any lingering animations
         document.getElementById('gameCanvas').classList.remove('anim-shake');

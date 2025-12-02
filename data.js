@@ -45,7 +45,7 @@ function getMove(type, powerTier) {
         'ground': ['Mud Slap', 'Dig', 'Earthquake', 'Fissure'],
         'flying': ['Gust', 'Wing Attack', 'Drill Peck', 'Sky Attack'],
         'psychic': ['Confusion', 'Psybeam', 'Psychic', 'Dream Eater'],
-        'bug': ['String Shot', 'Pin Missile', 'Twineedle', 'Megahorn'],
+        'bug': ['String Shot', 'Harden', 'Twineedle', 'Megahorn'], // Added Harden
         'rock': ['Rock Throw', 'Rock Slide', 'Stone Edge', 'Rock Wrecker'],
         'ghost': ['Lick', 'Confuse Ray', 'Shadow Ball', 'Shadow Claw'],
         'dragon': ['Dragon Rage', 'Dragon Breath', 'Dragon Claw', 'Draco Meteor']
@@ -53,11 +53,20 @@ function getMove(type, powerTier) {
 
     let list = moves[type] || moves['normal'];
     let index = Math.min(list.length - 1, powerTier);
+    let name = list[index];
+
+    // Status Move Logic
+    let category = 'physical';
+    if (['Harden', 'String Shot', 'Growl', 'Tail Whip', 'Confuse Ray'].includes(name)) {
+        category = 'status';
+    }
+
     return {
-        name: list[index],
+        name: name,
         type: type,
-        power: (index + 1) * 20,
-        accuracy: 100 - (index * 5)
+        power: category === 'status' ? 0 : (index + 1) * 20,
+        accuracy: 100 - (index * 5),
+        category: category
     };
 }
 
@@ -115,7 +124,14 @@ class QuestSystem {
     complete() {
         this.activeQuest.completed = true;
         showDialog(`Quest Complete! Got ${this.activeQuest.rewardQty} ${this.activeQuest.reward}s!`, 3000);
-        // Add items to player bag (implied)
+
+        // Add items to player bag
+        if (this.player.bag[this.activeQuest.reward]) {
+            this.player.bag[this.activeQuest.reward] += this.activeQuest.rewardQty;
+        } else {
+            this.player.bag[this.activeQuest.reward] = this.activeQuest.rewardQty;
+        }
+
         this.activeQuest = null;
         setTimeout(() => this.generate(), 4000);
     }
@@ -129,8 +145,14 @@ class QuestSystem {
 }
 
 const ITEMS = {
-    'Potion': { effect: 'heal', val: 20 },
-    'Super Potion': { effect: 'heal', val: 50 },
-    'Pokeball': { effect: 'catch', val: 1.0 },
-    'Rare Candy': { effect: 'level', val: 1 }
+    'Potion': { effect: 'heal', val: 20, type: 'potion' },
+    'Super Potion': { effect: 'heal', val: 50, type: 'potion' },
+    'Hyper Potion': { effect: 'heal', val: 100, type: 'potion' },
+    'Max Potion': { effect: 'heal', val: 9999, type: 'potion' },
+    'Pokeball': { effect: 'catch', val: 1.0, type: 'ball' },
+    'Great Ball': { effect: 'catch', val: 1.5, type: 'ball' },
+    'Ultra Ball': { effect: 'catch', val: 2.0, type: 'ball' },
+    'Master Ball': { effect: 'catch', val: 255, type: 'ball' }, // Instant catch
+    'Rare Candy': { effect: 'level', val: 1, type: 'misc' },
+    'Herb': { effect: 'sell', val: 0, type: 'misc' }
 };

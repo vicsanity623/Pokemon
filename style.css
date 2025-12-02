@@ -895,3 +895,69 @@ canvas {
 .pokemon-actions button:active {
     background: #2980b9;
 }
+/* Level Up Overlay */
+#level-up-overlay {
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    background: rgba(0, 0, 0, 0.95);
+    border: 4px solid gold;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    box-shadow: 0 0 20px gold;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.levelup-header {
+    font-size: 32px;
+    color: gold;
+    text-shadow: 2px 2px 0 #000;
+    margin-bottom: 20px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+#levelup-content {
+    font-size: 18px;
+    line-height: 1.6;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#move-learn-container {
+    width: 90%;
+    background: #222;
+    padding: 10px;
+    border: 2px solid #fff;
+    margin-bottom: 10px;
+}
+
+#move-forget-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.forget-btn {
+    background: #333;
+    border: 1px solid #666;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+}
+.forget-btn:active {
+    background: #555;
+}

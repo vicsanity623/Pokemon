@@ -29,13 +29,35 @@ class World {
 
     initItems() {
         // Randomly scatter items
-        for (let i = 0; i < 50; i++) {
-            let x = Math.floor(Math.random() * 200) - 100;
-            let y = Math.floor(Math.random() * 200) - 100;
+        let masterBallsSpawned = 0;
+
+        for (let i = 0; i < 60; i++) {
+            let x, y, tile;
+            let attempts = 0;
+            do {
+                x = Math.floor(Math.random() * 200) - 100;
+                y = Math.floor(Math.random() * 200) - 100;
+                tile = this.getTile(x, y);
+                attempts++;
+            } while (tile === 'water' && attempts < 20);
+
+            if (tile === 'water') continue; // Skip if failed
+
             let r = Math.random();
             let type = 'Potion';
-            if (r > 0.7) type = 'Pokeball';
-            if (r > 0.9) type = 'Herb'; // 10% chance for Herb
+
+            // Item Rarity Logic
+            if (r > 0.98 && masterBallsSpawned < 3) {
+                type = 'Master Ball';
+                masterBallsSpawned++;
+            } else if (r > 0.95) type = 'Ultra Ball';
+            else if (r > 0.90) type = 'Max Potion';
+            else if (r > 0.85) type = 'Hyper Potion';
+            else if (r > 0.80) type = 'Great Ball';
+            else if (r > 0.70) type = 'Super Potion';
+            else if (r > 0.50) type = 'Pokeball';
+            else if (r > 0.40) type = 'Herb';
+
             this.items[`${x},${y}`] = type;
         }
     }
@@ -53,15 +75,19 @@ class World {
         // Ensure not on water
         if (this.getTile(x, y) === 'water') {
             // Find nearby valid spot
-            for (let dx = -2; dx <= 2; dx++) {
-                for (let dy = -2; dy <= 2; dy++) {
+            let found = false;
+            for (let dx = -3; dx <= 3; dx++) {
+                for (let dy = -3; dy <= 3; dy++) {
                     if (this.getTile(x + dx, y + dy) !== 'water') {
                         x += dx;
                         y += dy;
+                        found = true;
                         break;
                     }
                 }
+                if (found) break;
             }
+            if (!found) return; // Failed to spawn
         }
 
         this.buildings.push({
@@ -111,9 +137,19 @@ class World {
         }
     }
 
-    getItemColor(type) {
-        if (type === 'Herb') return '#2ecc71';
-        return type === 'Potion' ? '#9b59b6' : '#e74c3c';
+    getItemIcon(type) {
+        const icons = {
+            'Herb': '🌿',
+            'Potion': '🍷',
+            'Super Potion': '🍷',
+            'Hyper Potion': '🏺',
+            'Max Potion': '💖',
+            'Pokeball': '🔴',
+            'Great Ball': '🔵',
+            'Ultra Ball': '🟡',
+            'Master Ball': '🟣'
+        };
+        return icons[type] || '❓';
     }
 }
 
@@ -290,20 +326,11 @@ class Renderer {
                 // Draw Item
                 let item = this.world.getItem(worldX, worldY);
                 if (item) {
-                    if (item === 'Herb') {
-                        this.ctx.font = '20px Arial';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.textBaseline = 'middle';
-                        this.ctx.fillText('🌿', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
-                    } else {
-                        this.ctx.fillStyle = this.world.getItemColor(item);
-                        this.ctx.beginPath();
-                        this.ctx.arc(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2, 10, 0, Math.PI * 2);
-                        this.ctx.fill();
-                        this.ctx.strokeStyle = '#fff';
-                        this.ctx.lineWidth = 2;
-                        this.ctx.stroke();
-                    }
+                    this.ctx.font = '24px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    let icon = this.world.getItemIcon(item);
+                    this.ctx.fillText(icon, Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
                 }
             }
         }
@@ -383,12 +410,19 @@ class Renderer {
 
         // Sprite (Flip if facing RIGHT, since raw sprite faces LEFT)
         this.ctx.save();
+
+        // Bounce Animation
+        let bounceY = 0;
+        if (this.player.moving) {
+            bounceY = Math.abs(Math.sin(Date.now() / 100)) * -5; // Bounce up 5px
+        }
+
         if (this.player.dir === 'right') {
-            this.ctx.translate(px + TILE_SIZE, py - 10);
+            this.ctx.translate(px + TILE_SIZE, py - 10 + bounceY);
             this.ctx.scale(-1, 1);
             this.ctx.drawImage(this.sprite, 0, 0, TILE_SIZE, TILE_SIZE);
         } else {
-            this.ctx.drawImage(this.sprite, px, py - 10, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(this.sprite, px, py - 10 + bounceY, TILE_SIZE, TILE_SIZE);
         }
         this.ctx.restore();
 

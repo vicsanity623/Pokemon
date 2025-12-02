@@ -313,36 +313,42 @@ function swapPokemon(index1, index2) {
     showBagTab('pokemon'); // Refresh
 }
 
-function useBagItem(item) {
-    if (item === 'Potion' || item === 'Super Potion') {
-        // Show Pokemon selection
-        const content = document.getElementById('bag-content');
-        content.innerHTML = '<p style="text-align:center; margin-bottom: 15px;">Select Pokemon:</p>';
+function useBagItem(itemName) {
+    if (!player.bag[itemName] || player.bag[itemName] <= 0) return;
 
-        player.team.forEach((p, index) => {
-            if (p.isEgg) return; // Can't use items on eggs
+    const itemData = ITEMS[itemName];
+    if (!itemData) return;
 
-            let div = document.createElement('div');
-            div.className = 'menu-item';
-            div.innerHTML = `${p.name} - HP: ${p.hp}/${p.maxHp}`;
-            div.onclick = () => {
-                let healAmount = item === 'Potion' ? 20 : 50;
-                p.hp = Math.min(p.hp + healAmount, p.maxHp);
-                player.bag[item]--;
-                showDialog(`Used ${item}! ${p.name} HP restored!`, 2000);
-                setTimeout(() => showBagTab('items'), 2000);
-            };
-            content.appendChild(div);
-        });
-
-        // Add back button
-        let backDiv = document.createElement('button');
-        backDiv.className = 'back-btn';
-        backDiv.innerText = 'BACK';
-        backDiv.onclick = () => showBagTab('items');
-        content.appendChild(backDiv);
+    if (battleSystem.isActive) {
+        // Battle Mode Usage
+        if (itemData.type === 'potion') {
+            battleSystem.useItem(itemName);
+            togglePlayerBag(); // Close bag
+        } else if (itemData.type === 'ball') {
+            battleSystem.throwPokeball(itemName);
+            togglePlayerBag(); // Close bag
+        } else {
+            showDialog("Can't use that here!");
+        }
     } else {
-        showDialog(`Can't use ${item} here!`, 2000);
+        // World Mode Usage
+        if (itemData.type === 'potion') {
+            // Heal first pokemon
+            let p = player.team[0];
+            if (p.hp < p.maxHp) {
+                let healAmount = itemData.val;
+                p.hp = Math.min(p.maxHp, p.hp + healAmount);
+                player.bag[itemName]--;
+                if (player.bag[itemName] === 0) delete player.bag[itemName];
+                showDialog(`Healed ${p.name} for ${healAmount} HP!`);
+                updateHUD();
+                showBagTab('items'); // Refresh list
+            } else {
+                showDialog("It's already full HP!");
+            }
+        } else {
+            showDialog("Can't use that now.");
+        }
     }
 }
 
