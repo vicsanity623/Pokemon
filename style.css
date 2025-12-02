@@ -178,12 +178,72 @@ canvas {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     color: #fff;
-    padding: 5px;
-    font-size: 8px;
-    max-width: 150px;
-    border: 1px solid #fff;
+    padding: 10px;
+    font-size: 10px;
+    max-width: 200px;
+    border: 2px solid #fff;
+    border-radius: 5px;
+    z-index: 50;
+}
+
+#quest-desc {
+    display: block;
+    margin-top: 5px;
+    color: #ffd700;
+}
+
+/* Battle Sub Menus */
+.battle-sub-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+    color: white;
+}
+
+.menu-header {
+    font-size: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: gold;
+    border-bottom: 2px solid white;
+    padding-bottom: 10px;
+}
+
+#bag-list,
+#pokemon-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.menu-item {
+    padding: 15px;
+    border: 1px solid #555;
+    margin-bottom: 10px;
+    background: #222;
+    cursor: pointer;
+}
+
+.menu-item:active {
+    background: #444;
+}
+
+.back-btn {
+    padding: 15px;
+    background: #c0392b;
+    color: white;
+    border: none;
+    font-family: inherit;
+    margin-top: 10px;
 }
 
 #stats-overlay {
@@ -206,45 +266,31 @@ canvas {
     z-index: 5;
 }
 
-#dpad {
+/* Joystick (Dynamic) */
+.joystick-base {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
-    width: 120px;
-    height: 120px;
-    pointer-events: auto;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    display: none;
+    /* Hidden by default */
+    transform: translate(-50%, -50%);
+    z-index: 100;
 }
 
-.dpad-btn {
+.joystick-stick {
     position: absolute;
     width: 40px;
     height: 40px;
-    background: rgba(255, 255, 255, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.dpad-btn:active {
-    background: rgba(255, 255, 255, 0.6);
-}
-
-.up {
-    top: 0;
-    left: 40px;
-}
-
-.down {
-    bottom: 0;
-    left: 40px;
-}
-
-.left {
-    top: 40px;
-    left: 0;
-}
-
-.right {
-    top: 40px;
-    right: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 #action-btns {
@@ -280,4 +326,285 @@ canvas {
     right: 60px;
     bottom: 0;
     background: rgba(200, 0, 0, 0.5);
+}
+
+/* Battle Animations */
+@keyframes shake {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(-5px, 5px);
+    }
+
+    50% {
+        transform: translate(5px, -5px);
+    }
+
+    75% {
+        transform: translate(-5px, -5px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+@keyframes attack-thrust {
+    0% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px) scale(1.1);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@keyframes flash-white {
+    0% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes throw-ball {
+    0% {
+        bottom: 50px;
+        left: 50px;
+        transform: scale(0.5) rotate(0deg);
+    }
+
+    50% {
+        bottom: 60%;
+        left: 50%;
+        transform: scale(1.0) rotate(360deg);
+    }
+
+    100% {
+        bottom: 60%;
+        left: 50%;
+        /* Center on enemy */
+        transform: scale(1.0) rotate(720deg);
+    }
+}
+
+@keyframes catch-shake-left {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-20deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes catch-shake-right {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(20deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes enemy-shrink {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+.anim-shake {
+    animation: shake 0.5s;
+}
+
+.anim-attack {
+    animation: attack-thrust 0.3s;
+}
+
+.anim-flash {
+    animation: flash-white 0.5s;
+}
+
+.anim-shrink {
+    animation: enemy-shrink 0.5s forwards;
+}
+
+.anim-shake-left {
+    animation: catch-shake-left 0.5s;
+}
+
+.anim-shake-right {
+    animation: catch-shake-right 0.5s;
+}
+
+#pokeball-anim {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle at 14px 14px, white 2px, red 3px, red 18px, black 19px);
+    border-radius: 50%;
+    border: 3px solid black;
+    z-index: 100;
+    bottom: 60%;
+    /* Default landing position */
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+
+#pokeball-anim::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: black;
+}
+
+#pokeball-anim::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: white;
+    border: 3px solid black;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* HUD */
+#bottom-hud {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 40px;
+    background: #222;
+    border: 2px solid gold;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    color: white;
+    font-family: monospace;
+    z-index: 50;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    transition: bottom 0.3s ease;
+}
+
+.hud-battle {
+    bottom: 160px !important;
+    /* Move above battle UI */
+}
+
+/* Battle Sprites */
+#enemy-sprite {
+    position: absolute;
+    top: 50px;
+    right: 50px;
+    width: 150px;
+    height: 150px;
+    image-rendering: pixelated;
+    z-index: 10;
+}
+
+#player-sprite {
+    position: absolute;
+    bottom: 250px;
+    /* Adjust based on UI */
+    left: 50px;
+    width: 150px;
+    height: 150px;
+    image-rendering: pixelated;
+    z-index: 10;
+}
+
+#hud-money {
+    color: gold;
+    font-weight: bold;
+    margin-right: 15px;
+    font-size: 14px;
+}
+
+#hud-xp-bar-container {
+    flex: 1;
+    height: 20px;
+    background: #444;
+    border: 1px solid #666;
+    position: relative;
+    border-radius: 3px;
+}
+
+#hud-xp-fill {
+    height: 100%;
+    background: #3498db;
+    /* WoW Blue */
+    width: 0%;
+    transition: width 0.5s;
+}
+
+#hud-xp-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+#flash-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 200;
+}
+
+.anim-flash {
+    animation: flash-white 0.5s;
 }

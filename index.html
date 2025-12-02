@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Post-Apoc PokeWorld</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 
 <body>
@@ -22,20 +23,25 @@
                 <div id="enemy-stat-box">
                     <span id="enemy-name"></span> <span id="enemy-level"></span>
                     <div class="hp-bar-bg">
-                        <div id="enemy-hp-bar" class="hp-bar-fill"></div>
+                        <div id="enemy-hp-fill" class="hp-bar-fill"></div>
                     </div>
                 </div>
                 <div id="player-stat-box">
-                    <span id="player-pokename"></span> <span id="player-level"></span>
+                    <span id="player-name"></span> <span id="player-level"></span>
                     <div class="hp-bar-bg">
-                        <div id="player-hp-bar" class="hp-bar-fill"></div>
+                        <div id="player-hp-fill" class="hp-bar-fill"></div>
                     </div>
+                    <div id="player-hp-text" style="text-align: right; font-size: 10px;"></div>
                     <div class="exp-bar-bg">
                         <div id="player-exp-bar" class="exp-bar-fill"></div>
                     </div>
                 </div>
+
+                <!-- Sprites -->
+                <img id="enemy-sprite" src="" alt="Enemy" />
+                <img id="player-sprite" src="" alt="Player" />
                 <div id="battle-menu">
-                    <div id="battle-text">What will you do?</div>
+                    <div id="battle-dialog">What will you do?</div>
                     <div class="battle-options">
                         <button onclick="battleSystem.attackBtn()">FIGHT</button>
                         <button onclick="battleSystem.bagBtn()">BAG</button>
@@ -51,11 +57,51 @@
                     <button onclick="battleSystem.useMove(3)" id="move-3">-</button>
                     <button onclick="battleSystem.closeMoves()">BACK</button>
                 </div>
+
+                <div id="bag-menu" class="hidden battle-sub-menu">
+                    <div class="menu-header">BAG</div>
+                    <div id="bag-list"></div>
+                    <button onclick="battleSystem.closeMenus()" class="back-btn">BACK</button>
+                </div>
+
+                <div id="pokemon-menu" class="hidden battle-sub-menu">
+                    <div class="menu-header">POKEMON</div>
+                    <div id="pokemon-list"></div>
+                    <div id="pokemon-list"></div>
+                    <button onclick="battleSystem.closeMenus()" class="back-btn">BACK</button>
+                </div>
+
+                <div id="confirmation-dialog" class="hidden battle-sub-menu"
+                    style="height: auto; top: 30%; bottom: 30%; border: 2px solid white;">
+                    <div class="menu-header" id="confirm-text">Use Item?</div>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="battleSystem.confirmAction(true)" class="menu-item"
+                            style="flex: 1;">YES</button>
+                        <button onclick="battleSystem.confirmAction(false)" class="menu-item"
+                            style="flex: 1;">NO</button>
+                    </div>
+                </div>
+
+                <div id="new-catch-overlay" class="hidden battle-sub-menu">
+                    <div class="menu-header">GOTCHA!</div>
+                    <div id="catch-stats" style="text-align: center; margin-bottom: 20px;"></div>
+                    <button onclick="battleSystem.closeCatchScreen()" class="back-btn">CONTINUE</button>
+                </div>
             </div>
+
+            <div id="pokeball-anim" class="hidden"></div>
 
             <div id="quest-tracker">
                 <small>QUEST</small><br>
-                <span id="quest-desc">Loading...</span>
+                <span id="quest-desc">Travel 200 steps</span>
+            </div>
+
+            <div id="bottom-hud">
+                <div id="hud-money">$0</div>
+                <div id="hud-xp-bar-container">
+                    <div id="hud-xp-text">XP: 0 / 100</div>
+                    <div id="hud-xp-fill"></div>
+                </div>
             </div>
 
             <div id="stats-overlay">
@@ -64,16 +110,7 @@
         </div>
 
         <div id="mobile-controls">
-            <div id="dpad">
-                <div class="dpad-btn up" ontouchstart="input.press('ArrowUp')" ontouchend="input.release('ArrowUp')">▲
-                </div>
-                <div class="dpad-btn left" ontouchstart="input.press('ArrowLeft')"
-                    ontouchend="input.release('ArrowLeft')">◀</div>
-                <div class="dpad-btn right" ontouchstart="input.press('ArrowRight')"
-                    ontouchend="input.release('ArrowRight')">▶</div>
-                <div class="dpad-btn down" ontouchstart="input.press('ArrowDown')"
-                    ontouchend="input.release('ArrowDown')">▼</div>
-            </div>
+            <!-- D-Pad Removed for Invisible Joystick -->
             <div id="action-btns">
                 <div class="action-btn b-btn" ontouchstart="input.press('b')" ontouchend="input.release('b')">B</div>
                 <div class="action-btn a-btn" ontouchstart="input.press('Enter')" ontouchend="input.release('Enter')">A

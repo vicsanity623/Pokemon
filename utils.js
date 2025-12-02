@@ -1,10 +1,153 @@
-// Input Handling
+// Input Handling with Dynamic Joystick
 class InputHandler {
     constructor() {
         this.keys = {};
         window.addEventListener('keydown', e => this.keys[e.key] = true);
         window.addEventListener('keyup', e => this.keys[e.key] = false);
+
+        // Joystick State
+        this.touchId = null;
+        this.startX = 0;
+        this.startY = 0;
+        this.currentX = 0;
+        this.currentY = 0;
+        this.joystickVector = { x: 0, y: 0 };
+        this.active = false;
+
+        // Visuals
+        this.baseEl = document.createElement('div');
+        this.baseEl.className = 'joystick-base';
+        this.stickEl = document.createElement('div');
+        this.stickEl.className = 'joystick-stick';
+        this.baseEl.appendChild(this.stickEl);
+        document.body.appendChild(this.baseEl);
+
+        // Touch Events
+        window.addEventListener('touchstart', e => this.handleStart(e), { passive: false });
+        window.addEventListener('touchmove', e => this.handleMove(e), { passive: false });
+        window.addEventListener('touchend', e => this.handleEnd(e));
+
+        // Mouse Events (for testing on iMac)
+        window.addEventListener('mousedown', e => this.handleStart(e));
+        window.addEventListener('mousemove', e => this.handleMove(e));
+        window.addEventListener('mouseup', e => this.handleEnd(e));
     }
+
+    handleStart(e) {
+        // Ignore if touching buttons
+        if (e.target.closest('.action-btn') || e.target.closest('#battle-ui')) return;
+
+        e.preventDefault();
+        const point = e.changedTouches ? e.changedTouches[0] : e;
+
+        if (this.touchId === null) {
+            this.touchId = (e.changedTouches ? point.identifier : 'mouse');
+            this.startX = point.clientX;
+            this.startY = point.clientY;
+            this.currentX = point.clientX;
+            this.currentY = point.clientY;
+            this.active = true;
+
+            // Show Visuals
+            this.baseEl.style.display = 'block';
+            this.baseEl.style.left = this.startX + 'px';
+            this.baseEl.style.top = this.startY + 'px';
+            this.stickEl.style.transform = `translate(-50%, -50%)`;
+        }
+    }
+
+    handleMove(e) {
+        if (!this.active) return;
+        e.preventDefault();
+
+        let point = null;
+        if (e.changedTouches) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === this.touchId) {
+                    point = e.changedTouches[i];
+                    break;
+                }
+            }
+        } else if (this.touchId === 'mouse') {
+            point = e;
+        }
+
+        if (point) {
+            this.currentX = point.clientX;
+            this.currentY = point.clientY;
+
+            // Update Visual Stick
+            const dx = this.currentX - this.startX;
+            const dy = this.currentY - this.startY;
+            const distance = Math.min(50, Math.sqrt(dx * dx + dy * dy));
+            const angle = Math.atan2(dy, dx);
+
+            const stickX = Math.cos(angle) * distance;
+            const stickY = Math.sin(angle) * distance;
+
+            this.stickEl.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+
+            // Map to Keys (Legacy support)
+            this.updateKeys(dx, dy, distance);
+
+            // Analog Vector
+            if (distance > 5) {
+                this.joystickVector.x = dx / distance;
+                this.joystickVector.y = dy / distance;
+            } else {
+                this.joystickVector.x = 0;
+                this.joystickVector.y = 0;
+            }
+        }
+    }
+
+    handleEnd(e) {
+        if (!this.active) return;
+
+        let shouldEnd = false;
+        if (e.changedTouches) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === this.touchId) {
+                    shouldEnd = true;
+                    break;
+                }
+            }
+        } else if (this.touchId === 'mouse') {
+            shouldEnd = true;
+        }
+
+        if (shouldEnd) {
+            this.active = false;
+            this.touchId = null;
+            this.baseEl.style.display = 'none';
+            this.keys['ArrowUp'] = false;
+            this.keys['ArrowDown'] = false;
+            this.keys['ArrowLeft'] = false;
+            this.keys['ArrowRight'] = false;
+            this.joystickVector = { x: 0, y: 0 };
+        }
+    }
+
+    updateKeys(dx, dy, distance) {
+        // Reset
+        this.keys['ArrowUp'] = false;
+        this.keys['ArrowDown'] = false;
+        this.keys['ArrowLeft'] = false;
+        this.keys['ArrowRight'] = false;
+
+        if (distance < 10) return; // Deadzone
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Horizontal
+            if (dx > 0) this.keys['ArrowRight'] = true;
+            else this.keys['ArrowLeft'] = true;
+        } else {
+            // Vertical
+            if (dy > 0) this.keys['ArrowDown'] = true;
+            else this.keys['ArrowUp'] = true;
+        }
+    }
+
     press(key) { this.keys[key] = true; }
     release(key) { this.keys[key] = false; }
     isDown(key) { return this.keys[key]; }
@@ -12,14 +155,36 @@ class InputHandler {
 const input = new InputHandler();
 
 // Seeded Random for Procedural World
+// Simple Value Noise for Smooth Biomes
 class SeededRandom {
     constructor(seed) {
         this.seed = seed;
     }
-    // Simple hash function for coordinate based randomness
-    at(x, y) {
-        const n = Math.sin(x * 12.9898 + y * 78.233 + this.seed) * 43758.5453123;
+    // White noise (hash)
+    hash(x, y) {
+        let n = Math.sin(x * 12.9898 + y * 78.233 + this.seed) * 43758.5453123;
         return n - Math.floor(n);
+    }
+    // Smooth interpolation
+    lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+    // Value Noise 2D
+    noise(x, y) {
+        let i = Math.floor(x);
+        let j = Math.floor(y);
+        let u = x - i;
+        let v = y - j;
+
+        // Smoothstep
+        u = u * u * (3 - 2 * u);
+        v = v * v * (3 - 2 * v);
+
+        return this.lerp(
+            this.lerp(this.hash(i, j), this.hash(i + 1, j), u),
+            this.lerp(this.hash(i, j + 1), this.hash(i + 1, j + 1), u),
+            v
+        );
     }
 }
 

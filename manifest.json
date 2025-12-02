@@ -1,0 +1,16 @@
+{
+  "name": "Post-Apoc PokeWorld",
+  "short_name": "PokeWorld",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#c0392b",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    }
+  ]
+}
