@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pokeworld-v2.0';
+const CACHE_NAME = 'pokeworld-v2.1';
 const ASSETS = [
     './',
     './index.html',

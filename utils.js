@@ -31,7 +31,16 @@ class InputHandler {
 
     handleStart(e) {
         // Ignore if touching buttons or UI
-        if (e.target.closest('.action-btn') || e.target.closest('#battle-ui') || e.target.closest('.bag-tabs') || e.target.closest('.menu-item')) return;
+        if (e.target.closest('.action-btn') ||
+            e.target.closest('#battle-ui') ||
+            e.target.closest('.battle-sub-menu') ||
+            e.target.closest('.bag-tabs') ||
+            e.target.closest('.menu-item') ||
+            e.target.closest('button')) return;
+
+        // Ignore if Bag menu is open
+        const bagMenu = document.getElementById('player-bag-menu');
+        if (bagMenu && !bagMenu.classList.contains('hidden')) return;
 
         e.preventDefault();
 

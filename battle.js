@@ -376,24 +376,27 @@ class BattleSystem {
 
     async useItem(itemName) {
         if (this.isAttacking) return;
-        this.isAttacking = true;
 
         let itemData = ITEMS[itemName];
         if (!itemData) {
-            this.isAttacking = false;
             return;
         }
+
+        // Close bag menu
+        document.getElementById('bag-menu').classList.add('hidden');
 
         if (itemData.type === 'ball') {
             await this.throwPokeball(itemName);
             return;
         }
 
+        // For potions, handle directly
+        this.isAttacking = true;
+
         if (this.player.bag[itemName] > 0) {
             this.player.bag[itemName]--;
             if (this.player.bag[itemName] === 0) delete this.player.bag[itemName];
         } else {
-            this.isAttacking = false;
             return;
         }
 
