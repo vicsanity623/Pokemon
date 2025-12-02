@@ -36,6 +36,26 @@ function findSafeSpawn() {
 }
 findSafeSpawn();
 
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') input.press('up');
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') input.press('down');
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') input.press('left');
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.press('right');
+    if (e.key === 'z' || e.key === 'Z') input.press('a');
+    if (e.key === 'x' || e.key === 'X') input.press('b');
+    if (e.key === 'Enter') input.press('start');
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') input.release('up');
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') input.release('down');
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') input.release('left');
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.release('right');
+    if (e.key === 'z' || e.key === 'Z') input.release('a');
+    if (e.key === 'x' || e.key === 'X') input.release('b');
+    if (e.key === 'Enter') input.release('start');
+});
+
 // Intro Story
 const introText = [
     "Year 20XX...",
@@ -232,11 +252,9 @@ function handlePokeCenterInteraction() {
 
 // B Button - Open Player Bag
 input.keys['b'] = false; // Initialize B key
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'b' && !battleSystem.isActive) {
-        togglePlayerBag();
-    }
-});
+// B Button - Open Player Bag
+input.keys['b'] = false; // Initialize B key
+// Removed duplicate listener. 'b' key is handled by global input system now.
 
 function togglePlayerBag() {
     const bagMenu = document.getElementById('player-bag-menu');

@@ -142,9 +142,12 @@
 
         <div id="mobile-controls">
             <!-- D-Pad Removed for Invisible Joystick -->
+            <div id="joystick-zone" style="position: absolute; top: 0; left: 0; width: 50%; height: 100%; z-index: 10;">
+            </div>
             <div id="action-btns">
                 <div class="action-btn b-btn" onclick="togglePlayerBag()">B</div>
-                <div class="action-btn a-btn" ontouchstart="input.press('Enter')" ontouchend="input.release('Enter')">A
+                <div class="action-btn a-btn" onpointerdown="input.press('Enter')" onpointerup="input.release('Enter')"
+                    onpointerleave="input.release('Enter')">A
                 </div>
             </div>
         </div>

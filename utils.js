@@ -6,7 +6,7 @@ class InputHandler {
         window.addEventListener('keyup', e => this.keys[e.key] = false);
 
         // Joystick State
-        this.touchId = null;
+        this.pointerId = null;
         this.startX = 0;
         this.startY = 0;
         this.currentX = 0;
@@ -22,30 +22,25 @@ class InputHandler {
         this.baseEl.appendChild(this.stickEl);
         document.body.appendChild(this.baseEl);
 
-        // Touch Events
-        window.addEventListener('touchstart', e => this.handleStart(e), { passive: false });
-        window.addEventListener('touchmove', e => this.handleMove(e), { passive: false });
-        window.addEventListener('touchend', e => this.handleEnd(e));
-
-        // Mouse Events (for testing on iMac)
-        window.addEventListener('mousedown', e => this.handleStart(e));
-        window.addEventListener('mousemove', e => this.handleMove(e));
-        window.addEventListener('mouseup', e => this.handleEnd(e));
+        // Pointer Events (Unified Mouse/Touch)
+        window.addEventListener('pointerdown', e => this.handleStart(e));
+        window.addEventListener('pointermove', e => this.handleMove(e));
+        window.addEventListener('pointerup', e => this.handleEnd(e));
+        window.addEventListener('pointercancel', e => this.handleEnd(e));
     }
 
     handleStart(e) {
-        // Ignore if touching buttons
-        if (e.target.closest('.action-btn') || e.target.closest('#battle-ui')) return;
+        // Ignore if touching buttons or UI
+        if (e.target.closest('.action-btn') || e.target.closest('#battle-ui') || e.target.closest('.bag-tabs') || e.target.closest('.menu-item')) return;
 
         e.preventDefault();
-        const point = e.changedTouches ? e.changedTouches[0] : e;
 
-        if (this.touchId === null) {
-            this.touchId = (e.changedTouches ? point.identifier : 'mouse');
-            this.startX = point.clientX;
-            this.startY = point.clientY;
-            this.currentX = point.clientX;
-            this.currentY = point.clientY;
+        if (this.pointerId === null) {
+            this.pointerId = e.pointerId;
+            this.startX = e.clientX;
+            this.startY = e.clientY;
+            this.currentX = e.clientX;
+            this.currentY = e.clientY;
             this.active = true;
 
             // Show Visuals
@@ -57,75 +52,47 @@ class InputHandler {
     }
 
     handleMove(e) {
-        if (!this.active) return;
+        if (!this.active || e.pointerId !== this.pointerId) return;
         e.preventDefault();
 
-        let point = null;
-        if (e.changedTouches) {
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === this.touchId) {
-                    point = e.changedTouches[i];
-                    break;
-                }
-            }
-        } else if (this.touchId === 'mouse') {
-            point = e;
-        }
+        this.currentX = e.clientX;
+        this.currentY = e.clientY;
 
-        if (point) {
-            this.currentX = point.clientX;
-            this.currentY = point.clientY;
+        // Update Visual Stick
+        const dx = this.currentX - this.startX;
+        const dy = this.currentY - this.startY;
+        const distance = Math.min(50, Math.sqrt(dx * dx + dy * dy));
+        const angle = Math.atan2(dy, dx);
 
-            // Update Visual Stick
-            const dx = this.currentX - this.startX;
-            const dy = this.currentY - this.startY;
-            const distance = Math.min(50, Math.sqrt(dx * dx + dy * dy));
-            const angle = Math.atan2(dy, dx);
+        const stickX = Math.cos(angle) * distance;
+        const stickY = Math.sin(angle) * distance;
 
-            const stickX = Math.cos(angle) * distance;
-            const stickY = Math.sin(angle) * distance;
+        this.stickEl.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
 
-            this.stickEl.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+        // Map to Keys (Legacy support)
+        this.updateKeys(dx, dy, distance);
 
-            // Map to Keys (Legacy support)
-            this.updateKeys(dx, dy, distance);
-
-            // Analog Vector
-            if (distance > 5) {
-                this.joystickVector.x = dx / distance;
-                this.joystickVector.y = dy / distance;
-            } else {
-                this.joystickVector.x = 0;
-                this.joystickVector.y = 0;
-            }
+        // Analog Vector
+        if (distance > 5) {
+            this.joystickVector.x = dx / distance;
+            this.joystickVector.y = dy / distance;
+        } else {
+            this.joystickVector.x = 0;
+            this.joystickVector.y = 0;
         }
     }
 
     handleEnd(e) {
-        if (!this.active) return;
+        if (!this.active || e.pointerId !== this.pointerId) return;
 
-        let shouldEnd = false;
-        if (e.changedTouches) {
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === this.touchId) {
-                    shouldEnd = true;
-                    break;
-                }
-            }
-        } else if (this.touchId === 'mouse') {
-            shouldEnd = true;
-        }
-
-        if (shouldEnd) {
-            this.active = false;
-            this.touchId = null;
-            this.baseEl.style.display = 'none';
-            this.keys['ArrowUp'] = false;
-            this.keys['ArrowDown'] = false;
-            this.keys['ArrowLeft'] = false;
-            this.keys['ArrowRight'] = false;
-            this.joystickVector = { x: 0, y: 0 };
-        }
+        this.active = false;
+        this.pointerId = null;
+        this.baseEl.style.display = 'none';
+        this.keys['ArrowUp'] = false;
+        this.keys['ArrowDown'] = false;
+        this.keys['ArrowLeft'] = false;
+        this.keys['ArrowRight'] = false;
+        this.joystickVector = { x: 0, y: 0 };
     }
 
     updateKeys(dx, dy, distance) {
