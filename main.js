@@ -165,8 +165,8 @@ function gameLoop(timestamp) {
                 if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
 
                 // Encounter Check (Randomly based on distance moved)
-                // Chance per tile moved approx
-                if (targetTile === 'grass_tall' && Math.random() < 0.04 * moveSpeed) {
+                // Chance per tile moved approx - increased for more encounters
+                if (targetTile === 'grass_tall' && Math.random() < 0.15 * moveSpeed) {
                     battleSystem.startBattle();
                 }
             }
@@ -481,7 +481,8 @@ function saveGame() {
             team: player.team,
             bag: player.bag,
             storage: player.storage,
-            seen: player.seen
+            seen: player.seen,
+            seenShiny: player.seenShiny
         },
         world: {
             seed: world.rng.seed,
@@ -513,6 +514,7 @@ function loadGame() {
         // Restore Storage & Pokedex (with fallback for legacy saves)
         player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
         player.seen = data.player.seen || [];
+        player.seenShiny = data.player.seenShiny || [];
 
         document.getElementById('meta-level').innerText = player.pLevel;
 
@@ -619,27 +621,42 @@ function setVolume(val) {
 }
 
 // --- Pokedex System ---
+let currentPokedexTab = 'normal';
+
 async function openPokedex() {
     document.getElementById('main-menu-modal').classList.add('hidden');
     document.getElementById('pokedex-modal').classList.remove('hidden');
+    currentPokedexTab = 'normal';
+    showPokedexTab('normal');
+}
+
+function showPokedexTab(tab) {
+    currentPokedexTab = tab;
+
+    // Update tab buttons
+    document.getElementById('pokedex-tab-normal').classList.toggle('active', tab === 'normal');
+    document.getElementById('pokedex-tab-shiny').classList.toggle('active', tab === 'shiny');
 
     const grid = document.getElementById('pokedex-grid');
     grid.innerHTML = '';
 
-    let seenCount = 0;
+    let seenList = tab === 'shiny' ? player.seenShiny : player.seen;
+    let seenCount = seenList.length;
 
     // 151 Pokemon
     for (let i = 1; i <= 151; i++) {
         let div = document.createElement('div');
         div.className = 'dex-entry';
 
-        if (player.seen.includes(i)) {
-            seenCount++;
-            // Fetch data (cached ideally, but for now direct)
-            // We use a placeholder image immediately to be responsive
+        if (seenList.includes(i)) {
+            // Choose sprite based on tab
+            let spriteUrl = tab === 'shiny'
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
+                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png" loading="lazy">
+                <img src="${spriteUrl}" loading="lazy">
                 <div class="dex-name">...</div>
             `;
 
@@ -651,16 +668,21 @@ async function openPokedex() {
                 });
         } else {
             div.className += ' unknown';
+            let spriteUrl = tab === 'shiny'
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
+                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png" style="filter: brightness(0);">
+                <img src="${spriteUrl}" style="filter: brightness(0);">
                 <div class="dex-name">???</div>
             `;
         }
         grid.appendChild(div);
     }
 
-    document.getElementById('pokedex-count').innerText = `Seen: ${seenCount}/151`;
+    let tabLabel = tab === 'shiny' ? 'Shiny Seen' : 'Seen';
+    document.getElementById('pokedex-count').innerText = `${tabLabel}: ${seenCount}/151`;
 }
 
 function closePokedex() {
@@ -690,30 +712,8 @@ function renderPC() {
         div.className = 'pc-slot';
         div.innerHTML = `<img src="${p.backSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'}">`;
         div.onclick = () => {
-            if (selectedSlot) {
-                // Swap
-                if (selectedSlot.type === 'party') {
-                    let temp = player.team[selectedSlot.index];
-                    player.team[selectedSlot.index] = player.team[index];
-                    player.team[index] = temp;
-                } else {
-                    // Swap with Box
-                    let boxP = player.storage[currentBox][selectedSlot.index];
-                    if (boxP) {
-                        player.storage[currentBox][selectedSlot.index] = player.team[index];
-                        player.team[index] = boxP;
-                    } else {
-                        // Move to empty box slot
-                        player.storage[currentBox][selectedSlot.index] = player.team[index];
-                        player.team.splice(index, 1);
-                    }
-                }
-                selectedSlot = null;
-                renderPC();
-            } else {
-                selectedSlot = { type: 'party', index: index };
-                renderPC();
-            }
+            selectedSlot = { type: 'party', index: index };
+            renderPC();
         };
         if (selectedSlot && selectedSlot.type === 'party' && selectedSlot.index === index) {
             div.classList.add('selected');
@@ -734,31 +734,9 @@ function renderPC() {
         }
 
         div.onclick = () => {
-            if (selectedSlot) {
-                if (selectedSlot.type === 'box') {
-                    // Swap within box
-                    let temp = player.storage[currentBox][selectedSlot.index];
-                    player.storage[currentBox][selectedSlot.index] = player.storage[currentBox][index];
-                    player.storage[currentBox][index] = temp;
-                } else {
-                    // Swap with Party
-                    let partyP = player.team[selectedSlot.index];
-                    if (p) {
-                        player.team[selectedSlot.index] = p;
-                        player.storage[currentBox][index] = partyP;
-                    } else {
-                        // Move to empty box slot
-                        player.storage[currentBox][index] = partyP;
-                        player.team.splice(selectedSlot.index, 1);
-                    }
-                }
-                selectedSlot = null;
+            if (p) {
+                selectedSlot = { type: 'box', index: index };
                 renderPC();
-            } else {
-                if (p) {
-                    selectedSlot = { type: 'box', index: index };
-                    renderPC();
-                }
             }
         };
 
@@ -767,6 +745,24 @@ function renderPC() {
         }
         boxGrid.appendChild(div);
     });
+
+    // Show/Hide Action Buttons
+    const actionsDiv = document.getElementById('pc-actions');
+    const addToPartyBtn = document.getElementById('pc-add-to-party');
+    const moveToPCBtn = document.getElementById('pc-move-to-pc');
+
+    if (selectedSlot) {
+        actionsDiv.classList.remove('hidden');
+        if (selectedSlot.type === 'party') {
+            addToPartyBtn.classList.add('hidden');
+            moveToPCBtn.classList.remove('hidden');
+        } else {
+            addToPartyBtn.classList.remove('hidden');
+            moveToPCBtn.classList.add('hidden');
+        }
+    } else {
+        actionsDiv.classList.add('hidden');
+    }
 }
 
 let selectedSlot = null;
@@ -785,4 +781,56 @@ function nextBox() {
         selectedSlot = null;
         renderPC();
     }
+}
+
+function addToParty() {
+    if (!selectedSlot || selectedSlot.type !== 'box') return;
+
+    if (player.team.length >= 6) {
+        showDialog("Party is full! (Max 6 Pokemon)", 2000);
+        return;
+    }
+
+    let pokemon = player.storage[currentBox][selectedSlot.index];
+    if (pokemon) {
+        player.team.push(pokemon);
+        player.storage[currentBox][selectedSlot.index] = null;
+        selectedSlot = null;
+        showDialog(`Moved ${pokemon.name} to Party!`, 2000);
+        renderPC();
+    }
+}
+
+function moveToPC() {
+    if (!selectedSlot || selectedSlot.type !== 'party') return;
+
+    if (player.team.length <= 1) {
+        showDialog("You must have at least 1 Pokemon in your party!", 2000);
+        return;
+    }
+
+    let pokemon = player.team[selectedSlot.index];
+
+    // Find first empty slot in current box
+    let placed = false;
+    for (let i = 0; i < 25; i++) {
+        if (player.storage[currentBox][i] === null) {
+            player.storage[currentBox][i] = pokemon;
+            player.team.splice(selectedSlot.index, 1);
+            selectedSlot = null;
+            showDialog(`Moved ${pokemon.name} to Box ${currentBox + 1}!`, 2000);
+            renderPC();
+            placed = true;
+            break;
+        }
+    }
+
+    if (!placed) {
+        showDialog(`Box ${currentBox + 1} is full!`, 2000);
+    }
+}
+
+function cancelPCSelection() {
+    selectedSlot = null;
+    renderPC();
 }

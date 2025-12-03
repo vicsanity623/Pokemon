@@ -140,7 +140,7 @@
             </div>
 
             <!-- Hamburger Button -->
-            <div id="hamburger-btn" onclick="toggleMainMenu()" ontouchstart="toggleMainMenu()">☰</div>
+            <div id="hamburger-btn" onclick="toggleMainMenu()">☰</div>
 
             <!-- Main Menu Modal -->
             <div id="main-menu-modal" class="hidden full-screen-modal">
@@ -188,6 +188,13 @@
                     <h2>POKEDEX</h2>
                     <span id="pokedex-count">Seen: 0/151</span>
                 </div>
+                <div class="pokedex-tabs"
+                    style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
+                    <button id="pokedex-tab-normal" class="tab-btn active" onclick="showPokedexTab('normal')"
+                        style="flex: 1; max-width: 200px;">NORMAL</button>
+                    <button id="pokedex-tab-shiny" class="tab-btn" onclick="showPokedexTab('shiny')"
+                        style="flex: 1; max-width: 200px;">SHINY ✨</button>
+                </div>
                 <div id="pokedex-grid"></div>
                 <button onclick="closePokedex()" class="back-btn" ontouchstart="closePokedex()">CLOSE</button>
             </div>
@@ -208,6 +215,17 @@
                         <div id="pc-box-grid"></div>
                     </div>
                 </div>
+
+                <!-- PC Action Buttons -->
+                <div id="pc-actions" class="hidden" style="margin-top: 10px;">
+                    <button id="pc-add-to-party" class="back-btn" style="background: #2ecc71; margin: 5px;"
+                        onclick="addToParty()">ADD TO PARTY</button>
+                    <button id="pc-move-to-pc" class="back-btn" style="background: #3498db; margin: 5px;"
+                        onclick="moveToPC()">MOVE TO PC</button>
+                    <button class="back-btn" style="background: #e74c3c; margin: 5px;"
+                        onclick="cancelPCSelection()">CANCEL</button>
+                </div>
+
                 <button onclick="closePC()" class="back-btn" ontouchstart="closePC()">CLOSE</button>
             </div>
         </div>

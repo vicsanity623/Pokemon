@@ -78,6 +78,7 @@ class BattleSystem {
         this.isAttacking = false;
         this.ui.classList.remove('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
+        document.getElementById('hamburger-btn').classList.add('battle-hidden');
 
         // Filter lists for balanced spawning
         const LEGENDARY_IDS = [144, 145, 146, 150, 151];
@@ -110,6 +111,9 @@ class BattleSystem {
         // Wild level = avg ± 2 random variance
         let level = Math.max(1, avgLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus);
 
+        // Shiny Check (1/512 chance - more common than 1/8192 for gameplay)
+        let isShiny = Math.random() < (1 / 512);
+
         // Fetch Data (Simplified fetch)
         try {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
@@ -120,26 +124,41 @@ class BattleSystem {
             let tier = Math.floor(level / 20);
             let enemyMove = getMove(type, tier);
 
-            // Try to get animated sprite, fallback to static
-            let animatedSprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || data.sprites.front_default;
+            // Get sprites - use shiny if applicable
+            let normalSprite = data.sprites.front_default;
+            let shinySprite = data.sprites.front_shiny;
+            let animatedSprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || normalSprite;
+            let animatedShiny = data.sprites.versions['generation-v']['black-white']['animated']['front_shiny'] || shinySprite;
+
+            // Choose sprite based on shiny status
+            let battleSprite = isShiny ? shinySprite : normalSprite;
+            let catchSprite = isShiny ? animatedShiny : animatedSprite;
 
             this.enemy = {
                 name: data.name.toUpperCase(),
-                sprite: data.sprites.front_default, // Keep static for battle (cleaner) or use animated if preferred. User asked for animated on catch screen.
-                animatedSprite: animatedSprite,
+                sprite: battleSprite,
+                animatedSprite: catchSprite,
                 maxHp: level * 5 + 20,
                 hp: level * 5 + 20,
                 level: level,
                 type: type,
-                move: enemyMove // Store move
+                move: enemyMove,
+                isShiny: isShiny,
+                id: id // Store ID for Pokedex tracking
             };
 
             // Render Enemy
             this.updateBattleUI();
 
-            // Track Seen
+            // Track Seen (Normal)
             if (!this.player.seen.includes(id)) {
                 this.player.seen.push(id);
+            }
+
+            // Track Seen (Shiny)
+            if (isShiny && !this.player.seenShiny.includes(id)) {
+                this.player.seenShiny.push(id);
+                showDialog(`✨ A SHINY ${this.enemy.name} appeared! ✨`, 3000);
             }
 
             // Set Sprites
@@ -726,6 +745,7 @@ class BattleSystem {
         hideDialog(); // Force hide dialog
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');
+        document.getElementById('hamburger-btn').classList.remove('battle-hidden');
         document.getElementById('bottom-hud').classList.remove('hud-battle'); // Reset HUD
         document.getElementById('level-up-overlay').classList.add('hidden'); // Ensure closed
 

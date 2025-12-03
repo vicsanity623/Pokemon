@@ -997,6 +997,14 @@ canvas {
     text-shadow: 2px 2px 0 #000;
     padding: 10px;
     /* Larger touch area */
+    pointer-events: auto;
+    /* Enable clicks/touches */
+    transition: opacity 0.3s;
+}
+
+#hamburger-btn.battle-hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .full-screen-modal {
@@ -1012,6 +1020,8 @@ canvas {
     justify-content: center;
     align-items: center;
     color: white;
+    pointer-events: auto;
+    /* Enable clicks on modal */
 }
 
 .modal-content {
@@ -1023,6 +1033,8 @@ canvas {
     max-width: 400px;
     text-align: center;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    pointer-events: auto;
+    /* Ensure all children can be clicked */
 }
 
 .menu-grid {

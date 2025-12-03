@@ -260,6 +260,7 @@ class Player {
 
         // Pokedex: Set of seen IDs
         this.seen = [];
+        this.seenShiny = [];
     }
 
     healAllPokemon() {
