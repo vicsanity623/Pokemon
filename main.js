@@ -7,6 +7,11 @@ const battleSystem = new BattleSystem(player);
 const questSystem = new QuestSystem(player);
 const clock = new GameClock();
 
+// Music System
+const mainMusic = document.getElementById('main-music');
+const battleMusic = document.getElementById('battle-music');
+let musicVolume = 0.5; // 50% default volume
+
 // Safe Spawn Logic
 function findSafeSpawn() {
     let attempts = 0;
@@ -143,6 +148,7 @@ function gameLoop(timestamp) {
                 let item = world.getItem(Math.round(player.x), Math.round(player.y));
                 if (item) {
                     world.removeItem(Math.round(player.x), Math.round(player.y));
+                    playSFX('sfx-pickup'); // Play pickup sound
                     if (item === 'Herb') {
                         if (player.inventory['Herb']) player.inventory['Herb']++;
                         else player.inventory['Herb'] = 1;
@@ -457,6 +463,21 @@ window.onload = () => {
 
     requestAnimationFrame(gameLoop);
 
+    // Initialize Music
+    if (mainMusic && battleMusic) {
+        mainMusic.volume = musicVolume;
+        battleMusic.volume = musicVolume;
+
+        // Start main music (with autoplay handling)
+        mainMusic.play().catch(err => {
+            console.log("Autoplay blocked. Music will start on first user interaction.");
+            // Add one-time click listener to start music
+            document.addEventListener('click', () => {
+                if (mainMusic.paused) mainMusic.play();
+            }, { once: true });
+        });
+    }
+
     // Auto-Save every 30s
     setInterval(saveGame, 30000);
 
@@ -616,8 +637,26 @@ function setGameSpeed(speed) {
 }
 
 function setVolume(val) {
-    // Placeholder for audio system
-    console.log("Volume set to:", val);
+    musicVolume = val / 100; // Convert 0-100 to 0-1
+    if (mainMusic) mainMusic.volume = musicVolume;
+    if (battleMusic) battleMusic.volume = musicVolume;
+
+    // Set SFX volume
+    const sfxElements = ['sfx-pickup', 'sfx-attack1', 'sfx-attack2', 'sfx-attack3'];
+    sfxElements.forEach(id => {
+        const sfx = document.getElementById(id);
+        if (sfx) sfx.volume = musicVolume;
+    });
+}
+
+// Helper function to play sound effects
+function playSFX(sfxId) {
+    const sfx = document.getElementById(sfxId);
+    if (sfx) {
+        sfx.pause(); // Pause if already playing
+        sfx.currentTime = 0; // Reset to start
+        sfx.play().catch(err => console.log(`SFX ${sfxId} play failed`));
+    }
 }
 
 // --- Pokedex System ---

@@ -15,6 +15,30 @@ class BattleSystem {
         }
     }
 
+    // Map moves to attack sounds
+    getAttackSound(moveName) {
+        const move = moveName.toUpperCase();
+
+        // Heavy/Physical attacks - attack1.mp3 (punch, kick, slam)
+        const heavyMoves = ['TACKLE', 'BODY SLAM', 'MEGA PUNCH', 'MEGA KICK', 'EARTHQUAKE',
+            'ROCK SLIDE', 'HYPER BEAM', 'GIGA IMPACT', 'THRASH', 'DOUBLE-EDGE'];
+
+        // Energy/Special attacks - attack2.mp3 (beam, psychic, energy)
+        const energyMoves = ['THUNDERBOLT', 'FLAMETHROWER', 'ICE BEAM', 'PSYCHIC', 'SHADOW BALL',
+            'SOLAR BEAM', 'HYDRO PUMP', 'FIRE BLAST', 'BLIZZARD', 'THUNDER'];
+
+        // Quick/Light attacks - attack3.mp3 (scratch, bite, peck)
+        const quickMoves = ['SCRATCH', 'QUICK ATTACK', 'BITE', 'FURY SWIPES', 'PECK',
+            'WING ATTACK', 'POISON STING', 'VINE WHIP', 'RAZOR LEAF', 'SLASH'];
+
+        if (heavyMoves.includes(move)) return 'sfx-attack1';
+        if (energyMoves.includes(move)) return 'sfx-attack2';
+        if (quickMoves.includes(move)) return 'sfx-attack3';
+
+        // Default fallback based on move name
+        return 'sfx-attack1'; // Default to heavy sound
+    }
+
     delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     // Comic Book Style Attack Text
@@ -79,6 +103,15 @@ class BattleSystem {
         this.ui.classList.remove('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
+
+        // Switch to battle music
+        const mainMusic = document.getElementById('main-music');
+        const battleMusic = document.getElementById('battle-music');
+        if (mainMusic && battleMusic) {
+            mainMusic.pause();
+            battleMusic.currentTime = 0;
+            battleMusic.play().catch(err => console.log("Battle music autoplay blocked"));
+        }
 
         // Filter lists for balanced spawning
         const LEGENDARY_IDS = [144, 145, 146, 150, 151];
@@ -271,6 +304,15 @@ class BattleSystem {
         // COMIC BOOK STYLE ATTACK TEXT!
         this.showAttackText(move.name);
 
+        // Play attack sound based on move type
+        const attackSound = this.getAttackSound(move.name);
+        const sfx = document.getElementById(attackSound);
+        if (sfx) {
+            sfx.pause();
+            sfx.currentTime = 0;
+            sfx.play().catch(err => console.log("Attack SFX failed"));
+        }
+
         // Player Attack Animation
         // We don't have a DOM element for player sprite (it's on canvas), 
         // so we'll just flash the screen or shake the enemy UI
@@ -338,6 +380,15 @@ class BattleSystem {
 
         // COMIC BOOK STYLE ATTACK TEXT for enemy!
         this.showAttackText(moveName);
+
+        // Play attack sound based on move type
+        const attackSound = this.getAttackSound(moveName);
+        const sfx = document.getElementById(attackSound);
+        if (sfx) {
+            sfx.pause();
+            sfx.currentTime = 0;
+            sfx.play().catch(err => console.log("Attack SFX failed"));
+        }
 
         // Enemy Attack Animation
         document.getElementById('flash-overlay').classList.add('anim-flash');
@@ -746,6 +797,15 @@ class BattleSystem {
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('hamburger-btn').classList.remove('battle-hidden');
+
+        // Switch back to main music
+        const mainMusic = document.getElementById('main-music');
+        const battleMusic = document.getElementById('battle-music');
+        if (mainMusic && battleMusic) {
+            battleMusic.pause();
+            mainMusic.play().catch(err => console.log("Main music autoplay blocked"));
+        }
+
         document.getElementById('bottom-hud').classList.remove('hud-battle'); // Reset HUD
         document.getElementById('level-up-overlay').classList.add('hidden'); // Ensure closed
 

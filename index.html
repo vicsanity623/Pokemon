@@ -168,7 +168,7 @@
                     <h2>OPTIONS</h2>
                     <div class="option-row">
                         <label>Volume</label>
-                        <input type="range" min="0" max="100" value="50" onchange="setVolume(this.value)">
+                        <input type="range" min="0" max="100" value="50" oninput="setVolume(this.value)">
                     </div>
                     <div class="option-row">
                         <label>Game Speed</label>
@@ -241,6 +241,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Audio -->
+        <audio id="main-music" src="music.mp3" loop preload="auto"></audio>
+        <audio id="battle-music" src="battle.mp3" loop preload="auto"></audio>
+
+        <!-- Sound Effects -->
+        <audio id="sfx-pickup" src="pickup.mp3" preload="auto"></audio>
+        <audio id="sfx-attack1" src="attack1.mp3" preload="auto"></audio>
+        <audio id="sfx-attack2" src="attack2.mp3" preload="auto"></audio>
+        <audio id="sfx-attack3" src="attack3.mp3" preload="auto"></audio>
     </div>
 
     <!-- Scripts Load Order is Vital -->
