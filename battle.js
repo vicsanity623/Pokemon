@@ -137,6 +137,11 @@ class BattleSystem {
             // Render Enemy
             this.updateBattleUI();
 
+            // Track Seen
+            if (!this.player.seen.includes(id)) {
+                this.player.seen.push(id);
+            }
+
             // Set Sprites
             const enemyImg = document.getElementById('enemy-sprite');
             enemyImg.src = this.enemy.sprite;

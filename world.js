@@ -254,6 +254,12 @@ class Player {
 
         // Track last Poke Center spawn for interval
         this.lastPokeCenterStep = -500; // Spawn first one soon
+
+        // PC Storage: 100 Boxes of 25 slots
+        this.storage = Array(100).fill().map(() => Array(25).fill(null));
+
+        // Pokedex: Set of seen IDs
+        this.seen = [];
     }
 
     healAllPokemon() {
@@ -271,8 +277,24 @@ class Player {
     }
 
     addPokemon(pokeData) {
-        if (this.team.length < 6) this.team.push(pokeData);
-        else showDialog("Team full! Sent to PC (void).");
+        if (this.team.length < 6) {
+            this.team.push(pokeData);
+        } else {
+            // Find first empty slot in storage
+            let placed = false;
+            for (let b = 0; b < 100; b++) {
+                for (let s = 0; s < 25; s++) {
+                    if (this.storage[b][s] === null) {
+                        this.storage[b][s] = pokeData;
+                        showDialog(`Team full! Sent to PC Box ${b + 1}.`);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (placed) break;
+            }
+            if (!placed) showDialog("PC is full! Released Pokemon.");
+        }
     }
 }
 

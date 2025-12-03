@@ -81,9 +81,15 @@ function runIntro() {
 // Main Loop
 let lastTime = 0;
 function gameLoop(timestamp) {
+    if (isPaused) {
+        lastTime = timestamp; // Prevent dt spike when resuming
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (!battleSystem.isActive) {
         // Smooth Movement Logic
-        let dt = (timestamp - lastTime) / 1000;
+        let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
         lastTime = timestamp;
         if (dt > 0.1) dt = 0.1; // Cap dt for lag spikes
 
@@ -473,7 +479,9 @@ function saveGame() {
                 steps: player.steps
             },
             team: player.team,
-            bag: player.bag
+            bag: player.bag,
+            storage: player.storage,
+            seen: player.seen
         },
         world: {
             seed: world.rng.seed,
@@ -501,6 +509,11 @@ function loadGame() {
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
         player.bag = data.player.bag;
+
+        // Restore Storage & Pokedex (with fallback for legacy saves)
+        player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
+        player.seen = data.player.seen || [];
+
         document.getElementById('meta-level').innerText = player.pLevel;
 
         // Restore World
@@ -566,4 +579,210 @@ function updateHUD() {
 
     document.getElementById('hud-xp-text').innerText = `XP: ${p.exp} / ${maxExp}`;
     document.getElementById('hud-xp-fill').style.width = `${pct}%`;
+}
+
+// --- Main Menu System ---
+let isPaused = false;
+let gameSpeed = 1.0;
+let currentBox = 0;
+
+function toggleMainMenu() {
+    const menu = document.getElementById('main-menu-modal');
+    if (menu.classList.contains('hidden')) {
+        menu.classList.remove('hidden');
+        isPaused = true;
+    } else {
+        menu.classList.add('hidden');
+        isPaused = false;
+    }
+}
+
+function openOptions() {
+    document.getElementById('main-menu-modal').classList.add('hidden');
+    document.getElementById('options-modal').classList.remove('hidden');
+}
+
+function closeOptions() {
+    document.getElementById('options-modal').classList.add('hidden');
+    document.getElementById('main-menu-modal').classList.remove('hidden');
+}
+
+function setGameSpeed(speed) {
+    gameSpeed = speed;
+    document.getElementById('speed-1').classList.toggle('active', speed === 1);
+    document.getElementById('speed-2').classList.toggle('active', speed === 2);
+}
+
+function setVolume(val) {
+    // Placeholder for audio system
+    console.log("Volume set to:", val);
+}
+
+// --- Pokedex System ---
+async function openPokedex() {
+    document.getElementById('main-menu-modal').classList.add('hidden');
+    document.getElementById('pokedex-modal').classList.remove('hidden');
+
+    const grid = document.getElementById('pokedex-grid');
+    grid.innerHTML = '';
+
+    let seenCount = 0;
+
+    // 151 Pokemon
+    for (let i = 1; i <= 151; i++) {
+        let div = document.createElement('div');
+        div.className = 'dex-entry';
+
+        if (player.seen.includes(i)) {
+            seenCount++;
+            // Fetch data (cached ideally, but for now direct)
+            // We use a placeholder image immediately to be responsive
+            div.innerHTML = `
+                <div class="dex-num">#${i}</div>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png" loading="lazy">
+                <div class="dex-name">...</div>
+            `;
+
+            // Fetch name async
+            fetch(`https://pokeapi.co/api/v2/pokemon/${i}`)
+                .then(res => res.json())
+                .then(data => {
+                    div.querySelector('.dex-name').innerText = data.name.toUpperCase();
+                });
+        } else {
+            div.className += ' unknown';
+            div.innerHTML = `
+                <div class="dex-num">#${i}</div>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png" style="filter: brightness(0);">
+                <div class="dex-name">???</div>
+            `;
+        }
+        grid.appendChild(div);
+    }
+
+    document.getElementById('pokedex-count').innerText = `Seen: ${seenCount}/151`;
+}
+
+function closePokedex() {
+    document.getElementById('pokedex-modal').classList.add('hidden');
+    document.getElementById('main-menu-modal').classList.remove('hidden');
+}
+
+// --- PC Storage System ---
+function openPC() {
+    document.getElementById('main-menu-modal').classList.add('hidden');
+    document.getElementById('pc-modal').classList.remove('hidden');
+    renderPC();
+}
+
+function closePC() {
+    document.getElementById('pc-modal').classList.add('hidden');
+    document.getElementById('main-menu-modal').classList.remove('hidden');
+}
+
+function renderPC() {
+    // Render Party
+    const partyList = document.getElementById('pc-party-list');
+    partyList.innerHTML = '';
+
+    player.team.forEach((p, index) => {
+        let div = document.createElement('div');
+        div.className = 'pc-slot';
+        div.innerHTML = `<img src="${p.backSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'}">`;
+        div.onclick = () => {
+            if (selectedSlot) {
+                // Swap
+                if (selectedSlot.type === 'party') {
+                    let temp = player.team[selectedSlot.index];
+                    player.team[selectedSlot.index] = player.team[index];
+                    player.team[index] = temp;
+                } else {
+                    // Swap with Box
+                    let boxP = player.storage[currentBox][selectedSlot.index];
+                    if (boxP) {
+                        player.storage[currentBox][selectedSlot.index] = player.team[index];
+                        player.team[index] = boxP;
+                    } else {
+                        // Move to empty box slot
+                        player.storage[currentBox][selectedSlot.index] = player.team[index];
+                        player.team.splice(index, 1);
+                    }
+                }
+                selectedSlot = null;
+                renderPC();
+            } else {
+                selectedSlot = { type: 'party', index: index };
+                renderPC();
+            }
+        };
+        if (selectedSlot && selectedSlot.type === 'party' && selectedSlot.index === index) {
+            div.classList.add('selected');
+        }
+        partyList.appendChild(div);
+    });
+
+    // Render Box
+    const boxGrid = document.getElementById('pc-box-grid');
+    boxGrid.innerHTML = '';
+    document.getElementById('box-label').innerText = `BOX ${currentBox + 1}`;
+
+    player.storage[currentBox].forEach((p, index) => {
+        let div = document.createElement('div');
+        div.className = 'pc-slot';
+        if (p) {
+            div.innerHTML = `<img src="${p.backSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'}">`;
+        }
+
+        div.onclick = () => {
+            if (selectedSlot) {
+                if (selectedSlot.type === 'box') {
+                    // Swap within box
+                    let temp = player.storage[currentBox][selectedSlot.index];
+                    player.storage[currentBox][selectedSlot.index] = player.storage[currentBox][index];
+                    player.storage[currentBox][index] = temp;
+                } else {
+                    // Swap with Party
+                    let partyP = player.team[selectedSlot.index];
+                    if (p) {
+                        player.team[selectedSlot.index] = p;
+                        player.storage[currentBox][index] = partyP;
+                    } else {
+                        // Move to empty box slot
+                        player.storage[currentBox][index] = partyP;
+                        player.team.splice(selectedSlot.index, 1);
+                    }
+                }
+                selectedSlot = null;
+                renderPC();
+            } else {
+                if (p) {
+                    selectedSlot = { type: 'box', index: index };
+                    renderPC();
+                }
+            }
+        };
+
+        if (selectedSlot && selectedSlot.type === 'box' && selectedSlot.index === index) {
+            div.classList.add('selected');
+        }
+        boxGrid.appendChild(div);
+    });
+}
+
+let selectedSlot = null;
+
+function prevBox() {
+    if (currentBox > 0) {
+        currentBox--;
+        selectedSlot = null;
+        renderPC();
+    }
+}
+
+function nextBox() {
+    if (currentBox < 99) {
+        currentBox++;
+        selectedSlot = null;
+        renderPC();
+    }
 }

@@ -138,6 +138,78 @@
             <div id="stats-overlay">
                 LVL: <span id="meta-level">1</span> | Time: <span id="meta-time">0h</span>
             </div>
+
+            <!-- Hamburger Button -->
+            <div id="hamburger-btn" onclick="toggleMainMenu()" ontouchstart="toggleMainMenu()">☰</div>
+
+            <!-- Main Menu Modal -->
+            <div id="main-menu-modal" class="hidden full-screen-modal">
+                <div class="modal-content">
+                    <h2>PAUSED</h2>
+                    <div class="menu-grid">
+                        <button onclick="toggleMainMenu()" ontouchstart="toggleMainMenu()">RESUME</button>
+                        <button onclick="openPokedex()" ontouchstart="openPokedex()">POKEDEX</button>
+                        <button onclick="openPC()" ontouchstart="openPC()">PC STORAGE</button>
+                        <button onclick="togglePlayerBag(); toggleMainMenu()"
+                            ontouchstart="togglePlayerBag(); toggleMainMenu()">BAG</button>
+                        <button onclick="openOptions()" ontouchstart="openOptions()">OPTIONS</button>
+                        <button onclick="saveGame(); showDialog('Game Saved!', 2000)"
+                            ontouchstart="saveGame(); showDialog('Game Saved!', 2000)">SAVE GAME</button>
+                        <button onclick="loadGame(); showDialog('Game Loaded!', 2000); toggleMainMenu()"
+                            ontouchstart="loadGame(); showDialog('Game Loaded!', 2000); toggleMainMenu()">LOAD
+                            GAME</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options Modal -->
+            <div id="options-modal" class="hidden full-screen-modal">
+                <div class="modal-content">
+                    <h2>OPTIONS</h2>
+                    <div class="option-row">
+                        <label>Volume</label>
+                        <input type="range" min="0" max="100" value="50" onchange="setVolume(this.value)">
+                    </div>
+                    <div class="option-row">
+                        <label>Game Speed</label>
+                        <div class="speed-toggles">
+                            <button onclick="setGameSpeed(1)" id="speed-1" class="active"
+                                ontouchstart="setGameSpeed(1)">x1</button>
+                            <button onclick="setGameSpeed(2)" id="speed-2" ontouchstart="setGameSpeed(2)">x2</button>
+                        </div>
+                    </div>
+                    <button onclick="closeOptions()" class="back-btn" ontouchstart="closeOptions()">BACK</button>
+                </div>
+            </div>
+
+            <!-- Pokedex Modal -->
+            <div id="pokedex-modal" class="hidden full-screen-modal">
+                <div class="modal-header">
+                    <h2>POKEDEX</h2>
+                    <span id="pokedex-count">Seen: 0/151</span>
+                </div>
+                <div id="pokedex-grid"></div>
+                <button onclick="closePokedex()" class="back-btn" ontouchstart="closePokedex()">CLOSE</button>
+            </div>
+
+            <!-- PC Modal -->
+            <div id="pc-modal" class="hidden full-screen-modal">
+                <div class="pc-layout">
+                    <div class="pc-party">
+                        <h3>PARTY</h3>
+                        <div id="pc-party-list"></div>
+                    </div>
+                    <div class="pc-box">
+                        <div class="box-header">
+                            <button onclick="prevBox()" ontouchstart="prevBox()">◀</button>
+                            <span id="box-label">BOX 1</span>
+                            <button onclick="nextBox()" ontouchstart="nextBox()">▶</button>
+                        </div>
+                        <div id="pc-box-grid"></div>
+                    </div>
+                </div>
+                <button onclick="closePC()" class="back-btn" ontouchstart="closePC()">CLOSE</button>
+            </div>
         </div>
 
         <div id="mobile-controls">
@@ -145,7 +217,7 @@
             <div id="joystick-zone" style="position: absolute; top: 0; left: 0; width: 50%; height: 100%; z-index: 10;">
             </div>
             <div id="action-btns">
-                <div class="action-btn b-btn" onclick="togglePlayerBag()">B</div>
+                <div class="action-btn b-btn" onclick="togglePlayerBag()" ontouchstart="togglePlayerBag()">B</div>
                 <div class="action-btn a-btn" onpointerdown="input.press('Enter')" onpointerup="input.release('Enter')"
                     onpointerleave="input.release('Enter')">A
                 </div>
