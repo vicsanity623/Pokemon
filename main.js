@@ -479,7 +479,9 @@ function saveGame() {
             seed: world.rng.seed,
             items: world.items
         },
-        time: clock.gameDays
+        time: clock.elapsedTime + (Date.now() - clock.startTime),
+        gameDays: clock.gameDays,
+        quest: questSystem.activeQuest
     };
     localStorage.setItem('poke_save', JSON.stringify(data));
     console.log("Game Saved");
@@ -502,14 +504,40 @@ function loadGame() {
         document.getElementById('meta-level').innerText = player.pLevel;
 
         // Restore World
-        // Note: We don't restore seed here as it's passed in constructor, 
-        // but for full correctness we should re-init world if seed changed.
-        // For this demo, we assume seed is constant or we'd need to re-new World.
-        // We'll just restore items.
+        if (data.world.seed) {
+            world.rng = new SeededRandom(data.world.seed);
+        }
         world.items = data.world.items;
 
         // Restore Time
-        clock.gameDays = data.time;
+        // Restore Time
+        if (typeof data.gameDays !== 'undefined') {
+            clock.elapsedTime = data.time;
+            clock.gameDays = data.gameDays;
+        } else {
+            // Legacy Save Support
+            clock.gameDays = data.time;
+            clock.elapsedTime = clock.gameDays * 3600000; // Estimate based on days
+        }
+
+        // Restore Quest
+        if (data.quest) {
+            questSystem.activeQuest = data.quest;
+            questSystem.updateUI();
+        } else {
+            questSystem.generate();
+        }
+
+        // Validate Positions (Ensure no one is in water due to seed change)
+        world.validatePositions();
+
+        // Validate Player Position
+        if (world.getTile(Math.round(player.x), Math.round(player.y)) === 'water') {
+            let safe = world.findSafeNear(player.x, player.y);
+            player.x = safe.x;
+            player.y = safe.y;
+            console.log("Player moved to safe ground:", player.x, player.y);
+        }
 
         return true;
     } catch (e) {

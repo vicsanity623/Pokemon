@@ -184,13 +184,14 @@ function formatLevel(level) {
 class GameClock {
     constructor() {
         this.startTime = Date.now();
+        this.elapsedTime = 0;
         this.gameDays = 0;
         this.lastCheck = Date.now();
     }
 
     update(player) {
         let now = Date.now();
-        let diff = now - this.startTime;
+        let diff = (now - this.startTime) + this.elapsedTime;
         // 1 Game Day = 1 Real Minute for playability
         const DAY_LENGTH = 3600000;
 

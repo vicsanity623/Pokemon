@@ -344,6 +344,7 @@ class BattleSystem {
             if (hasAlive) {
                 showDialog(`${p.name} fainted! Choose another Pokemon!`);
                 await this.delay(1000);
+                this.isAttacking = false; // Allow menu to open
                 this.pokemonBtn(); // Open menu
                 // Hide back button to force switch
                 document.querySelector('#pokemon-menu .back-btn').classList.add('hidden');
@@ -506,6 +507,8 @@ class BattleSystem {
     pokemonBtn() {
         if (this.isAttacking) return;
         document.getElementById('pokemon-menu').classList.remove('hidden');
+        // Ensure back button is visible (might have been hidden by forced switch)
+        document.querySelector('#pokemon-menu .back-btn').classList.remove('hidden');
         const list = document.getElementById('pokemon-list');
         list.innerHTML = '';
 

@@ -38,6 +38,15 @@ class World {
                 x = Math.floor(Math.random() * 200) - 100;
                 y = Math.floor(Math.random() * 200) - 100;
                 tile = this.getTile(x, y);
+
+                // Strict check
+                if (tile !== 'water') {
+                    if (this.getTile(x + 1, y) === 'water') tile = 'water';
+                    else if (this.getTile(x - 1, y) === 'water') tile = 'water';
+                    else if (this.getTile(x, y + 1) === 'water') tile = 'water';
+                    else if (this.getTile(x, y - 1) === 'water') tile = 'water';
+                }
+
                 attempts++;
             } while (tile === 'water' && attempts < 20);
 
@@ -73,21 +82,11 @@ class World {
     // Poke Center Building System
     spawnPokeCenter(x, y) {
         // Ensure not on water
+        // Ensure not on water
         if (this.getTile(x, y) === 'water') {
-            // Find nearby valid spot
-            let found = false;
-            for (let dx = -3; dx <= 3; dx++) {
-                for (let dy = -3; dy <= 3; dy++) {
-                    if (this.getTile(x + dx, y + dy) !== 'water') {
-                        x += dx;
-                        y += dy;
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
-            if (!found) return; // Failed to spawn
+            let safe = this.findSafeNear(x, y);
+            x = safe.x;
+            y = safe.y;
         }
 
         this.buildings.push({
@@ -150,6 +149,53 @@ class World {
             'Master Ball': '🟣'
         };
         return icons[type] || '❓';
+    }
+
+    // Safety Check
+    validatePositions() {
+        // Check NPCs
+        this.npcs.forEach(npc => {
+            if (this.getTile(Math.round(npc.x), Math.round(npc.y)) === 'water') {
+                let safe = this.findSafeNear(npc.x, npc.y);
+                npc.x = safe.x;
+                npc.y = safe.y;
+                npc.startX = safe.x;
+                npc.startY = safe.y;
+            }
+        });
+
+        // Check Buildings
+        this.buildings.forEach(b => {
+            if (this.getTile(Math.round(b.x), Math.round(b.y)) === 'water') {
+                let safe = this.findSafeNear(b.x, b.y);
+                b.x = safe.x;
+                b.y = safe.y;
+            }
+        });
+    }
+
+    findSafeNear(x, y) {
+        let radius = 1;
+        while (radius < 50) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    let tx = Math.round(x + dx);
+                    let ty = Math.round(y + dy);
+                    if (this.getTile(tx, ty) !== 'water') {
+                        // Strict check: Ensure neighbors are also not water (buffer)
+                        let neighborsSafe = true;
+                        if (this.getTile(tx + 1, ty) === 'water') neighborsSafe = false;
+                        if (this.getTile(tx - 1, ty) === 'water') neighborsSafe = false;
+                        if (this.getTile(tx, ty + 1) === 'water') neighborsSafe = false;
+                        if (this.getTile(tx, ty - 1) === 'water') neighborsSafe = false;
+
+                        if (neighborsSafe) return { x: tx, y: ty };
+                    }
+                }
+            }
+            radius++;
+        }
+        return { x: x, y: y }; // Fallback
     }
 }
 
