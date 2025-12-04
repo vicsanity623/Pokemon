@@ -806,7 +806,7 @@ class BattleSystem {
         moveContainer.classList.add('hidden');
         continueBtn.classList.remove('hidden');
 
-        // Fix: Clone the button to remove old event listeners and ensure a fresh start
+        // Clone button to clear old events
         const newContinueBtn = continueBtn.cloneNode(true);
         continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
 
@@ -819,15 +819,15 @@ class BattleSystem {
                 <div>Speed: +${statIncreases.speed}</div>
                 <div>Special: +${statIncreases.special}</div>
             </div>
+            <div style="margin-top:20px; font-size: 10px; color: #aaa; animation: blink 1s infinite;">
+                (Tap anywhere to continue)
+            </div>
         `;
 
-        // Check for new move (Every 5 levels for demo)
+        // Check for new move logic (Same as before)
         if (p.level % 5 === 0) {
-            let tier = Math.floor(p.level / 20) + 1; // Unlock next tier
-            // For demo, just get a move from next tier or same tier
+            let tier = Math.floor(p.level / 20) + 1;
             let newMove = getMove(p.type, Math.min(3, Math.floor(p.level / 15)));
-
-            // Check if we already have it
             if (!p.moves) p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
 
             let hasMove = p.moves.find(m => m.name === newMove.name);
@@ -836,18 +836,21 @@ class BattleSystem {
                     p.moves.push(newMove);
                     content.innerHTML += `<br><br><span style="color:yellow;">Learned ${newMove.name}!</span>`;
                 } else {
-                    // Move Learning UI
-                    newContinueBtn.classList.add('hidden'); // Hide continue until decision
+                    // If learning a move, we DO NOT allow tap-anywhere, user must choose
+                    newContinueBtn.classList.add('hidden');
                     moveContainer.classList.remove('hidden');
                     document.getElementById('new-move-name').innerText = newMove.name;
 
                     const list = document.getElementById('move-forget-list');
                     list.innerHTML = '';
 
-                    // Wait for user interaction to forget a move
+                    // Remove the onclick from overlay so they can't skip move learning by accident
+                    overlay.onclick = null;
+
                     return new Promise(resolve => {
                         const close = () => {
                             overlay.classList.add('hidden');
+                            overlay.onclick = null; // Clean up
                             resolve();
                         };
 
@@ -855,7 +858,8 @@ class BattleSystem {
                             let btn = document.createElement('div');
                             btn.className = 'forget-btn';
                             btn.innerText = `Forget ${m.name}`;
-                            btn.onclick = () => {
+                            btn.onclick = (e) => {
+                                e.stopPropagation();
                                 p.moves[i] = newMove;
                                 showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
                                 close();
@@ -863,7 +867,6 @@ class BattleSystem {
                             list.appendChild(btn);
                         });
 
-                        // "Give Up" option
                         this.skipLearnMove = () => {
                             showDialog(`Gave up on learning ${newMove.name}.`, 2000);
                             close();
@@ -873,11 +876,24 @@ class BattleSystem {
             }
         }
 
-        // Wait for Continue Button Click
+        // --- NEW TAP ANYWHERE LOGIC ---
         return new Promise(resolve => {
-            newContinueBtn.onclick = () => {
+            const finish = () => {
                 overlay.classList.add('hidden');
+                overlay.onclick = null; // Remove listener
+                newContinueBtn.onclick = null;
                 resolve();
+            };
+
+            // 1. Click the Button
+            newContinueBtn.onclick = (e) => {
+                e.stopPropagation(); // Prevent double firing
+                finish();
+            };
+
+            // 2. Click the Background (Tap Anywhere)
+            overlay.onclick = () => {
+                finish();
             };
         });
     }
