@@ -6,6 +6,7 @@ const renderer = new Renderer(canvas, world, player);
 const battleSystem = new BattleSystem(player);
 const questSystem = new QuestSystem(player);
 const clock = new GameClock();
+const mergeSystem = new CombineSystem(player);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -238,13 +239,15 @@ function gameLoop(timestamp) {
                     p.isEgg = false;
                     p.name = p.species; // Hatch!
 
-                    // Generate stats for hatched Pokemon if not present
+                    // If stats were inherited (from breeding), use them.
+                    // If random egg (from cheat or bug), generate them.
                     if (!p.stats) {
                         p.stats = generatePokemonStats();
-                        // Recalculate maxHp based on stats
-                        p.maxHp = p.level * 5 + p.stats.hp;
-                        p.hp = p.maxHp;
                     }
+
+                    // Recalculate maxHp based on stats (Inherited or Generated)
+                    p.maxHp = p.level * 5 + p.stats.hp;
+                    p.hp = p.maxHp;
 
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
                 }
@@ -535,7 +538,7 @@ function handleNPCInteraction(npc) {
             showDialog("Daycare: Come back with at least 2 Pokemon.", 3000);
             return;
         }
-        // Simplified Breeding: First 2 Pokemon
+
         let p1 = player.team[0];
         let p2 = player.team[1];
 
@@ -544,24 +547,37 @@ function handleNPCInteraction(npc) {
             return;
         }
 
-        // Check Type Match (Very simple: same primary type)
-        // Note: In real game, egg groups. Here: Type.
         if (p1.type === p2.type) {
             if (player.team.length >= 6) {
                 showDialog("Daycare: Your party is full.", 3000);
             } else {
                 showDialog("Daycare: They get along great! Here is an Egg!", 3000);
+
+                // STAT INHERITANCE LOGIC
+                // Ensure parents have stats
+                if (!p1.stats) p1.stats = generatePokemonStats();
+                if (!p2.stats) p2.stats = generatePokemonStats();
+
+                const inheritedStats = {
+                    strength: Math.max(p1.stats.strength, p2.stats.strength),
+                    defense: Math.max(p1.stats.defense, p2.stats.defense),
+                    speed: Math.max(p1.stats.speed, p2.stats.speed),
+                    hp: Math.max(p1.stats.hp, p2.stats.hp),
+                    special: Math.max(p1.stats.special, p2.stats.special)
+                };
+
                 player.team.push({
                     name: 'EGG',
-                    species: p1.name, // Offspring is mother's species (p1 for simplicity)
+                    species: p1.name, // Offspring is mother's species
                     level: 1,
-                    maxHp: 15,
+                    maxHp: 15, // Placeholder HP
                     hp: 15,
                     exp: 0,
                     type: p1.type,
-                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png', // Placeholder
+                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png',
                     isEgg: true,
-                    eggSteps: 500
+                    eggSteps: 500,
+                    stats: inheritedStats // Attach the inherited stats NOW
                 });
             }
         } else {
@@ -984,14 +1000,14 @@ function closePC() {
 }
 
 function renderPC() {
-    // Render Party
+    // 1. Render Party
     const partyList = document.getElementById('pc-party-list');
     partyList.innerHTML = '';
 
     player.team.forEach((p, index) => {
         let div = document.createElement('div');
         div.className = 'pc-slot';
-        div.innerHTML = `<img src="${p.backSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'}">`;
+        div.innerHTML = `<img src="${p.backSprite}">`;
         div.onclick = () => {
             selectedSlot = { type: 'party', index: index };
             renderPC();
@@ -1002,7 +1018,7 @@ function renderPC() {
         partyList.appendChild(div);
     });
 
-    // Render Box
+    // 2. Render Box
     const boxGrid = document.getElementById('pc-box-grid');
     boxGrid.innerHTML = '';
     document.getElementById('box-label').innerText = `BOX ${currentBox + 1}`;
@@ -1011,7 +1027,7 @@ function renderPC() {
         let div = document.createElement('div');
         div.className = 'pc-slot';
         if (p) {
-            div.innerHTML = `<img src="${p.backSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'}">`;
+            div.innerHTML = `<img src="${p.backSprite}">`;
         }
 
         div.onclick = () => {
@@ -1027,13 +1043,38 @@ function renderPC() {
         boxGrid.appendChild(div);
     });
 
-    // Show/Hide Action Buttons
+    // 3. Render Merge Slots (Visual Update)
+    mergeSystem.slots.forEach((slot, i) => {
+        const el = document.getElementById(`ms-${i}`);
+        if (slot) {
+            el.innerHTML = `<img src="${slot.data.backSprite}"> ${slot.data.name}`;
+            el.style.color = "white";
+        } else {
+            el.innerHTML = `${i + 1}. Empty`;
+            el.style.color = "#888";
+        }
+    });
+
+    // 4. Update Actions Buttons
     const actionsDiv = document.getElementById('pc-actions');
+    // Ensure the Merge Button exists in DOM or create it dynamically
+    if (!document.getElementById('pc-merge-btn')) {
+        const mergeBtn = document.createElement('button');
+        mergeBtn.id = 'pc-merge-btn';
+        mergeBtn.innerText = 'ADD TO MERGE';
+        mergeBtn.className = 'hidden';
+        mergeBtn.onclick = addToMerge;
+        actionsDiv.appendChild(mergeBtn);
+    }
+
     const addToPartyBtn = document.getElementById('pc-add-to-party');
     const moveToPCBtn = document.getElementById('pc-move-to-pc');
+    const mergeActionBtn = document.getElementById('pc-merge-btn');
 
     if (selectedSlot) {
         actionsDiv.classList.remove('hidden');
+        mergeActionBtn.classList.remove('hidden'); // Show Merge Option
+
         if (selectedSlot.type === 'party') {
             addToPartyBtn.classList.add('hidden');
             moveToPCBtn.classList.remove('hidden');
@@ -1043,6 +1084,21 @@ function renderPC() {
         }
     } else {
         actionsDiv.classList.add('hidden');
+    }
+}
+
+// Helper function for the button
+function addToMerge() {
+    if (!selectedSlot) return;
+
+    let pokemon;
+    if (selectedSlot.type === 'party') pokemon = player.team[selectedSlot.index];
+    else pokemon = player.storage[currentBox][selectedSlot.index];
+
+    // Attempt add
+    if (mergeSystem.addToSlot(pokemon, selectedSlot.index, selectedSlot.type)) {
+        selectedSlot = null; // Deselect on success
+        renderPC();
     }
 }
 

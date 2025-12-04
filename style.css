@@ -1457,14 +1457,16 @@ canvas {
 /* ========================================= */
 
 /* DESKTOP / LANDSCAPE (Default) */
-#player-sprite, #enemy-sprite {
-    width: 320px !important;  /* Increased from 150px to 320px */
+#player-sprite,
+#enemy-sprite {
+    width: 320px !important;
+    /* Increased from 150px to 320px */
     height: 320px !important;
 }
 
 /* Adjust Desktop positions so they don't overlap the HUD */
 #player-sprite {
-    bottom: 220px !important; 
+    bottom: 220px !important;
     left: 10% !important;
 }
 
@@ -1475,8 +1477,11 @@ canvas {
 
 /* MOBILE PORTRAIT MODE (Phones) */
 @media (max-width: 768px) and (orientation: portrait) {
-    #player-sprite, #enemy-sprite {
-        width: 240px !important; /* Increased from 180px to 240px */
+
+    #player-sprite,
+    #enemy-sprite {
+        width: 240px !important;
+        /* Increased from 180px to 240px */
         height: 240px !important;
     }
 
@@ -1492,8 +1497,11 @@ canvas {
 
 /* SMALL PHONES */
 @media (max-width: 480px) and (orientation: portrait) {
-    #player-sprite, #enemy-sprite {
-        width: 200px !important; /* Increased from 150px to 200px */
+
+    #player-sprite,
+    #enemy-sprite {
+        width: 200px !important;
+        /* Increased from 150px to 200px */
         height: 200px !important;
     }
 }
@@ -1501,14 +1509,83 @@ canvas {
 
 /* FORCE LEVEL UP SCREEN TO TOP */
 #level-up-overlay {
-    z-index: 10000 !important; /* Higher than everything else */
-    pointer-events: auto !important; /* Force it to accept touches */
-    cursor: pointer; /* Show pointer to indicate it's clickable */
+    z-index: 10000 !important;
+    /* Higher than everything else */
+    pointer-events: auto !important;
+    /* Force it to accept touches */
+    cursor: pointer;
+    /* Show pointer to indicate it's clickable */
 }
 
 /* Ensure the button specifically is clickable */
 #levelup-continue-btn {
     pointer-events: auto !important;
-    z-index: 10001 !important; /* Even higher than the overlay */
-    position: relative; /* Needed for z-index to work */
+    z-index: 10001 !important;
+    /* Even higher than the overlay */
+    position: relative;
+    /* Needed for z-index to work */
+}
+
+/* --- MERGE SYSTEM UI --- */
+#merge-ui-container {
+    margin-top: auto;
+    /* Pushes to bottom of container */
+    border-top: 2px solid #555;
+    padding-top: 10px;
+}
+
+.merge-header {
+    color: #e74c3c;
+    font-size: 10px;
+    margin-bottom: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+#merge-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.merge-slot {
+    height: 30px;
+    background: #222;
+    border: 1px solid #555;
+    border-bottom: 2px solid white;
+    /* The white line look */
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 10px;
+    color: #888;
+    cursor: pointer;
+}
+
+.merge-slot img {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+}
+
+#btn-perform-merge {
+    width: 100%;
+    padding: 8px;
+    background: #e74c3c;
+    color: white;
+    border: 2px solid #c0392b;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+#btn-perform-merge:active {
+    background: #c0392b;
+}
+
+#pc-merge-btn {
+    background: #9b59b6 !important;
+    /* Purple button for Merge action */
+    border-color: #8e44ad !important;
 }

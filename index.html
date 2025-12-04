@@ -205,6 +205,19 @@
                     <div class="pc-party">
                         <h3>PARTY</h3>
                         <div id="pc-party-list"></div>
+
+                        <div id="merge-ui-container">
+                            <div class="merge-header">MERGE LAB ($5000)</div>
+                            <div id="merge-slots">
+                                <div class="merge-slot" onclick="mergeSystem.removeFromSlot(0); renderPC();" id="ms-0">1
+                                </div>
+                                <div class="merge-slot" onclick="mergeSystem.removeFromSlot(1); renderPC();" id="ms-1">2
+                                </div>
+                                <div class="merge-slot" onclick="mergeSystem.removeFromSlot(2); renderPC();" id="ms-2">3
+                                </div>
+                            </div>
+                            <button id="btn-perform-merge" onclick="mergeSystem.performMerge()">MERGE!</button>
+                        </div>
                     </div>
                     <div class="pc-box">
                         <div class="box-header">
@@ -275,6 +288,7 @@
     <script src="data.js"></script>
     <script src="world.js"></script>
     <script src="battle.js"></script>
+    <script src="combine.js"></script>
     <script src="main.js"></script>
 </body>
 
