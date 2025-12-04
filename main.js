@@ -630,7 +630,15 @@ function saveGame() {
         },
         world: {
             seed: world.rng.seed,
-            items: world.items
+            items: world.items,
+            npcs: world.npcs.map(npc => ({
+                x: npc.x,
+                y: npc.y,
+                name: npc.name,
+                type: npc.type,
+                dialog: npc.dialog
+            })),
+            buildings: world.buildings
         },
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
@@ -677,6 +685,20 @@ function loadGame() {
             world.rng = new SeededRandom(data.world.seed);
         }
         world.items = data.world.items;
+
+        // Restore NPCs (with fallback for old saves)
+        if (data.world.npcs && data.world.npcs.length > 0) {
+            world.npcs = data.world.npcs.map(npcData =>
+                new NPC(npcData.x, npcData.y, npcData.name, npcData.type, npcData.dialog)
+            );
+        }
+        // If no NPCs in save, they're already initialized in world constructor
+
+        // Restore Buildings (with fallback for old saves)
+        if (data.world.buildings) {
+            world.buildings = data.world.buildings;
+        }
+        // If no buildings in save, they're already initialized in world constructor
 
         // Restore Time
         // Restore Time
