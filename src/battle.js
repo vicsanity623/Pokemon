@@ -20,16 +20,46 @@ class BattleSystem {
         const move = moveName.toUpperCase();
 
         // Heavy/Physical attacks - attack1.mp3 (punch, kick, slam)
-        const heavyMoves = ['TACKLE', 'BODY SLAM', 'MEGA PUNCH', 'MEGA KICK', 'EARTHQUAKE',
-            'ROCK SLIDE', 'HYPER BEAM', 'GIGA IMPACT', 'THRASH', 'DOUBLE-EDGE'];
+        const heavyMoves = [
+            'TACKLE',
+            'BODY SLAM',
+            'MEGA PUNCH',
+            'MEGA KICK',
+            'EARTHQUAKE',
+            'ROCK SLIDE',
+            'HYPER BEAM',
+            'GIGA IMPACT',
+            'THRASH',
+            'DOUBLE-EDGE'
+        ];
 
         // Energy/Special attacks - attack2.mp3 (beam, psychic, energy)
-        const energyMoves = ['THUNDERBOLT', 'FLAMETHROWER', 'ICE BEAM', 'PSYCHIC', 'SHADOW BALL',
-            'SOLAR BEAM', 'HYDRO PUMP', 'FIRE BLAST', 'BLIZZARD', 'THUNDER'];
+        const energyMoves = [
+            'THUNDERBOLT',
+            'FLAMETHROWER',
+            'ICE BEAM',
+            'PSYCHIC',
+            'SHADOW BALL',
+            'SOLAR BEAM',
+            'HYDRO PUMP',
+            'FIRE BLAST',
+            'BLIZZARD',
+            'THUNDER'
+        ];
 
         // Quick/Light attacks - attack3.mp3 (scratch, bite, peck)
-        const quickMoves = ['SCRATCH', 'QUICK ATTACK', 'BITE', 'FURY SWIPES', 'PECK',
-            'WING ATTACK', 'POISON STING', 'VINE WHIP', 'RAZOR LEAF', 'SLASH'];
+        const quickMoves = [
+            'SCRATCH',
+            'QUICK ATTACK',
+            'BITE',
+            'FURY SWIPES',
+            'PECK',
+            'WING ATTACK',
+            'POISON STING',
+            'VINE WHIP',
+            'RAZOR LEAF',
+            'SLASH'
+        ];
 
         if (heavyMoves.includes(move)) return 'sfx-attack1';
         if (energyMoves.includes(move)) return 'sfx-attack2';
@@ -42,15 +72,17 @@ class BattleSystem {
     // Generate random stats for Pokemon (12-100 range)
     generateStats() {
         return {
-            strength: Math.floor(Math.random() * 89) + 12,  // 12-100
-            defense: Math.floor(Math.random() * 89) + 12,   // 12-100
-            speed: Math.floor(Math.random() * 89) + 12,     // 12-100
-            hp: Math.floor(Math.random() * 89) + 12,        // 12-100
-            special: Math.floor(Math.random() * 89) + 12    // 12-100
+            strength: Math.floor(Math.random() * 89) + 12, // 12-100
+            defense: Math.floor(Math.random() * 89) + 12, // 12-100
+            speed: Math.floor(Math.random() * 89) + 12, // 12-100
+            hp: Math.floor(Math.random() * 89) + 12, // 12-100
+            special: Math.floor(Math.random() * 89) + 12 // 12-100
         };
     }
 
-    delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+    delay(ms) {
+        return new Promise((r) => setTimeout(r, ms));
+    }
 
     // Comic Book Style Attack Text
     async showAttackText(text) {
@@ -85,7 +117,12 @@ class BattleSystem {
     // Show Effectiveness Text
     async showEffectivenessText(multiplier) {
         const effectText = document.getElementById('effectiveness-text');
-        effectText.classList.remove('super', 'weak', 'immune', 'anim-effectiveness');
+        effectText.classList.remove(
+            'super',
+            'weak',
+            'immune',
+            'anim-effectiveness'
+        );
 
         if (multiplier >= 2.0) {
             effectText.innerText = 'SUPER EFFECTIVE!';
@@ -116,17 +153,30 @@ class BattleSystem {
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
 
         // Switch to battle music
-        const mainMusic = document.getElementById('main-music');
-        const battleMusic = document.getElementById('battle-music');
+        const mainMusic = /** @type {HTMLAudioElement} */ (
+            document.getElementById('main-music')
+        );
+        const battleMusic = /** @type {HTMLAudioElement} */ (
+            document.getElementById('battle-music')
+        );
         if (mainMusic && battleMusic) {
             mainMusic.pause();
             battleMusic.currentTime = 0;
-            battleMusic.play().catch(err => console.log("Battle music autoplay blocked"));
+            battleMusic
+                .play()
+                .catch((err) => console.log('Battle music autoplay blocked'));
         }
 
         // Filter lists for balanced spawning
         const LEGENDARY_IDS = [144, 145, 146, 150, 151];
-        const EVOLVED_IDS = [2, 3, 5, 6, 8, 9, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 31, 34, 36, 38, 40, 42, 44, 45, 47, 49, 51, 53, 55, 57, 59, 61, 62, 64, 65, 67, 68, 71, 73, 75, 76, 78, 80, 82, 83, 85, 87, 89, 91, 93, 94, 97, 99, 101, 103, 105, 106, 107, 108, 110, 112, 113, 114, 115, 117, 119, 121, 122, 123, 127, 130, 131, 132, 134, 135, 136, 137, 139, 141, 142, 143, 148, 149];
+        const EVOLVED_IDS = [
+            2, 3, 5, 6, 8, 9, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 31, 34,
+            36, 38, 40, 42, 44, 45, 47, 49, 51, 53, 55, 57, 59, 61, 62, 64, 65,
+            67, 68, 71, 73, 75, 76, 78, 80, 82, 83, 85, 87, 89, 91, 93, 94, 97,
+            99, 101, 103, 105, 106, 107, 108, 110, 112, 113, 114, 115, 117, 119,
+            121, 122, 123, 127, 130, 131, 132, 134, 135, 136, 137, 139, 141,
+            142, 143, 148, 149
+        ];
 
         let id;
         let attempts = 0;
@@ -148,15 +198,21 @@ class BattleSystem {
         // Calculate level based on team average
         let avgLevel = 1;
         if (this.player.team.length > 0) {
-            let totalLevel = this.player.team.reduce((sum, p) => sum + (p.level || 1), 0);
+            let totalLevel = this.player.team.reduce(
+                (sum, p) => sum + (p.level || 1),
+                0
+            );
             avgLevel = Math.floor(totalLevel / this.player.team.length);
         }
 
         // Wild level = avg ± 2 random variance
-        let level = Math.max(1, avgLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus);
+        let level = Math.max(
+            1,
+            avgLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus
+        );
 
         // Shiny Check (1/512 chance - more common than 1/8192 for gameplay)
-        let isShiny = Math.random() < (1 / 512);
+        let isShiny = Math.random() < 1 / 512;
 
         // Fetch Data (Simplified fetch)
         try {
@@ -171,8 +227,14 @@ class BattleSystem {
             // Get sprites - use shiny if applicable
             let normalSprite = data.sprites.front_default;
             let shinySprite = data.sprites.front_shiny;
-            let animatedSprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || normalSprite;
-            let animatedShiny = data.sprites.versions['generation-v']['black-white']['animated']['front_shiny'] || shinySprite;
+            let animatedSprite =
+                data.sprites.versions['generation-v']['black-white'][
+                    'animated'
+                ]['front_default'] || normalSprite;
+            let animatedShiny =
+                data.sprites.versions['generation-v']['black-white'][
+                    'animated'
+                ]['front_shiny'] || shinySprite;
 
             // Choose sprite based on shiny status
             let battleSprite = isShiny ? shinySprite : normalSprite;
@@ -211,7 +273,9 @@ class BattleSystem {
             }
 
             // Set Sprites
-            const enemyImg = document.getElementById('enemy-sprite');
+            const enemyImg = /** @type {HTMLImageElement} */ (
+                document.getElementById('enemy-sprite')
+            );
             enemyImg.src = this.enemy.sprite;
             enemyImg.classList.remove('hidden');
 
@@ -225,7 +289,8 @@ class BattleSystem {
                     hp: 40,
                     exp: 0,
                     type: 'electric',
-                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png'
+                    backSprite:
+                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png'
                 });
             }
 
@@ -233,24 +298,32 @@ class BattleSystem {
 
             // CHECK IF FIRST POKEMON IS FAINTED
             if (pPoke.hp <= 0) {
-                showDialog(`${pPoke.name} is fainted! Heal or swap Pokemon first!`, 3000);
+                showDialog(
+                    `${pPoke.name} is fainted! Heal or swap Pokemon first!`,
+                    3000
+                );
                 this.endBattle();
                 return;
             }
 
-            const playerImg = document.getElementById('player-sprite');
+            const playerImg = /** @type {HTMLImageElement} */ (
+                document.getElementById('player-sprite')
+            );
             playerImg.src = pPoke.backSprite;
             playerImg.classList.remove('hidden');
 
             // Clear Canvas (Black Background)
-            const ctx = document.getElementById('gameCanvas').getContext('2d');
+            const canvas = /** @type {HTMLCanvasElement} */ (
+                document.getElementById('gameCanvas')
+            );
+            const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
             this.updateBattleUI();
-            document.getElementById('battle-dialog').innerText = `A wild ${this.enemy.name} appeared!`;
+            document.getElementById('battle-dialog').innerText =
+                `A wild ${this.enemy.name} appeared!`;
             document.getElementById('bottom-hud').classList.add('hud-battle'); // Move HUD up
-
         } catch (e) {
             console.error(e);
             this.endBattle();
@@ -262,8 +335,10 @@ class BattleSystem {
         let p = this.player.team[0];
         document.getElementById('player-name').innerText = p.name;
         document.getElementById('player-level').innerText = `Lv.${p.level}`;
-        document.getElementById('player-hp-text').innerText = `${p.hp}/${p.maxHp}`;
-        document.getElementById('player-hp-fill').style.width = `${(p.hp / p.maxHp) * 100}%`;
+        document.getElementById('player-hp-text').innerText =
+            `${p.hp}/${p.maxHp}`;
+        document.getElementById('player-hp-fill').style.width =
+            `${(p.hp / p.maxHp) * 100}%`;
 
         // XP Bar
         let maxExp = p.level * 100;
@@ -272,8 +347,10 @@ class BattleSystem {
 
         // Enemy Stats
         document.getElementById('enemy-name').innerText = this.enemy.name;
-        document.getElementById('enemy-level').innerText = `Lv.${this.enemy.level}`;
-        document.getElementById('enemy-hp-fill').style.width = `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
+        document.getElementById('enemy-level').innerText =
+            `Lv.${this.enemy.level}`;
+        document.getElementById('enemy-hp-fill').style.width =
+            `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
 
         // We DO NOT reset the dialog here anymore, to preserve message history
     }
@@ -324,29 +401,43 @@ class BattleSystem {
         const attackSound = this.getAttackSound(move.name);
 
         // Try to use cache first
-        if (window.assetLoader && assetLoader.cache.audio[attackSound + '.mp3']) {
+        if (
+            /** @type {any} */ (window).assetLoader &&
+            /** @type {any} */ (window).assetLoader.cache.audio[
+                attackSound + '.mp3'
+            ]
+        ) {
             const cachedAudio = assetLoader.cache.audio[attackSound + '.mp3'];
             cachedAudio.currentTime = 0;
-            cachedAudio.play().catch(e => console.log("Cached audio play failed", e));
+            cachedAudio
+                .play()
+                .catch((e) => console.log('Cached audio play failed', e));
         } else {
             // Fallback to DOM
-            const sfx = document.getElementById(attackSound);
+            const sfx = /** @type {HTMLAudioElement} */ (
+                document.getElementById(attackSound)
+            );
             if (sfx) {
                 sfx.pause();
                 sfx.currentTime = 0;
-                sfx.play().catch(err => console.log("Attack SFX failed"));
+                sfx.play().catch((err) => console.log('Attack SFX failed'));
             }
         }
 
         // Player Attack Animation
-        // We don't have a DOM element for player sprite (it's on canvas), 
+        // We don't have a DOM element for player sprite (it's on canvas),
         // so we'll just flash the screen or shake the enemy UI
         if (move.category === 'status') {
             // SHINY ANIMATION FOR STATUS MOVES
-            document.getElementById('flash-overlay').style.backgroundColor = 'rgba(255, 255, 0, 0.5)'; // Yellow glow
-            document.getElementById('flash-overlay').classList.add('anim-flash');
+            document.getElementById('flash-overlay').style.backgroundColor =
+                'rgba(255, 255, 0, 0.5)'; // Yellow glow
+            document
+                .getElementById('flash-overlay')
+                .classList.add('anim-flash');
             await this.delay(500);
-            document.getElementById('flash-overlay').classList.remove('anim-flash');
+            document
+                .getElementById('flash-overlay')
+                .classList.remove('anim-flash');
             document.getElementById('flash-overlay').style.backgroundColor = ''; // Reset
 
             showDialog(`${p.name}'s stats rose!`);
@@ -364,12 +455,19 @@ class BattleSystem {
 
         // TYPE EFFECTIVENESS DAMAGE CALC WITH STATS!
         const attackerStrength = p.stats ? p.stats.strength : 50; // Default if no stats
-        const defenderDefense = this.enemy.stats ? this.enemy.stats.defense : 50;
+        const defenderDefense = this.enemy.stats
+            ? this.enemy.stats.defense
+            : 50;
 
-        let baseDmg = Math.floor(move.power * (p.level / this.enemy.level) * (attackerStrength / 50));
+        let baseDmg = Math.floor(
+            move.power * (p.level / this.enemy.level) * (attackerStrength / 50)
+        );
         let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
         let rawDmg = Math.floor(baseDmg * effectiveness);
-        let dmg = Math.max(1, Math.floor(rawDmg * (100 / (100 + defenderDefense)))); // Defense reduces damage
+        let dmg = Math.max(
+            1,
+            Math.floor(rawDmg * (100 / (100 + defenderDefense)))
+        ); // Defense reduces damage
 
         this.enemy.hp -= dmg;
         if (this.enemy.hp < 0) this.enemy.hp = 0;
@@ -385,7 +483,9 @@ class BattleSystem {
         this.showDamageNumber(dmg, 70, 25);
 
         await this.delay(500);
-        document.getElementById('enemy-stat-box').classList.remove('anim-shake');
+        document
+            .getElementById('enemy-stat-box')
+            .classList.remove('anim-shake');
 
         // Detailed Damage Log
         showDialog(`Dealt ${dmg} damage!`);
@@ -412,11 +512,13 @@ class BattleSystem {
 
         // Play attack sound based on move type
         const attackSound = this.getAttackSound(moveName);
-        const sfx = document.getElementById(attackSound);
+        const sfx = /** @type {HTMLAudioElement} */ (
+            document.getElementById(attackSound)
+        );
         if (sfx) {
             sfx.pause();
             sfx.currentTime = 0;
-            sfx.play().catch(err => console.log("Attack SFX failed"));
+            sfx.play().catch((err) => console.log('Attack SFX failed'));
         }
 
         // Enemy Attack Animation
@@ -428,8 +530,13 @@ class BattleSystem {
         const enemyStrength = this.enemy.stats ? this.enemy.stats.strength : 50;
         const playerDefense = p.stats ? p.stats.defense : 50;
 
-        let baseDmg = Math.floor(10 * (this.enemy.level / p.level) * (enemyStrength / 50));
-        let dmg = Math.max(1, Math.floor(baseDmg * (100 / (100 + playerDefense))));
+        let baseDmg = Math.floor(
+            10 * (this.enemy.level / p.level) * (enemyStrength / 50)
+        );
+        let dmg = Math.max(
+            1,
+            Math.floor(baseDmg * (100 / (100 + playerDefense)))
+        );
 
         p.hp -= dmg;
         if (p.hp < 0) p.hp = 0;
@@ -443,13 +550,15 @@ class BattleSystem {
         this.showDamageNumber(dmg, 25, 60);
 
         await this.delay(500);
-        document.getElementById('player-stat-box').classList.remove('anim-shake');
+        document
+            .getElementById('player-stat-box')
+            .classList.remove('anim-shake');
 
         if (p.hp <= 0) {
             await this.delay(1000);
 
             // Check if any other pokemon are alive
-            let hasAlive = this.player.team.some(poke => poke.hp > 0);
+            let hasAlive = this.player.team.some((poke) => poke.hp > 0);
 
             if (hasAlive) {
                 showDialog(`${p.name} fainted! Choose another Pokemon!`);
@@ -457,13 +566,15 @@ class BattleSystem {
                 this.isAttacking = false; // Allow menu to open
                 this.pokemonBtn(); // Open menu
                 // Hide back button to force switch
-                document.querySelector('#pokemon-menu .back-btn').classList.add('hidden');
+                document
+                    .querySelector('#pokemon-menu .back-btn')
+                    .classList.add('hidden');
             } else {
                 this.lose();
             }
         } else {
             // Reset to player turn prompt
-            showDialog("What will you do?");
+            showDialog('What will you do?');
             this.isAttacking = false; // Unlock input
         }
     }
@@ -506,7 +617,8 @@ class BattleSystem {
 
         if (this.player.bag[itemName] > 0) {
             this.player.bag[itemName]--;
-            if (this.player.bag[itemName] === 0) delete this.player.bag[itemName];
+            if (this.player.bag[itemName] === 0)
+                delete this.player.bag[itemName];
         } else {
             return;
         }
@@ -531,7 +643,8 @@ class BattleSystem {
         // Consume Ball
         if (this.player.bag[ballType] > 0) {
             this.player.bag[ballType]--;
-            if (this.player.bag[ballType] === 0) delete this.player.bag[ballType];
+            if (this.player.bag[ballType] === 0)
+                delete this.player.bag[ballType];
         } else {
             this.isAttacking = false;
             return;
@@ -565,18 +678,22 @@ class BattleSystem {
         }
 
         // Standard Catch Formula (Simplified)
-        let hpFactor = (3 * this.enemy.maxHp - 2 * this.enemy.hp) / (3 * this.enemy.maxHp);
+        let hpFactor =
+            (3 * this.enemy.maxHp - 2 * this.enemy.hp) / (3 * this.enemy.maxHp);
         let catchChance = (catchRate * hpFactor) / (this.enemy.tier || 1); // Harder for higher tiers
 
         // 3 Shakes
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-            if (Math.random() > catchChance * 0.8) { // 80% base chance factor
+            if (Math.random() > catchChance * 0.8) {
+                // 80% base chance factor
                 // Break free
                 ballAnim.classList.remove('anim-shake');
                 ballAnim.classList.add('hidden');
-                document.getElementById('enemy-sprite').classList.remove('anim-shrink');
-                showDialog("Darn! It broke free!");
+                document
+                    .getElementById('enemy-sprite')
+                    .classList.remove('anim-shrink');
+                showDialog('Darn! It broke free!');
                 await this.delay(1000);
                 this.enemyTurn();
                 return;
@@ -622,7 +739,9 @@ class BattleSystem {
         if (this.isAttacking) return;
         document.getElementById('pokemon-menu').classList.remove('hidden');
         // Ensure back button is visible (might have been hidden by forced switch)
-        document.querySelector('#pokemon-menu .back-btn').classList.remove('hidden');
+        document
+            .querySelector('#pokemon-menu .back-btn')
+            .classList.remove('hidden');
         const list = document.getElementById('pokemon-list');
         list.innerHTML = '';
 
@@ -630,7 +749,7 @@ class BattleSystem {
             let div = document.createElement('div');
             div.className = 'menu-item';
             div.innerText = `${p.name} (Lv.${p.level}) - HP: ${p.hp}/${p.maxHp}`;
-            if (index === 0) div.style.border = "2px solid gold"; // Active
+            if (index === 0) div.style.border = '2px solid gold'; // Active
 
             div.onclick = () => this.switchPokemon(index);
             list.appendChild(div);
@@ -639,7 +758,7 @@ class BattleSystem {
 
     async switchPokemon(index) {
         if (index === 0) {
-            showDialog("Already in battle!");
+            showDialog('Already in battle!');
             return;
         }
         let p = this.player.team[index];
@@ -657,12 +776,15 @@ class BattleSystem {
         this.player.team[index] = temp;
 
         // Update Player Sprite (DOM element) - Force reload
-        const playerImg = document.getElementById('player-sprite');
+        const playerImg = /** @type {HTMLImageElement} */ (
+            document.getElementById('player-sprite')
+        );
         if (playerImg && this.player.team[0].backSprite) {
             // Force browser to reload image by setting to empty first
             playerImg.src = '';
             setTimeout(() => {
-                playerImg.src = this.player.team[0].backSprite + '?t=' + Date.now();
+                playerImg.src =
+                    this.player.team[0].backSprite + '?t=' + Date.now();
             }, 10);
         }
 
@@ -678,7 +800,7 @@ class BattleSystem {
 
     runBtn() {
         if (this.isAttacking) return;
-        showDialog("Got away safely!");
+        showDialog('Got away safely!');
         setTimeout(() => this.endBattle(), 1000);
     }
 
@@ -701,8 +823,16 @@ class BattleSystem {
             // Ensure stats exist
             if (!p.stats) {
                 if (this.generateStats) p.stats = this.generateStats();
-                else if (typeof generatePokemonStats === 'function') p.stats = generatePokemonStats();
-                else p.stats = { strength: 10, defense: 10, speed: 10, hp: 10, special: 10 };
+                else if (typeof generatePokemonStats === 'function')
+                    p.stats = generatePokemonStats();
+                else
+                    p.stats = {
+                        strength: 10,
+                        defense: 10,
+                        speed: 10,
+                        hp: 10,
+                        special: 10
+                    };
             }
 
             // 1. Determine Stat Increases
@@ -753,7 +883,8 @@ class BattleSystem {
             // Calculate percentage for bar
             let maxExp = p.level * 100;
             let expPct = (p.exp / maxExp) * 100;
-            document.getElementById('player-exp-bar').style.width = `${expPct}%`;
+            document.getElementById('player-exp-bar').style.width =
+                `${expPct}%`;
 
             // Check for Level Up
             if (p.exp >= maxExp) {
@@ -787,7 +918,9 @@ class BattleSystem {
 
             // Fetch new Pokemon data for sprites
             try {
-                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evolution.id}`);
+                const res = await fetch(
+                    `https://pokeapi.co/api/v2/pokemon/${evolution.id}`
+                );
                 const data = await res.json();
 
                 // Update sprites
@@ -797,11 +930,17 @@ class BattleSystem {
                 // Update type if needed
                 p.type = data.types[0].type.name;
 
-                showDialog(`Congratulations! ${oldName} evolved into ${p.name}!`, 3000);
+                showDialog(
+                    `Congratulations! ${oldName} evolved into ${p.name}!`,
+                    3000
+                );
                 await this.delay(3000);
             } catch (e) {
-                console.error("Evolution fetch failed", e);
-                showDialog(`Congratulations! ${oldName} evolved into ${p.name}!`, 3000);
+                console.error('Evolution fetch failed', e);
+                showDialog(
+                    `Congratulations! ${oldName} evolved into ${p.name}!`,
+                    3000
+                );
                 await this.delay(3000);
             }
         }
@@ -811,14 +950,17 @@ class BattleSystem {
         const overlay = document.getElementById('level-up-overlay');
         const content = document.getElementById('levelup-content');
         const moveContainer = document.getElementById('move-learn-container');
-        const continueBtn = document.getElementById('levelup-continue-btn');
-
+        const continueBtn = /** @type {HTMLButtonElement} */ (
+            document.getElementById('levelup-continue-btn')
+        );
         overlay.classList.remove('hidden');
         moveContainer.classList.add('hidden');
         continueBtn.classList.remove('hidden');
 
         // Clone button to clear old events
-        const newContinueBtn = continueBtn.cloneNode(true);
+        const newContinueBtn = /** @type {HTMLButtonElement} */ (
+            continueBtn.cloneNode(true)
+        );
         continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
 
         content.innerHTML = `
@@ -838,10 +980,14 @@ class BattleSystem {
         // Check for new move logic (Same as before)
         if (p.level % 5 === 0) {
             let tier = Math.floor(p.level / 20) + 1;
-            let newMove = getMove(p.type, Math.min(3, Math.floor(p.level / 15)));
-            if (!p.moves) p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
+            let newMove = getMove(
+                p.type,
+                Math.min(3, Math.floor(p.level / 15))
+            );
+            if (!p.moves)
+                p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
 
-            let hasMove = p.moves.find(m => m.name === newMove.name);
+            let hasMove = p.moves.find((m) => m.name === newMove.name);
             if (!hasMove) {
                 if (p.moves.length < 4) {
                     p.moves.push(newMove);
@@ -850,7 +996,8 @@ class BattleSystem {
                     // If learning a move, we DO NOT allow tap-anywhere, user must choose
                     newContinueBtn.classList.add('hidden');
                     moveContainer.classList.remove('hidden');
-                    document.getElementById('new-move-name').innerText = newMove.name;
+                    document.getElementById('new-move-name').innerText =
+                        newMove.name;
 
                     const list = document.getElementById('move-forget-list');
                     list.innerHTML = '';
@@ -858,7 +1005,7 @@ class BattleSystem {
                     // Remove the onclick from overlay so they can't skip move learning by accident
                     overlay.onclick = null;
 
-                    return new Promise(resolve => {
+                    return new Promise((resolve) => {
                         const close = () => {
                             overlay.classList.add('hidden');
                             overlay.onclick = null; // Clean up
@@ -872,14 +1019,20 @@ class BattleSystem {
                             btn.onclick = (e) => {
                                 e.stopPropagation();
                                 p.moves[i] = newMove;
-                                showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
+                                showDialog(
+                                    `Forgot ${m.name} and learned ${newMove.name}!`,
+                                    2000
+                                );
                                 close();
                             };
                             list.appendChild(btn);
                         });
 
                         this.skipLearnMove = () => {
-                            showDialog(`Gave up on learning ${newMove.name}.`, 2000);
+                            showDialog(
+                                `Gave up on learning ${newMove.name}.`,
+                                2000
+                            );
                             close();
                         };
                     });
@@ -888,7 +1041,7 @@ class BattleSystem {
         }
 
         // --- NEW TAP ANYWHERE LOGIC ---
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             const finish = () => {
                 overlay.classList.add('hidden');
                 overlay.onclick = null; // Remove listener
@@ -912,7 +1065,7 @@ class BattleSystem {
     lose() {
         showDialog(`${this.player.team[0].name} fainted!`);
         setTimeout(() => {
-            showDialog("You whited out...");
+            showDialog('You whited out...');
             setTimeout(() => {
                 this.endBattle();
                 // NO AUTO-HEAL! Pokemon stay fainted until healed at Poke Center
@@ -926,14 +1079,22 @@ class BattleSystem {
         hideDialog(); // Force hide dialog
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');
-        document.getElementById('hamburger-btn').classList.remove('battle-hidden');
+        document
+            .getElementById('hamburger-btn')
+            .classList.remove('battle-hidden');
 
-        // Switch back to main music
-        const mainMusic = document.getElementById('main-music');
-        const battleMusic = document.getElementById('battle-music');
+        // Restore Music
+        const mainMusic = /** @type {HTMLAudioElement} */ (
+            document.getElementById('main-music')
+        );
+        const battleMusic = /** @type {HTMLAudioElement} */ (
+            document.getElementById('battle-music')
+        );
         if (mainMusic && battleMusic) {
             battleMusic.pause();
-            mainMusic.play().catch(err => console.log("Main music autoplay blocked"));
+            mainMusic
+                .play()
+                .catch((err) => console.log('Main music autoplay blocked'));
         }
 
         document.getElementById('bottom-hud').classList.remove('hud-battle'); // Reset HUD

@@ -1,12 +1,15 @@
-const CACHE_NAME = 'pokeworld-v3.5';
+const CACHE_NAME = 'pokeworld-v3.6';
 const ASSETS = [
     './',
     './index.html',
     './style.css',
-    './main.js',
-    './utils.js',
-    './world.js',
-    './battle.js',
+    './src/main.js',
+    './src/utils.js',
+    './src/world.js',
+    './src/battle.js',
+    './src/data.js',
+    './src/combine.js',
+    './src/loading.js',
     './manifest.json'
 ];
 

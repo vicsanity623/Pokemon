@@ -14,17 +14,29 @@ class World {
 
     initNPCs() {
         // Herbalist
-        this.npcs.push(new NPC(5, 5, 'Herbalist', 'quest', 'Bring me 10 Herbs for $500!'));
+        this.npcs.push(
+            new NPC(5, 5, 'Herbalist', 'quest', 'Bring me 10 Herbs for $500!')
+        );
 
         // Daycare Man
-        this.npcs.push(new NPC(-5, -5, 'Daycare Man', 'daycare', 'I can raise your Pokemon.'));
+        this.npcs.push(
+            new NPC(
+                -5,
+                -5,
+                'Daycare Man',
+                'daycare',
+                'I can raise your Pokemon.'
+            )
+        );
 
         // Wandering Villager
-        this.npcs.push(new NPC(2, -2, 'Villager', 'talk', 'Nice weather today!'));
+        this.npcs.push(
+            new NPC(2, -2, 'Villager', 'talk', 'Nice weather today!')
+        );
     }
 
     updateNPCs() {
-        this.npcs.forEach(npc => npc.update(this));
+        this.npcs.forEach((npc) => npc.update(this));
     }
 
     initItems() {
@@ -60,12 +72,12 @@ class World {
                 type = 'Master Ball';
                 masterBallsSpawned++;
             } else if (r > 0.95) type = 'Ultra Ball';
-            else if (r > 0.90) type = 'Max Potion';
+            else if (r > 0.9) type = 'Max Potion';
             else if (r > 0.85) type = 'Hyper Potion';
-            else if (r > 0.80) type = 'Great Ball';
-            else if (r > 0.70) type = 'Super Potion';
-            else if (r > 0.50) type = 'Pokeball';
-            else if (r > 0.40) type = 'Herb';
+            else if (r > 0.8) type = 'Great Ball';
+            else if (r > 0.7) type = 'Super Potion';
+            else if (r > 0.5) type = 'Pokeball';
+            else if (r > 0.4) type = 'Herb';
 
             this.items[`${x},${y}`] = type;
         }
@@ -97,7 +109,9 @@ class World {
     }
 
     getBuildingAt(x, y) {
-        return this.buildings.find(b => Math.round(b.x) === x && Math.round(b.y) === y);
+        return this.buildings.find(
+            (b) => Math.round(b.x) === x && Math.round(b.y) === y
+        );
     }
 
     getTile(x, y) {
@@ -110,8 +124,16 @@ class World {
         let grassVal = this.rng.noise(x * 0.1, y * 0.1);
 
         // Structures
-        if (Math.abs(Math.floor(x)) % 50 === 0 && Math.abs(Math.floor(y)) % 50 === 0) return 'center';
-        if (Math.abs(Math.floor(x)) % 53 === 0 && Math.abs(Math.floor(y)) % 53 === 0) return 'store';
+        if (
+            Math.abs(Math.floor(x)) % 50 === 0 &&
+            Math.abs(Math.floor(y)) % 50 === 0
+        )
+            return 'center';
+        if (
+            Math.abs(Math.floor(x)) % 53 === 0 &&
+            Math.abs(Math.floor(y)) % 53 === 0
+        )
+            return 'store';
 
         // Biomes based on smooth noise
         if (biomeVal < 0.3) return 'water';
@@ -126,24 +148,31 @@ class World {
 
     getColor(type) {
         switch (type) {
-            case 'water': return '#3498db';
-            case 'grass_tall': return '#27ae60';
-            case 'grass': return '#2ecc71';
-            case 'flowers': return '#e74c3c';
-            case 'center': return '#c0392b';
-            case 'store': return '#2980b9'; // Blue roof
-            default: return '#000';
+            case 'water':
+                return '#3498db';
+            case 'grass_tall':
+                return '#27ae60';
+            case 'grass':
+                return '#2ecc71';
+            case 'flowers':
+                return '#e74c3c';
+            case 'center':
+                return '#c0392b';
+            case 'store':
+                return '#2980b9'; // Blue roof
+            default:
+                return '#000';
         }
     }
 
     getItemIcon(type) {
         const icons = {
-            'Herb': '🌿',
-            'Potion': '🍷',
+            Herb: '🌿',
+            Potion: '🍷',
             'Super Potion': '🍷',
             'Hyper Potion': '🏺',
             'Max Potion': '💖',
-            'Pokeball': '🔴',
+            Pokeball: '🔴',
             'Great Ball': '🔵',
             'Ultra Ball': '🟡',
             'Master Ball': '🟣'
@@ -154,8 +183,10 @@ class World {
     // Safety Check
     validatePositions() {
         // Check NPCs
-        this.npcs.forEach(npc => {
-            if (this.getTile(Math.round(npc.x), Math.round(npc.y)) === 'water') {
+        this.npcs.forEach((npc) => {
+            if (
+                this.getTile(Math.round(npc.x), Math.round(npc.y)) === 'water'
+            ) {
                 let safe = this.findSafeNear(npc.x, npc.y);
                 npc.x = safe.x;
                 npc.y = safe.y;
@@ -165,7 +196,7 @@ class World {
         });
 
         // Check Buildings
-        this.buildings.forEach(b => {
+        this.buildings.forEach((b) => {
             if (this.getTile(Math.round(b.x), Math.round(b.y)) === 'water') {
                 let safe = this.findSafeNear(b.x, b.y);
                 b.x = safe.x;
@@ -184,10 +215,14 @@ class World {
                     if (this.getTile(tx, ty) !== 'water') {
                         // Strict check: Ensure neighbors are also not water (buffer)
                         let neighborsSafe = true;
-                        if (this.getTile(tx + 1, ty) === 'water') neighborsSafe = false;
-                        if (this.getTile(tx - 1, ty) === 'water') neighborsSafe = false;
-                        if (this.getTile(tx, ty + 1) === 'water') neighborsSafe = false;
-                        if (this.getTile(tx, ty - 1) === 'water') neighborsSafe = false;
+                        if (this.getTile(tx + 1, ty) === 'water')
+                            neighborsSafe = false;
+                        if (this.getTile(tx - 1, ty) === 'water')
+                            neighborsSafe = false;
+                        if (this.getTile(tx, ty + 1) === 'water')
+                            neighborsSafe = false;
+                        if (this.getTile(tx, ty - 1) === 'water')
+                            neighborsSafe = false;
 
                         if (neighborsSafe) return { x: tx, y: ty };
                     }
@@ -224,7 +259,10 @@ class NPC {
             let dy = Math.floor(Math.random() * 3) - 1;
 
             // Keep within radius of 5 from start
-            if (Math.abs(this.x + dx - this.startX) < 5 && Math.abs(this.y + dy - this.startY) < 5) {
+            if (
+                Math.abs(this.x + dx - this.startX) < 5 &&
+                Math.abs(this.y + dy - this.startY) < 5
+            ) {
                 // Check collision
                 if (world.getTile(this.x + dx, this.y + dy) !== 'water') {
                     this.x += dx;
@@ -249,14 +287,16 @@ class Player {
         // Stats
         this.pLevel = 1; // Survival Level
         this.team = []; // Pokemon objects
-        this.bag = { 'Potion': 5, 'Pokeball': 10 };
-        this.inventory = { 'Herb': 0 };
+        this.bag = { Potion: 5, Pokeball: 10 };
+        this.inventory = { Herb: 0 };
 
         // Track last Poke Center spawn for interval
         this.lastPokeCenterStep = -500; // Spawn first one soon
 
         // PC Storage: 100 Boxes of 25 slots
-        this.storage = Array(100).fill().map(() => Array(25).fill(null));
+        this.storage = Array(100)
+            .fill()
+            .map(() => Array(25).fill(null));
 
         // Pokedex: Set of seen IDs
         this.seen = [];
@@ -264,7 +304,7 @@ class Player {
     }
 
     healAllPokemon() {
-        this.team.forEach(p => {
+        this.team.forEach((p) => {
             if (!p.isEgg) {
                 p.hp = p.maxHp;
             }
@@ -273,8 +313,13 @@ class Player {
 
     surviveLevelUp() {
         this.pLevel++;
-        showDialog(`You survived another day. Survivor Level: ${this.pLevel}`, 4000);
-        document.getElementById('meta-level').innerText = this.pLevel;
+        showDialog(
+            `You survived another day. Survivor Level: ${this.pLevel}`,
+            4000
+        );
+        /** @type {HTMLElement} */
+        const metaLevel = document.getElementById('meta-level');
+        metaLevel.innerText = this.pLevel.toString();
     }
 
     addPokemon(pokeData) {
@@ -294,7 +339,7 @@ class Player {
                 }
                 if (placed) break;
             }
-            if (!placed) showDialog("PC is full! Released Pokemon.");
+            if (!placed) showDialog('PC is full! Released Pokemon.');
         }
     }
 }
@@ -310,7 +355,8 @@ class Renderer {
 
         // Load Player Sprite (Ash style)
         this.sprite = new Image();
-        this.sprite.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/heartgold-soulsilver/25.png";
+        this.sprite.src =
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/heartgold-soulsilver/25.png';
 
         this.particles = [];
     }
@@ -343,8 +389,14 @@ class Renderer {
                 continue;
             }
 
-            let drawX = (p.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 + offsetX;
-            let drawY = (p.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 + offsetY;
+            let drawX =
+                (p.x - this.player.x) * TILE_SIZE +
+                this.canvas.width / 2 +
+                offsetX;
+            let drawY =
+                (p.y - this.player.y) * TILE_SIZE +
+                this.canvas.height / 2 +
+                offsetY;
 
             this.ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
             this.ctx.fillRect(drawX, drawY, 3, 3); // Smaller particles
@@ -380,16 +432,32 @@ class Renderer {
                 // We want player to be exactly in center
                 // ScreenX = (worldX - playerX) * TILE_SIZE + CanvasCenter
 
-                let drawX = (worldX - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-                let drawY = (worldY - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+                let drawX =
+                    (worldX - this.player.x) * TILE_SIZE +
+                    this.canvas.width / 2 -
+                    TILE_SIZE / 2;
+                let drawY =
+                    (worldY - this.player.y) * TILE_SIZE +
+                    this.canvas.height / 2 -
+                    TILE_SIZE / 2;
 
                 this.ctx.fillStyle = this.world.getColor(tile);
-                this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY), TILE_SIZE + 1, TILE_SIZE + 1); // +1 to fix gaps
+                this.ctx.fillRect(
+                    Math.floor(drawX),
+                    Math.floor(drawY),
+                    TILE_SIZE + 1,
+                    TILE_SIZE + 1
+                ); // +1 to fix gaps
 
                 // Texture detail
                 if (tile === 'grass_tall') {
                     this.ctx.fillStyle = 'rgba(0,0,0,0.1)';
-                    this.ctx.fillRect(Math.floor(drawX) + 5, Math.floor(drawY) + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                    this.ctx.fillRect(
+                        Math.floor(drawX) + 5,
+                        Math.floor(drawY) + 5,
+                        TILE_SIZE - 10,
+                        TILE_SIZE - 10
+                    );
                 }
 
                 // Draw Item
@@ -399,20 +467,35 @@ class Renderer {
                     this.ctx.textAlign = 'center';
                     this.ctx.textBaseline = 'middle';
                     let icon = this.world.getItemIcon(item);
-                    this.ctx.fillText(icon, Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
+                    this.ctx.fillText(
+                        icon,
+                        Math.floor(drawX) + TILE_SIZE / 2,
+                        Math.floor(drawY) + TILE_SIZE / 2
+                    );
                 }
             }
         }
 
         // Draw Poke Centers (Buildings)
-        this.world.buildings.forEach(building => {
+        this.world.buildings.forEach((building) => {
             if (building.type === 'pokecenter') {
-                let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-                let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+                let drawX =
+                    (building.x - this.player.x) * TILE_SIZE +
+                    this.canvas.width / 2 -
+                    TILE_SIZE / 2;
+                let drawY =
+                    (building.y - this.player.y) * TILE_SIZE +
+                    this.canvas.height / 2 -
+                    TILE_SIZE / 2;
 
                 // Draw building platform/base
                 this.ctx.fillStyle = '#e74c3c';
-                this.ctx.fillRect(Math.floor(drawX) - 10, Math.floor(drawY) - 10, TILE_SIZE + 20, TILE_SIZE + 20);
+                this.ctx.fillRect(
+                    Math.floor(drawX) - 10,
+                    Math.floor(drawY) - 10,
+                    TILE_SIZE + 20,
+                    TILE_SIZE + 20
+                );
 
                 // Glow effect
                 this.ctx.shadowBlur = 15;
@@ -422,7 +505,11 @@ class Renderer {
                 this.ctx.font = '50px Arial';
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
-                this.ctx.fillText('🏥', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
+                this.ctx.fillText(
+                    '🏥',
+                    Math.floor(drawX) + TILE_SIZE / 2,
+                    Math.floor(drawY) + TILE_SIZE / 2
+                );
 
                 // Reset shadow
                 this.ctx.shadowBlur = 0;
@@ -430,21 +517,37 @@ class Renderer {
         });
 
         // Draw NPCs
-        this.world.npcs.forEach(npc => {
-            let drawX = (npc.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-            let drawY = (npc.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+        this.world.npcs.forEach((npc) => {
+            let drawX =
+                (npc.x - this.player.x) * TILE_SIZE +
+                this.canvas.width / 2 -
+                TILE_SIZE / 2;
+            let drawY =
+                (npc.y - this.player.y) * TILE_SIZE +
+                this.canvas.height / 2 -
+                TILE_SIZE / 2;
 
             // Simple NPC Render (Circle with Name)
             this.ctx.fillStyle = npc.color;
             this.ctx.beginPath();
-            this.ctx.arc(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2, 15, 0, Math.PI * 2);
+            this.ctx.arc(
+                Math.floor(drawX) + TILE_SIZE / 2,
+                Math.floor(drawY) + TILE_SIZE / 2,
+                15,
+                0,
+                Math.PI * 2
+            );
             this.ctx.fill();
 
             // Name
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '10px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(npc.name, Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) - 10);
+            this.ctx.fillText(
+                npc.name,
+                Math.floor(drawX) + TILE_SIZE / 2,
+                Math.floor(drawY) - 10
+            );
         });
 
         // Draw Player (Always Center)
@@ -464,14 +567,23 @@ class Renderer {
         // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
         this.ctx.beginPath();
-        this.ctx.ellipse(px + TILE_SIZE / 2, py + TILE_SIZE - 5, 15, 5, 0, 0, Math.PI * 2);
+        this.ctx.ellipse(
+            px + TILE_SIZE / 2,
+            py + TILE_SIZE - 5,
+            15,
+            5,
+            0,
+            0,
+            Math.PI * 2
+        );
         this.ctx.fill();
 
         // Dust Particles (Spawn if moving)
         // We spawn them at player feet in world coordinates
         // Footstep effect: Lower frequency
         if (this.player.moving) {
-            if (Math.random() < 0.1) { // Reduced from 0.3
+            if (Math.random() < 0.1) {
+                // Reduced from 0.3
                 this.addParticle(this.player.x + 0.5, this.player.y + 0.9);
             }
         }
@@ -491,12 +603,21 @@ class Renderer {
             this.ctx.scale(-1, 1);
             this.ctx.drawImage(this.sprite, 0, 0, TILE_SIZE, TILE_SIZE);
         } else {
-            this.ctx.drawImage(this.sprite, px, py - 10 + bounceY, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(
+                this.sprite,
+                px,
+                py - 10 + bounceY,
+                TILE_SIZE,
+                TILE_SIZE
+            );
         }
         this.ctx.restore();
 
         // Tall Grass Overlay (Occlusion)
-        let currentTile = this.world.getTile(Math.round(this.player.x), Math.round(this.player.y));
+        let currentTile = this.world.getTile(
+            Math.round(this.player.x),
+            Math.round(this.player.y)
+        );
         if (currentTile === 'grass_tall') {
             this.ctx.fillStyle = 'rgba(39, 174, 96, 0.8)'; // Semi-transparent grass color
             this.ctx.fillRect(px, py + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);

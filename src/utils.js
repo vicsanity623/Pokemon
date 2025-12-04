@@ -2,8 +2,8 @@
 class InputHandler {
     constructor() {
         this.keys = {};
-        window.addEventListener('keydown', e => this.keys[e.key] = true);
-        window.addEventListener('keyup', e => this.keys[e.key] = false);
+        window.addEventListener('keydown', (e) => (this.keys[e.key] = true));
+        window.addEventListener('keyup', (e) => (this.keys[e.key] = false));
 
         // Joystick State
         this.pointerId = null;
@@ -23,20 +23,23 @@ class InputHandler {
         document.body.appendChild(this.baseEl);
 
         // Pointer Events (Unified Mouse/Touch)
-        window.addEventListener('pointerdown', e => this.handleStart(e));
-        window.addEventListener('pointermove', e => this.handleMove(e));
-        window.addEventListener('pointerup', e => this.handleEnd(e));
-        window.addEventListener('pointercancel', e => this.handleEnd(e));
+        window.addEventListener('pointerdown', (e) => this.handleStart(e));
+        window.addEventListener('pointermove', (e) => this.handleMove(e));
+        window.addEventListener('pointerup', (e) => this.handleEnd(e));
+        window.addEventListener('pointercancel', (e) => this.handleEnd(e));
     }
 
     handleStart(e) {
         // Ignore if touching buttons or UI
-        if (e.target.closest('.action-btn') ||
+        if (
+            e.target.closest('.action-btn') ||
             e.target.closest('#battle-ui') ||
             e.target.closest('.battle-sub-menu') ||
             e.target.closest('.bag-tabs') ||
             e.target.closest('.menu-item') ||
-            e.target.closest('button')) return;
+            e.target.closest('button')
+        )
+            return;
 
         // Ignore if Bag menu is open
         const bagMenu = document.getElementById('player-bag-menu');
@@ -124,9 +127,15 @@ class InputHandler {
         }
     }
 
-    press(key) { this.keys[key] = true; }
-    release(key) { this.keys[key] = false; }
-    isDown(key) { return this.keys[key]; }
+    press(key) {
+        this.keys[key] = true;
+    }
+    release(key) {
+        this.keys[key] = false;
+    }
+    isDown(key) {
+        return this.keys[key];
+    }
 }
 const input = new InputHandler();
 
@@ -166,10 +175,37 @@ class SeededRandom {
 
 // Ascension Logic
 function formatLevel(level) {
-    if (level <= 100) return "Lv." + level;
-    let tiers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+    if (level <= 100) return 'Lv.' + level;
+    let tiers = [
+        'A',
+        'B',
+        'C',
+        'D',
+        'E',
+        'F',
+        'G',
+        'H',
+        'I',
+        'J',
+        'K',
+        'L',
+        'M',
+        'N',
+        'O',
+        'P',
+        'Q',
+        'R',
+        'S',
+        'T',
+        'U',
+        'V',
+        'W',
+        'X',
+        'Y',
+        'Z'
+    ];
     let tierIndex = Math.floor((level - 1) / 100) - 1;
-    let subLevel = (level - 1) % 100 + 1;
+    let subLevel = ((level - 1) % 100) + 1;
 
     // Recursive logic for AA, AB etc is complex for 6 files, simplified to Single Letter + Loops
     if (tierIndex < tiers.length) return tiers[tierIndex] + subLevel;
@@ -191,7 +227,7 @@ class GameClock {
 
     update(player) {
         let now = Date.now();
-        let diff = (now - this.startTime) + this.elapsedTime;
+        let diff = now - this.startTime + this.elapsedTime;
         // 1 Game Day = 1 Real Minute for playability
         const DAY_LENGTH = 3600000;
 

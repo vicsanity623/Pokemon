@@ -16,11 +16,11 @@ let musicVolume = 0.5; // 50% default volume
 // Generate random stats for Pokemon (12-100 range)
 function generatePokemonStats() {
     return {
-        strength: Math.floor(Math.random() * 89) + 12,  // 12-100
-        defense: Math.floor(Math.random() * 89) + 12,   // 12-100
-        speed: Math.floor(Math.random() * 89) + 12,     // 12-100
-        hp: Math.floor(Math.random() * 89) + 12,        // 12-100
-        special: Math.floor(Math.random() * 89) + 12    // 12-100
+        strength: Math.floor(Math.random() * 89) + 12, // 12-100
+        defense: Math.floor(Math.random() * 89) + 12, // 12-100
+        speed: Math.floor(Math.random() * 89) + 12, // 12-100
+        hp: Math.floor(Math.random() * 89) + 12, // 12-100
+        special: Math.floor(Math.random() * 89) + 12 // 12-100
     };
 }
 
@@ -54,20 +54,28 @@ function findSafeSpawn() {
 findSafeSpawn();
 
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') input.press('up');
-    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') input.press('down');
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') input.press('left');
-    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.press('right');
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')
+        input.press('up');
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S')
+        input.press('down');
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
+        input.press('left');
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
+        input.press('right');
     if (e.key === 'z' || e.key === 'Z') input.press('a');
     if (e.key === 'x' || e.key === 'X') input.press('b');
     if (e.key === 'Enter') input.press('start');
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') input.release('up');
-    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') input.release('down');
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') input.release('left');
-    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.release('right');
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')
+        input.release('up');
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S')
+        input.release('down');
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
+        input.release('left');
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
+        input.release('right');
     if (e.key === 'z' || e.key === 'Z') input.release('a');
     if (e.key === 'x' || e.key === 'X') input.release('b');
     if (e.key === 'Enter') input.release('start');
@@ -75,11 +83,11 @@ window.addEventListener('keyup', (e) => {
 
 // Intro Story
 const introText = [
-    "Year 20XX...",
-    "The world has fallen.",
-    "You wake up alone.",
-    "Take your Pokeballs.",
-    "Survive."
+    'Year 20XX...',
+    'The world has fallen.',
+    'You wake up alone.',
+    'Take your Pokeballs.',
+    'Survive.'
 ];
 let introIndex = 0;
 
@@ -90,7 +98,7 @@ function runIntro() {
         setTimeout(runIntro, 2500);
     } else {
         hideDialog();
-        showDialog("Use D-Pad to move. Tap A to interact.", 3000);
+        showDialog('Use D-Pad to move. Tap A to interact.', 3000);
         questSystem.generate();
     }
 }
@@ -114,7 +122,10 @@ function gameLoop(timestamp) {
         let dy = 0;
 
         // Analog Input Priority
-        if (input.active && (input.joystickVector.x !== 0 || input.joystickVector.y !== 0)) {
+        if (
+            input.active &&
+            (input.joystickVector.x !== 0 || input.joystickVector.y !== 0)
+        ) {
             dx = input.joystickVector.x;
             dy = input.joystickVector.y;
         } else {
@@ -148,7 +159,10 @@ function gameLoop(timestamp) {
 
             // Collision Check (Center point)
             // We check the tile we are moving INTO
-            let targetTile = world.getTile(Math.round(nextX), Math.round(nextY));
+            let targetTile = world.getTile(
+                Math.round(nextX),
+                Math.round(nextY)
+            );
 
             if (targetTile !== 'water') {
                 player.x = nextX;
@@ -157,14 +171,24 @@ function gameLoop(timestamp) {
                 player.moving = true;
 
                 // Item Pickup
-                let item = world.getItem(Math.round(player.x), Math.round(player.y));
+                let item = world.getItem(
+                    Math.round(player.x),
+                    Math.round(player.y)
+                );
                 if (item) {
-                    world.removeItem(Math.round(player.x), Math.round(player.y));
+                    world.removeItem(
+                        Math.round(player.x),
+                        Math.round(player.y)
+                    );
                     playSFX('sfx-pickup'); // Play pickup sound
                     if (item === 'Herb') {
-                        if (player.inventory['Herb']) player.inventory['Herb']++;
+                        if (player.inventory['Herb'])
+                            player.inventory['Herb']++;
                         else player.inventory['Herb'] = 1;
-                        showDialog(`Gathered a Herb! (Total: ${player.inventory['Herb']})`, 2000);
+                        showDialog(
+                            `Gathered a Herb! (Total: ${player.inventory['Herb']})`,
+                            2000
+                        );
                     } else {
                         if (player.bag[item]) player.bag[item]++;
                         else player.bag[item] = 1;
@@ -180,11 +204,15 @@ function gameLoop(timestamp) {
                 }
 
                 // Quest Update (throttled)
-                if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
+                if (Math.floor(player.steps) % 10 === 0)
+                    questSystem.update('walk');
 
                 // Encounter Check (Randomly based on distance moved)
                 // Chance per tile moved approx - increased for more encounters
-                if (targetTile === 'grass_tall' && Math.random() < 0.08 * moveSpeed) {
+                if (
+                    targetTile === 'grass_tall' &&
+                    Math.random() < 0.08 * moveSpeed
+                ) {
                     battleSystem.startBattle();
                 }
             }
@@ -198,8 +226,10 @@ function gameLoop(timestamp) {
         updateHUD();
 
         // Check NPC proximity
-        let nearbyNPC = world.npcs.find(npc => {
-            let dist = Math.sqrt(Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2));
+        let nearbyNPC = world.npcs.find((npc) => {
+            let dist = Math.sqrt(
+                Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2)
+            );
             return dist < 1;
         });
 
@@ -210,8 +240,11 @@ function gameLoop(timestamp) {
         }
 
         // Check Poke Center proximity
-        let nearbyPokeCenter = world.buildings.find(building => {
-            let dist = Math.sqrt(Math.pow(building.x - player.x, 2) + Math.pow(building.y - player.y, 2));
+        let nearbyPokeCenter = world.buildings.find((building) => {
+            let dist = Math.sqrt(
+                Math.pow(building.x - player.x, 2) +
+                    Math.pow(building.y - player.y, 2)
+            );
             return dist < 1.5 && building.type === 'pokecenter';
         });
 
@@ -223,7 +256,10 @@ function gameLoop(timestamp) {
         }
 
         // Poke Center Spawning (every 300 steps)
-        if (Math.floor(player.steps) % 300 === 0 && player.steps > player.lastPokeCenterStep + 250) {
+        if (
+            Math.floor(player.steps) % 300 === 0 &&
+            player.steps > player.lastPokeCenterStep + 250
+        ) {
             let centerX = Math.round(player.x + (Math.random() * 40 - 20));
             let centerY = Math.round(player.y + (Math.random() * 40 - 20));
             world.spawnPokeCenter(centerX, centerY);
@@ -232,7 +268,7 @@ function gameLoop(timestamp) {
         }
 
         // Egg Hatching Logic
-        player.team.forEach(p => {
+        player.team.forEach((p) => {
             if (p.isEgg) {
                 p.eggSteps--;
                 if (p.eggSteps <= 0) {
@@ -260,10 +296,14 @@ function gameLoop(timestamp) {
 // Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
-    if (key === 'Enter') { // 'A' button mapped to Enter
+    if (key === 'Enter') {
+        // 'A' button mapped to Enter
         // Check for nearby Poke Center first
-        let nearbyPokeCenter = world.buildings.find(building => {
-            let dist = Math.sqrt(Math.pow(building.x - player.x, 2) + Math.pow(building.y - player.y, 2));
+        let nearbyPokeCenter = world.buildings.find((building) => {
+            let dist = Math.sqrt(
+                Math.pow(building.x - player.x, 2) +
+                    Math.pow(building.y - player.y, 2)
+            );
             return dist < 1.5 && building.type === 'pokecenter';
         });
 
@@ -273,7 +313,11 @@ input.press = (key) => {
         }
 
         // Check for nearby NPC
-        let nearbyNPC = world.npcs.find(npc => Math.abs(npc.x - player.x) < 1.5 && Math.abs(npc.y - player.y) < 1.5);
+        let nearbyNPC = world.npcs.find(
+            (npc) =>
+                Math.abs(npc.x - player.x) < 1.5 &&
+                Math.abs(npc.y - player.y) < 1.5
+        );
         if (nearbyNPC) {
             handleNPCInteraction(nearbyNPC);
         }
@@ -307,8 +351,12 @@ function closePlayerBag() {
 
 function showBagTab(tab) {
     // Update tab buttons
-    document.getElementById('tab-pokemon').classList.toggle('active', tab === 'pokemon');
-    document.getElementById('tab-items').classList.toggle('active', tab === 'items');
+    document
+        .getElementById('tab-pokemon')
+        .classList.toggle('active', tab === 'pokemon');
+    document
+        .getElementById('tab-items')
+        .classList.toggle('active', tab === 'items');
 
     const content = document.getElementById('bag-content');
     content.innerHTML = '';
@@ -316,7 +364,8 @@ function showBagTab(tab) {
     if (tab === 'pokemon') {
         // Show Pokemon Team
         if (player.team.length === 0) {
-            content.innerHTML = '<p style="text-align:center; color: #999;">No Pokemon</p>';
+            content.innerHTML =
+                '<p style="text-align:center; color: #999;">No Pokemon</p>';
             return;
         }
 
@@ -326,24 +375,43 @@ function showBagTab(tab) {
             div.style.cursor = 'pointer';
 
             let isFainted = p.hp <= 0 || (p.hp === undefined && !p.isEgg);
-            let status = p.isEgg ? 'EGG' : isFainted ? 'FAINTED' : `HP: ${p.hp}/${p.maxHp}`;
+            let status = p.isEgg
+                ? 'EGG'
+                : isFainted
+                  ? 'FAINTED'
+                  : `HP: ${p.hp}/${p.maxHp}`;
 
             // Get stats safely
-            const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
-            const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
+            const stats = p.stats || {
+                strength: 0,
+                defense: 0,
+                speed: 0,
+                hp: 0,
+                special: 0
+            };
+            const scoreRating =
+                stats.strength +
+                stats.defense +
+                stats.speed +
+                stats.hp +
+                stats.special;
 
             div.innerHTML = `
                 <div class="pokemon-info">
                     <div><strong>${p.name}</strong> Lv.${p.level}</div>
                     <div style="font-size: 10px; color: ${isFainted ? '#e74c3c' : '#2ecc71'};">${status}</div>
-                    ${!p.isEgg ? `
+                    ${
+                        !p.isEgg
+                            ? `
                         <div style="font-size: 9px; color: #aaa; margin-top: 3px;">
                             STR:${stats.strength} DEF:${stats.defense} SPD:${stats.speed} SPC:${stats.special}
                         </div>
                         <div style="font-size: 11px; color: #2ecc71; margin-top: 2px; font-weight: bold;">
                             SR: ${scoreRating}
                         </div>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                 </div>
                 <div class="pokemon-actions">
                     ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
@@ -375,7 +443,8 @@ function showBagTab(tab) {
         }
 
         if (!hasItems) {
-            content.innerHTML = '<p style="text-align:center; color: #999;">No Items</p>';
+            content.innerHTML =
+                '<p style="text-align:center; color: #999;">No Items</p>';
         }
     }
 }
@@ -392,25 +461,38 @@ async function showPokemonStats(pokemon) {
     const modal = document.getElementById('pokemon-stats-modal');
     const display = document.getElementById('pokemon-stats-display');
 
-    const stats = pokemon.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+    const stats = pokemon.stats || {
+        strength: 0,
+        defense: 0,
+        speed: 0,
+        hp: 0,
+        special: 0
+    };
 
     // Get animated sprite if possible
-    let sprite = pokemon.animatedSprite || pokemon.sprite || pokemon.backSprite || '';
+    let sprite =
+        pokemon.animatedSprite || pokemon.sprite || pokemon.backSprite || '';
 
     // If no animated sprite, try to fetch it
     if (!pokemon.animatedSprite && pokemon.id) {
         try {
-            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+            const res = await fetch(
+                `https://pokeapi.co/api/v2/pokemon/${pokemon.id}`
+            );
             const data = await res.json();
-            sprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || data.sprites.front_default;
+            sprite =
+                data.sprites.versions['generation-v']['black-white'][
+                    'animated'
+                ]['front_default'] || data.sprites.front_default;
         } catch (e) {
-            console.log("Could not fetch animated sprite");
+            console.log('Could not fetch animated sprite');
         }
     }
 
     const isFainted = pokemon.hp <= 0;
     const hpPercent = (pokemon.hp / pokemon.maxHp) * 100;
-    const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
+    const scoreRating =
+        stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
     display.innerHTML = `
         <div style="text-align: center; padding: 20px;">
@@ -453,11 +535,15 @@ async function showPokemonStats(pokemon) {
                     </div>
                 </div>
                 
-                ${pokemon.exp !== undefined ? `
+                ${
+                    pokemon.exp !== undefined
+                        ? `
                     <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
                         EXP: ${pokemon.exp} / ${pokemon.level * 100}
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         </div>
     `;
@@ -517,25 +603,28 @@ function handleNPCInteraction(npc) {
         showDialog(`${npc.name}: "${npc.dialog}"`, 3000);
     } else if (npc.type === 'quest') {
         if (npc.questCompleted) {
-            showDialog("Herbalist: Thanks again for the herbs!", 3000);
+            showDialog('Herbalist: Thanks again for the herbs!', 3000);
         } else if (npc.questGiven && player.inventory['Herb'] >= 10) {
             player.inventory['Herb'] -= 10;
             player.money += 500;
             player.team[0].exp += 200;
             npc.questCompleted = true;
             npc.color = '#2ecc71'; // Green when complete
-            showDialog("Herbalist: Perfect! Here is $500 and XP. Quest complete!", 3000);
+            showDialog(
+                'Herbalist: Perfect! Here is $500 and XP. Quest complete!',
+                3000
+            );
         } else if (npc.questGiven) {
             let remaining = 10 - (player.inventory['Herb'] || 0);
             showDialog(`Herbalist: Still need ${remaining} more Herbs!`, 3000);
         } else {
             npc.questGiven = true;
             npc.color = '#e74c3c'; // Red when quest active
-            showDialog("Herbalist: Bring me 10 Herbs for $500 and XP!", 3000);
+            showDialog('Herbalist: Bring me 10 Herbs for $500 and XP!', 3000);
         }
     } else if (npc.type === 'daycare') {
         if (player.team.length < 2) {
-            showDialog("Daycare: Come back with at least 2 Pokemon.", 3000);
+            showDialog('Daycare: Come back with at least 2 Pokemon.', 3000);
             return;
         }
 
@@ -543,15 +632,18 @@ function handleNPCInteraction(npc) {
         let p2 = player.team[1];
 
         if (p1.isEgg || p2.isEgg) {
-            showDialog("Daycare: Eggs cannot breed!", 3000);
+            showDialog('Daycare: Eggs cannot breed!', 3000);
             return;
         }
 
         if (p1.type === p2.type) {
             if (player.team.length >= 6) {
-                showDialog("Daycare: Your party is full.", 3000);
+                showDialog('Daycare: Your party is full.', 3000);
             } else {
-                showDialog("Daycare: They get along great! Here is an Egg!", 3000);
+                showDialog(
+                    'Daycare: They get along great! Here is an Egg!',
+                    3000
+                );
 
                 // STAT INHERITANCE LOGIC
                 // Ensure parents have stats
@@ -574,7 +666,8 @@ function handleNPCInteraction(npc) {
                     hp: 15,
                     exp: 0,
                     type: p1.type,
-                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png',
+                    backSprite:
+                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png',
                     isEgg: true,
                     eggSteps: 500,
                     stats: inheritedStats // Attach the inherited stats NOW
@@ -603,28 +696,43 @@ window.onload = async () => {
             hp: starterMaxHp,
             exp: 0,
             type: 'electric',
-            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            backSprite:
+                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
             stats: starterStats
         });
         runIntro();
     } else {
-        showDialog("Welcome back!", 2000);
+        showDialog('Welcome back!', 2000);
     }
 
     requestAnimationFrame(gameLoop);
 
     // Initialize Music
+    // Initialize Music
+    const mainMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('main-music')
+    );
+    const battleMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('battle-music')
+    );
+
     if (mainMusic && battleMusic) {
         mainMusic.volume = musicVolume;
         battleMusic.volume = musicVolume;
 
         // Start main music (with autoplay handling)
-        mainMusic.play().catch(err => {
-            console.log("Autoplay blocked. Music will start on first user interaction.");
+        mainMusic.play().catch((err) => {
+            console.log(
+                'Autoplay blocked. Music will start on first user interaction.'
+            );
             // Add one-time click listener to start music
-            document.addEventListener('click', () => {
-                if (mainMusic.paused) mainMusic.play();
-            }, { once: true });
+            document.addEventListener(
+                'click',
+                () => {
+                    if (mainMusic.paused) mainMusic.play();
+                },
+                { once: true }
+            );
         });
     }
 
@@ -633,9 +741,10 @@ window.onload = async () => {
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker
+            .register('./sw.js')
             .then(() => console.log('Service Worker Registered'))
-            .catch(err => console.error('SW Registration Failed', err));
+            .catch((err) => console.error('SW Registration Failed', err));
     }
 };
 
@@ -658,7 +767,7 @@ function saveGame() {
         world: {
             seed: world.rng.seed,
             items: world.items,
-            npcs: world.npcs.map(npc => ({
+            npcs: world.npcs.map((npc) => ({
                 x: npc.x,
                 y: npc.y,
                 name: npc.name,
@@ -672,7 +781,7 @@ function saveGame() {
         quest: questSystem.activeQuest
     };
     localStorage.setItem('poke_save', JSON.stringify(data));
-    console.log("Game Saved");
+    console.log('Game Saved');
 }
 
 function loadGame() {
@@ -691,12 +800,16 @@ function loadGame() {
         player.bag = data.player.bag;
 
         // Restore Storage & Pokedex (with fallback for legacy saves)
-        player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
+        player.storage =
+            data.player.storage ||
+            Array(100)
+                .fill()
+                .map(() => Array(25).fill(null));
         player.seen = data.player.seen || [];
         player.seenShiny = data.player.seenShiny || [];
 
         // Add stats to Pokemon that don't have them (backward compatibility)
-        player.team.forEach(p => {
+        player.team.forEach((p) => {
             if (!p.stats) {
                 p.stats = generatePokemonStats();
                 // Recalculate maxHp based on stats
@@ -705,7 +818,10 @@ function loadGame() {
             }
         });
 
-        document.getElementById('meta-level').innerText = player.pLevel;
+        const metaLevel = /** @type {HTMLElement} */ (
+            document.getElementById('meta-level')
+        );
+        metaLevel.innerText = player.pLevel.toString();
 
         // Restore World
         if (data.world.seed) {
@@ -715,8 +831,15 @@ function loadGame() {
 
         // Restore NPCs (with fallback for old saves)
         if (data.world.npcs && data.world.npcs.length > 0) {
-            world.npcs = data.world.npcs.map(npcData =>
-                new NPC(npcData.x, npcData.y, npcData.name, npcData.type, npcData.dialog)
+            world.npcs = data.world.npcs.map(
+                (npcData) =>
+                    new NPC(
+                        npcData.x,
+                        npcData.y,
+                        npcData.name,
+                        npcData.type,
+                        npcData.dialog
+                    )
             );
         }
         // If no NPCs in save, they're already initialized in world constructor
@@ -750,16 +873,19 @@ function loadGame() {
         world.validatePositions();
 
         // Validate Player Position
-        if (world.getTile(Math.round(player.x), Math.round(player.y)) === 'water') {
+        if (
+            world.getTile(Math.round(player.x), Math.round(player.y)) ===
+            'water'
+        ) {
             let safe = world.findSafeNear(player.x, player.y);
             player.x = safe.x;
             player.y = safe.y;
-            console.log("Player moved to safe ground:", player.x, player.y);
+            console.log('Player moved to safe ground:', player.x, player.y);
         }
 
         return true;
     } catch (e) {
-        console.error("Save file corrupted", e);
+        console.error('Save file corrupted', e);
         return false;
     }
 }
@@ -782,7 +908,8 @@ function updateHUD() {
     let maxExp = p.level * 100;
     let pct = (p.exp / maxExp) * 100;
 
-    document.getElementById('hud-xp-text').innerText = `XP: ${p.exp} / ${maxExp}`;
+    document.getElementById('hud-xp-text').innerText =
+        `XP: ${p.exp} / ${maxExp}`;
     document.getElementById('hud-xp-fill').style.width = `${pct}%`;
 }
 
@@ -820,24 +947,47 @@ function setGameSpeed(speed) {
 
 function setVolume(val) {
     musicVolume = val / 100; // Convert 0-100 to 0-1
+
+    const mainMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('main-music')
+    );
+    const battleMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('battle-music')
+    );
+
     if (mainMusic) mainMusic.volume = musicVolume;
     if (battleMusic) battleMusic.volume = musicVolume;
 
     // Set SFX volume
-    const sfxElements = ['sfx-pickup', 'sfx-attack1', 'sfx-attack2', 'sfx-attack3'];
-    sfxElements.forEach(id => {
-        const sfx = document.getElementById(id);
+    const sfxElements = [
+        'sfx-pickup',
+        'sfx-attack1',
+        'sfx-attack2',
+        'sfx-attack3'
+    ];
+    sfxElements.forEach((id) => {
+        const sfx = /** @type {HTMLAudioElement} */ (
+            document.getElementById(id)
+        );
         if (sfx) sfx.volume = musicVolume;
     });
 }
 
 // Helper function to play sound effects
 function playSFX(sfxId) {
-    const sfx = document.getElementById(sfxId);
+    const sfx = /** @type {HTMLAudioElement} */ (
+        document.getElementById(sfxId)
+    );
     if (sfx) {
+        sfx.volume = musicVolume;
+        // Clone node to allow overlapping sounds
+        // const clone = sfx.cloneNode();
+        // clone.play();
+
+        // Simple single channel for now
         sfx.pause(); // Pause if already playing
         sfx.currentTime = 0; // Reset to start
-        sfx.play().catch(err => console.log(`SFX ${sfxId} play failed`));
+        sfx.play().catch((err) => console.log(`SFX ${sfxId} play failed`));
     }
 }
 
@@ -855,8 +1005,12 @@ function showPokedexTab(tab) {
     currentPokedexTab = tab;
 
     // Update tab buttons
-    document.getElementById('pokedex-tab-normal').classList.toggle('active', tab === 'normal');
-    document.getElementById('pokedex-tab-shiny').classList.toggle('active', tab === 'shiny');
+    document
+        .getElementById('pokedex-tab-normal')
+        .classList.toggle('active', tab === 'normal');
+    document
+        .getElementById('pokedex-tab-shiny')
+        .classList.toggle('active', tab === 'shiny');
 
     const grid = document.getElementById('pokedex-grid');
     grid.innerHTML = '';
@@ -871,9 +1025,10 @@ function showPokedexTab(tab) {
 
         if (seenList.includes(i)) {
             // Choose sprite based on tab
-            let spriteUrl = tab === 'shiny'
-                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
-                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+            let spriteUrl =
+                tab === 'shiny'
+                    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
+                    : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
 
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
@@ -885,19 +1040,23 @@ function showPokedexTab(tab) {
 
             // Fetch name async and make clickable
             fetch(`https://pokeapi.co/api/v2/pokemon/${i}`)
-                .then(res => res.json())
-                .then(data => {
+                .then((res) => res.json())
+                .then((data) => {
                     const pokemonName = data.name.toUpperCase();
-                    div.querySelector('.dex-name').innerText = pokemonName;
+                    const dexName = /** @type {HTMLElement} */ (
+                        div.querySelector('.dex-name')
+                    );
+                    dexName.innerText = pokemonName;
 
                     // Add click handler to show owned Pokemon of this species
                     div.onclick = () => showOwnedPokemon(pokemonName, i);
                 });
         } else {
             div.className += ' unknown';
-            let spriteUrl = tab === 'shiny'
-                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
-                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+            let spriteUrl =
+                tab === 'shiny'
+                    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
+                    : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
 
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
@@ -909,7 +1068,8 @@ function showPokedexTab(tab) {
     }
 
     let tabLabel = tab === 'shiny' ? 'Shiny Seen' : 'Seen';
-    document.getElementById('pokedex-count').innerText = `${tabLabel}: ${seenCount}/151`;
+    document.getElementById('pokedex-count').innerText =
+        `${tabLabel}: ${seenCount}/151`;
 }
 
 // Show all owned Pokemon of a specific species
@@ -927,7 +1087,10 @@ function showOwnedPokemon(pokemonName, pokemonId) {
     // Check team
     player.team.forEach((p, index) => {
         if (p.name === pokemonName) {
-            ownedPokemon.push({ pokemon: p, location: `Team Slot ${index + 1}` });
+            ownedPokemon.push({
+                pokemon: p,
+                location: `Team Slot ${index + 1}`
+            });
         }
     });
 
@@ -935,13 +1098,17 @@ function showOwnedPokemon(pokemonName, pokemonId) {
     player.storage.forEach((box, boxIndex) => {
         box.forEach((p, slotIndex) => {
             if (p && p.name === pokemonName) {
-                ownedPokemon.push({ pokemon: p, location: `Box ${boxIndex + 1}, Slot ${slotIndex + 1}` });
+                ownedPokemon.push({
+                    pokemon: p,
+                    location: `Box ${boxIndex + 1}, Slot ${slotIndex + 1}`
+                });
             }
         });
     });
 
     if (ownedPokemon.length === 0) {
-        content.innerHTML = '<p style="text-align:center; color: #999; padding: 20px;">You don\'t own any of these Pokemon yet!</p>';
+        content.innerHTML =
+            '<p style="text-align:center; color: #999; padding: 20px;">You don\'t own any of these Pokemon yet!</p>';
     } else {
         ownedPokemon.forEach(({ pokemon, location }) => {
             const div = document.createElement('div');
@@ -950,8 +1117,19 @@ function showOwnedPokemon(pokemonName, pokemonId) {
             div.style.padding = '15px';
             div.style.marginBottom = '10px';
 
-            const stats = pokemon.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
-            const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
+            const stats = pokemon.stats || {
+                strength: 0,
+                defense: 0,
+                speed: 0,
+                hp: 0,
+                special: 0
+            };
+            const scoreRating =
+                stats.strength +
+                stats.defense +
+                stats.speed +
+                stats.hp +
+                stats.special;
             const isFainted = pokemon.hp <= 0;
 
             div.innerHTML = `
@@ -1015,7 +1193,11 @@ function renderPC() {
             selectedSlot = { type: 'party', index: index };
             renderPC();
         };
-        if (selectedSlot && selectedSlot.type === 'party' && selectedSlot.index === index) {
+        if (
+            selectedSlot &&
+            selectedSlot.type === 'party' &&
+            selectedSlot.index === index
+        ) {
             div.classList.add('selected');
         }
         partyList.appendChild(div);
@@ -1040,7 +1222,11 @@ function renderPC() {
             }
         };
 
-        if (selectedSlot && selectedSlot.type === 'box' && selectedSlot.index === index) {
+        if (
+            selectedSlot &&
+            selectedSlot.type === 'box' &&
+            selectedSlot.index === index
+        ) {
             div.classList.add('selected');
         }
         boxGrid.appendChild(div);
@@ -1051,10 +1237,10 @@ function renderPC() {
         const el = document.getElementById(`ms-${i}`);
         if (slot) {
             el.innerHTML = `<img src="${slot.data.backSprite}"> ${slot.data.name}`;
-            el.style.color = "white";
+            el.style.color = 'white';
         } else {
             el.innerHTML = `${i + 1}. Empty`;
-            el.style.color = "#888";
+            el.style.color = '#888';
         }
     });
 
@@ -1095,7 +1281,8 @@ function addToMerge() {
     if (!selectedSlot) return;
 
     let pokemon;
-    if (selectedSlot.type === 'party') pokemon = player.team[selectedSlot.index];
+    if (selectedSlot.type === 'party')
+        pokemon = player.team[selectedSlot.index];
     else pokemon = player.storage[currentBox][selectedSlot.index];
 
     // Attempt add
@@ -1127,7 +1314,7 @@ function addToParty() {
     if (!selectedSlot || selectedSlot.type !== 'box') return;
 
     if (player.team.length >= 6) {
-        showDialog("Party is full! (Max 6 Pokemon)", 2000);
+        showDialog('Party is full! (Max 6 Pokemon)', 2000);
         return;
     }
 
@@ -1145,7 +1332,7 @@ function moveToPC() {
     if (!selectedSlot || selectedSlot.type !== 'party') return;
 
     if (player.team.length <= 1) {
-        showDialog("You must have at least 1 Pokemon in your party!", 2000);
+        showDialog('You must have at least 1 Pokemon in your party!', 2000);
         return;
     }
 

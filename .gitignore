@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Cache and temp files
+.cache/
+*.tmp
+.temp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local save data (if you want to keep saves private)
+# localStorage data is in the browser, but if you add file-based saves:
+# saves/
+# *.save
+
+# Secrets and credentials
+*.key
+*.pem
+secrets.json
+
+# Artifacts directory (if you don't want to commit it)
+.gemini/

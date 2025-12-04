@@ -42,11 +42,12 @@ class AssetLoader {
         this.loadingScreen.style.justifyContent = 'center';
         this.loadingScreen.style.alignItems = 'center';
         this.loadingScreen.style.color = '#fff';
-        this.loadingScreen.style.fontFamily = "'Courier New', Courier, monospace";
+        this.loadingScreen.style.fontFamily =
+            "'Courier New', Courier, monospace";
 
         // Title
         const title = document.createElement('h1');
-        title.innerText = "POKEMON";
+        title.innerText = 'POKEMON';
         title.style.marginBottom = '20px';
         title.style.textShadow = '2px 2px #333';
         this.loadingScreen.appendChild(title);
@@ -71,7 +72,7 @@ class AssetLoader {
 
         // Text
         this.progressText = document.createElement('div');
-        this.progressText.innerText = "Loading assets... 0%";
+        this.progressText.innerText = 'Loading assets... 0%';
         this.loadingScreen.appendChild(this.progressText);
 
         document.body.appendChild(this.loadingScreen);
@@ -81,7 +82,8 @@ class AssetLoader {
         this.loadedCount++;
         const pct = Math.floor((this.loadedCount / this.totalAssets) * 100);
         if (this.progressBar) this.progressBar.style.width = `${pct}%`;
-        if (this.progressText) this.progressText.innerText = `Loading assets... ${pct}%`;
+        if (this.progressText)
+            this.progressText.innerText = `Loading assets... ${pct}%`;
     }
 
     async loadAll() {
@@ -93,46 +95,50 @@ class AssetLoader {
         const promises = [];
 
         // Load Audio
-        this.assets.audio.forEach(src => {
-            promises.push(new Promise((resolve) => {
-                const audio = new Audio();
-                audio.oncanplaythrough = () => {
-                    this.updateProgress();
-                    resolve();
-                };
-                audio.onerror = () => {
-                    console.warn(`Failed to load audio: ${src}`);
-                    this.updateProgress(); // Count it anyway to avoid hanging
-                    resolve();
-                };
-                audio.src = src;
-                audio.load();
-                this.cache.audio[src] = audio;
-            }));
+        this.assets.audio.forEach((src) => {
+            promises.push(
+                new Promise((resolve) => {
+                    const audio = new Audio();
+                    audio.oncanplaythrough = () => {
+                        this.updateProgress();
+                        resolve();
+                    };
+                    audio.onerror = () => {
+                        console.warn(`Failed to load audio: ${src}`);
+                        this.updateProgress(); // Count it anyway to avoid hanging
+                        resolve();
+                    };
+                    audio.src = src;
+                    audio.load();
+                    this.cache.audio[src] = audio;
+                })
+            );
         });
 
         // Load Images
-        this.assets.images.forEach(src => {
-            promises.push(new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    this.updateProgress();
-                    resolve();
-                };
-                img.onerror = () => {
-                    console.warn(`Failed to load image: ${src}`);
-                    this.updateProgress();
-                    resolve();
-                };
-                img.src = src;
-                this.cache.images[src] = img;
-            }));
+        this.assets.images.forEach((src) => {
+            promises.push(
+                new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.updateProgress();
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.warn(`Failed to load image: ${src}`);
+                        this.updateProgress();
+                        resolve();
+                    };
+                    img.src = src;
+                    this.cache.images[src] = img;
+                })
+            );
         });
 
         await Promise.all(promises);
 
         // Small delay for UX
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 500));
 
         this.hide();
     }
@@ -143,17 +149,19 @@ class AssetLoader {
             if (raw) {
                 const data = JSON.parse(raw);
                 if (data.player && data.player.team) {
-                    data.player.team.forEach(p => {
+                    data.player.team.forEach((p) => {
                         if (p.sprite) this.assets.images.push(p.sprite);
                         if (p.backSprite) this.assets.images.push(p.backSprite);
-                        if (p.animatedSprite) this.assets.images.push(p.animatedSprite);
+                        if (p.animatedSprite)
+                            this.assets.images.push(p.animatedSprite);
                     });
                     // Update total count
-                    this.totalAssets = this.assets.audio.length + this.assets.images.length;
+                    this.totalAssets =
+                        this.assets.audio.length + this.assets.images.length;
                 }
             }
         } catch (e) {
-            console.error("Error reading save for sprites", e);
+            console.error('Error reading save for sprites', e);
         }
     }
 
