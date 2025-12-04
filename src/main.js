@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.0';
+const VERSION = 'v4.1';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -632,6 +632,7 @@ function handleNPCInteraction(npc) {
             showDialog('Herbalist: Bring me 10 Herbs for $500 and XP!', 3000);
         }
     } else if (npc.type === 'daycare') {
+        // 1. Check Party Size
         if (player.team.length < 2) {
             showDialog("Daycare: Come back with at least 2 Pokemon.", 3000);
             return;
@@ -640,31 +641,36 @@ function handleNPCInteraction(npc) {
         let p1 = player.team[0];
         let p2 = player.team[1];
 
+        // 2. Check if Eggs
         if (p1.isEgg || p2.isEgg) {
             showDialog("Daycare: Eggs cannot breed!", 3000);
             return;
         }
 
-        // --- NEW COOLDOWN LOGIC ---
-        // Check if either Pokemon has bred recently (within 30 days)
-        let currentDay = clock.gameDays;
+        // 3. SAFETY CHECK: Ensure Game Days exists, default to 0 if broken
+        let currentDay = (clock && typeof clock.gameDays === 'number') ? clock.gameDays : 0;
 
-        // Default to -100 so they can breed immediately if never bred before
-        let lastBredP1 = p1.lastBredDay || -100;
-        let lastBredP2 = p2.lastBredDay || -100;
+        // Default to -100 if never bred
+        let lastBredP1 = (typeof p1.lastBredDay === 'number') ? p1.lastBredDay : -100;
+        let lastBredP2 = (typeof p2.lastBredDay === 'number') ? p2.lastBredDay : -100;
 
+        console.log(`Breeding Debug: Day ${currentDay} | P1 Last: ${lastBredP1} | P2 Last: ${lastBredP2}`);
+
+        // 4. COOLDOWN CHECK (30 Days)
         if ((currentDay - lastBredP1 < 30) || (currentDay - lastBredP2 < 30)) {
-            showDialog("Daycare: They are too tired. Come back later.", 3000);
+            let waitTime = 30 - (currentDay - Math.max(lastBredP1, lastBredP2));
+            showDialog(`Daycare: They are tired. Wait ${Math.floor(waitTime)} days.`, 3000);
             return;
         }
 
+        // 5. Type Match Check
         if (p1.type === p2.type) {
             if (player.team.length >= 6) {
                 showDialog("Daycare: Your party is full.", 3000);
             } else {
                 showDialog("Daycare: They get along great! Here is an Egg!", 3000);
 
-                // Mark them as having bred today
+                // MARK THEM AS BRED
                 p1.lastBredDay = currentDay;
                 p2.lastBredDay = currentDay;
 
@@ -680,6 +686,7 @@ function handleNPCInteraction(npc) {
                     special: Math.max(p1.stats.special, p2.stats.special)
                 };
 
+                // ADD EGG
                 player.team.push({
                     name: 'EGG',
                     species: p1.name,
@@ -688,9 +695,9 @@ function handleNPCInteraction(npc) {
                     hp: 15,
                     exp: 0,
                     type: p1.type,
-                    // Use a reliable Egg Sprite
+                    // Specific Egg Sprite
                     backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
-                    // SAVE PARENT SPRITE FOR HATCHING
+                    // Save Parent Sprite for Hatching
                     storedSprite: p1.backSprite,
                     isEgg: true,
                     eggSteps: 500,
@@ -715,8 +722,9 @@ window.onload = async () => {
     if (!loadGame()) {
         // Give starter items if new game
         const starterStats = generatePokemonStats();
-        const starterMaxHp = 5 * 5 + starterStats.hp; // Level 5 base + HP stat
+        const starterMaxHp = 5 * 5 + starterStats.hp;
 
+        // Pikachu 1
         player.team.push({
             name: 'PIKACHU',
             level: 5,
@@ -724,10 +732,24 @@ window.onload = async () => {
             hp: starterMaxHp,
             exp: 0,
             type: 'electric',
-            backSprite:
-                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
             stats: starterStats
         });
+
+        // Pikachu 2 (Different Stats for breeding test)
+        const p2Stats = generatePokemonStats();
+        const p2MaxHp = 5 * 5 + p2Stats.hp;
+        player.team.push({
+            name: 'PIKACHU',
+            level: 5,
+            maxHp: p2MaxHp,
+            hp: p2MaxHp,
+            exp: 0,
+            type: 'electric',
+            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            stats: p2Stats
+        });
+
         runIntro();
     } else {
         showDialog('Welcome back!', 2000);
