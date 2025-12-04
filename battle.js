@@ -322,11 +322,20 @@ class BattleSystem {
 
         // Play attack sound based on move type
         const attackSound = this.getAttackSound(move.name);
-        const sfx = document.getElementById(attackSound);
-        if (sfx) {
-            sfx.pause();
-            sfx.currentTime = 0;
-            sfx.play().catch(err => console.log("Attack SFX failed"));
+
+        // Try to use cache first
+        if (window.assetLoader && assetLoader.cache.audio[attackSound + '.mp3']) {
+            const cachedAudio = assetLoader.cache.audio[attackSound + '.mp3'];
+            cachedAudio.currentTime = 0;
+            cachedAudio.play().catch(e => console.log("Cached audio play failed", e));
+        } else {
+            // Fallback to DOM
+            const sfx = document.getElementById(attackSound);
+            if (sfx) {
+                sfx.pause();
+                sfx.currentTime = 0;
+                sfx.play().catch(err => console.log("Attack SFX failed"));
+            }
         }
 
         // Player Attack Animation
@@ -686,7 +695,7 @@ class BattleSystem {
         const performLevelUp = async () => {
             // Subtract the required XP for the current level to reset the "bucket"
             // Example: If you have 105 XP and need 100, you keep 5 XP.
-            p.exp -= p.level * 100; 
+            p.exp -= p.level * 100;
             p.level++;
 
             // Ensure stats exist
@@ -722,7 +731,7 @@ class BattleSystem {
 
             // 4. Update UI
             this.updateBattleUI();
-            
+
             // 5. Show Screen
             await this.showLevelUpScreen(p, statIncreases, hpIncrease);
 
@@ -752,7 +761,7 @@ class BattleSystem {
                 document.getElementById('player-exp-bar').style.width = '100%';
                 await this.delay(200);
                 document.getElementById('player-exp-bar').style.width = '0%';
-                
+
                 // Run Logic (This subtracts the XP and resets p.exp close to 0)
                 await performLevelUp();
             }

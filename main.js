@@ -587,7 +587,10 @@ function handleNPCInteraction(npc) {
 }
 
 // Init
-window.onload = () => {
+window.onload = async () => {
+    // Start Loading Assets
+    await assetLoader.loadAll();
+
     if (!loadGame()) {
         // Give starter items if new game
         const starterStats = generatePokemonStats();
