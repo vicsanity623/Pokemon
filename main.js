@@ -183,7 +183,7 @@ function gameLoop(timestamp) {
 
                 // Encounter Check (Randomly based on distance moved)
                 // Chance per tile moved approx - increased for more encounters
-                if (targetTile === 'grass_tall' && Math.random() < 0.15 * moveSpeed) {
+                if (targetTile === 'grass_tall' && Math.random() < 0.08 * moveSpeed) {
                     battleSystem.startBattle();
                 }
             }
@@ -327,6 +327,7 @@ function showBagTab(tab) {
 
             // Get stats safely
             const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+            const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
             div.innerHTML = `
                 <div class="pokemon-info">
@@ -335,6 +336,9 @@ function showBagTab(tab) {
                     ${!p.isEgg ? `
                         <div style="font-size: 9px; color: #aaa; margin-top: 3px;">
                             STR:${stats.strength} DEF:${stats.defense} SPD:${stats.speed} SPC:${stats.special}
+                        </div>
+                        <div style="font-size: 11px; color: #2ecc71; margin-top: 2px; font-weight: bold;">
+                            SR: ${scoreRating}
                         </div>
                     ` : ''}
                 </div>
@@ -403,13 +407,17 @@ async function showPokemonStats(pokemon) {
 
     const isFainted = pokemon.hp <= 0;
     const hpPercent = (pokemon.hp / pokemon.maxHp) * 100;
+    const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
     display.innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <img src="${sprite}" style="width: 128px; height: 128px; image-rendering: pixelated; margin-bottom: 15px;">
             <h2 style="margin: 10px 0; color: #ffd700;">${pokemon.name}</h2>
-            <div style="font-size: 16px; color: #aaa; margin-bottom: 20px;">
+            <div style="font-size: 16px; color: #aaa; margin-bottom: 10px;">
                 Level ${pokemon.level} | Type: ${pokemon.type || 'Unknown'}
+            </div>
+            <div style="font-size: 24px; color: #2ecc71; font-weight: bold; margin-bottom: 15px;">
+                SR: ${scoreRating}
             </div>
             
             <div style="text-align: left; display: inline-block; width: 80%; max-width: 350px;">
@@ -924,6 +932,7 @@ function showOwnedPokemon(pokemonName, pokemonId) {
             div.style.marginBottom = '10px';
 
             const stats = pokemon.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+            const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
             const isFainted = pokemon.hp <= 0;
 
             div.innerHTML = `
@@ -933,6 +942,9 @@ function showOwnedPokemon(pokemonName, pokemonId) {
                         <div style="font-size: 12px; color: #aaa;">${location}</div>
                         <div style="font-size: 11px; color: ${isFainted ? '#e74c3c' : '#2ecc71'}; margin-top: 3px;">
                             ${isFainted ? 'FAINTED' : `HP: ${pokemon.hp}/${pokemon.maxHp}`}
+                        </div>
+                        <div style="font-size: 12px; color: #2ecc71; margin-top: 3px; font-weight: bold;">
+                            SR: ${scoreRating}
                         </div>
                     </div>
                     <div style="text-align: right; font-size: 10px; color: #888;">
