@@ -1497,3 +1497,18 @@ canvas {
         height: 200px !important;
     }
 }
+
+
+/* FORCE LEVEL UP SCREEN TO TOP */
+#level-up-overlay {
+    z-index: 10000 !important; /* Higher than everything else */
+    pointer-events: auto !important; /* Force it to accept touches */
+    cursor: pointer; /* Show pointer to indicate it's clickable */
+}
+
+/* Ensure the button specifically is clickable */
+#levelup-continue-btn {
+    pointer-events: auto !important;
+    z-index: 10001 !important; /* Even higher than the overlay */
+    position: relative; /* Needed for z-index to work */
+}
