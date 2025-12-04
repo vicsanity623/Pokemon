@@ -132,7 +132,7 @@
                         learn</button>
                 </div>
                 <button id="levelup-continue-btn" onclick="battleSystem.closeLevelUp()"
-                    class="back-btn">CONTINUE</button>
+                    ontouchstart="battleSystem.closeLevelUp()" class="back-btn">CONTINUE</button>
             </div>
 
             <div id="stats-overlay">
@@ -227,6 +227,23 @@
                 </div>
 
                 <button onclick="closePC()" class="back-btn" ontouchstart="closePC()">CLOSE</button>
+            </div>
+
+            <!-- Pokemon List Modal (shows all owned Pokemon of a species) -->
+            <div id="pokemon-list-modal" class="hidden full-screen-modal">
+                <div class="modal-content">
+                    <h2 id="pokemon-list-title">POKEMON</h2>
+                    <div id="pokemon-list-content" style="max-height: 70vh; overflow-y: auto;"></div>
+                    <button onclick="closePokemonList()" class="back-btn">CLOSE</button>
+                </div>
+            </div>
+
+            <!-- Pokemon Stats Detail Modal -->
+            <div id="pokemon-stats-modal" class="hidden full-screen-modal">
+                <div class="modal-content" style="max-width: 500px;">
+                    <div id="pokemon-stats-display"></div>
+                    <button onclick="closePokemonStats()" class="back-btn">CLOSE</button>
+                </div>
             </div>
         </div>
 

@@ -12,6 +12,17 @@ const mainMusic = document.getElementById('main-music');
 const battleMusic = document.getElementById('battle-music');
 let musicVolume = 0.5; // 50% default volume
 
+// Generate random stats for Pokemon (12-100 range)
+function generatePokemonStats() {
+    return {
+        strength: Math.floor(Math.random() * 89) + 12,  // 12-100
+        defense: Math.floor(Math.random() * 89) + 12,   // 12-100
+        speed: Math.floor(Math.random() * 89) + 12,     // 12-100
+        hp: Math.floor(Math.random() * 89) + 12,        // 12-100
+        special: Math.floor(Math.random() * 89) + 12    // 12-100
+    };
+}
+
 // Safe Spawn Logic
 function findSafeSpawn() {
     let attempts = 0;
@@ -226,6 +237,15 @@ function gameLoop(timestamp) {
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
                     p.name = p.species; // Hatch!
+
+                    // Generate stats for hatched Pokemon if not present
+                    if (!p.stats) {
+                        p.stats = generatePokemonStats();
+                        // Recalculate maxHp based on stats
+                        p.maxHp = p.level * 5 + p.stats.hp;
+                        p.hp = p.maxHp;
+                    }
+
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
                 }
             }
@@ -300,20 +320,37 @@ function showBagTab(tab) {
         player.team.forEach((p, index) => {
             let div = document.createElement('div');
             div.className = 'pokemon-item' + (p.hp <= 0 ? ' fainted' : '');
+            div.style.cursor = 'pointer';
 
             let isFainted = p.hp <= 0 || (p.hp === undefined && !p.isEgg);
             let status = p.isEgg ? 'EGG' : isFainted ? 'FAINTED' : `HP: ${p.hp}/${p.maxHp}`;
 
+            // Get stats safely
+            const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+
             div.innerHTML = `
                 <div class="pokemon-info">
-                    <div>${p.name} Lv.${p.level}</div>
+                    <div><strong>${p.name}</strong> Lv.${p.level}</div>
                     <div style="font-size: 10px; color: ${isFainted ? '#e74c3c' : '#2ecc71'};">${status}</div>
+                    ${!p.isEgg ? `
+                        <div style="font-size: 9px; color: #aaa; margin-top: 3px;">
+                            STR:${stats.strength} DEF:${stats.defense} SPD:${stats.speed} SPC:${stats.special}
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="pokemon-actions">
-                    ${index > 0 ? `<button onclick="swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
-                    ${index < player.team.length - 1 ? `<button onclick="swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
+                    ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
+                    ${index < player.team.length - 1 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
                 </div>
             `;
+
+            // Click to view detailed stats
+            div.onclick = () => {
+                if (!p.isEgg) {
+                    showPokemonStats(p);
+                }
+            };
+
             content.appendChild(div);
         });
     } else if (tab === 'items') {
@@ -341,6 +378,88 @@ function swapPokemon(index1, index2) {
     player.team[index1] = player.team[index2];
     player.team[index2] = temp;
     showBagTab('pokemon'); // Refresh
+}
+
+// Show detailed Pokemon stats modal
+async function showPokemonStats(pokemon) {
+    const modal = document.getElementById('pokemon-stats-modal');
+    const display = document.getElementById('pokemon-stats-display');
+
+    const stats = pokemon.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+
+    // Get animated sprite if possible
+    let sprite = pokemon.animatedSprite || pokemon.sprite || pokemon.backSprite || '';
+
+    // If no animated sprite, try to fetch it
+    if (!pokemon.animatedSprite && pokemon.id) {
+        try {
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+            const data = await res.json();
+            sprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || data.sprites.front_default;
+        } catch (e) {
+            console.log("Could not fetch animated sprite");
+        }
+    }
+
+    const isFainted = pokemon.hp <= 0;
+    const hpPercent = (pokemon.hp / pokemon.maxHp) * 100;
+
+    display.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <img src="${sprite}" style="width: 128px; height: 128px; image-rendering: pixelated; margin-bottom: 15px;">
+            <h2 style="margin: 10px 0; color: #ffd700;">${pokemon.name}</h2>
+            <div style="font-size: 16px; color: #aaa; margin-bottom: 20px;">
+                Level ${pokemon.level} | Type: ${pokemon.type || 'Unknown'}
+            </div>
+            
+            <div style="text-align: left; display: inline-block; width: 80%; max-width: 350px;">
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: #e74c3c;"><strong>HP:</strong></span>
+                        <span>${pokemon.hp}/${pokemon.maxHp}</span>
+                    </div>
+                    <div style="background: #333; height: 20px; border-radius: 10px; overflow: hidden;">
+                        <div style="background: ${isFainted ? '#e74c3c' : '#2ecc71'}; height: 100%; width: ${hpPercent}%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
+                        <div style="color: #f39c12;"><strong>⚔️ Strength</strong></div>
+                        <div style="font-size: 20px; color: #fff;">${stats.strength}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
+                        <div style="color: #3498db;"><strong>🛡️ Defense</strong></div>
+                        <div style="font-size: 20px; color: #fff;">${stats.defense}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
+                        <div style="color: #9b59b6;"><strong>⚡ Speed</strong></div>
+                        <div style="font-size: 20px; color: #fff;">${stats.speed}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
+                        <div style="color: #e91e63;"><strong>✨ Special</strong></div>
+                        <div style="font-size: 20px; color: #fff;">${stats.special}</div>
+                    </div>
+                </div>
+                
+                ${pokemon.exp !== undefined ? `
+                    <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
+                        EXP: ${pokemon.exp} / ${pokemon.level * 100}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+}
+
+function closePokemonStats() {
+    document.getElementById('pokemon-stats-modal').classList.add('hidden');
+}
+
+function closePokemonList() {
+    document.getElementById('pokemon-list-modal').classList.add('hidden');
 }
 
 function useBagItem(itemName) {
@@ -447,14 +566,18 @@ function handleNPCInteraction(npc) {
 window.onload = () => {
     if (!loadGame()) {
         // Give starter items if new game
+        const starterStats = generatePokemonStats();
+        const starterMaxHp = 5 * 5 + starterStats.hp; // Level 5 base + HP stat
+
         player.team.push({
             name: 'PIKACHU',
             level: 5,
-            maxHp: 40,
-            hp: 40,
+            maxHp: starterMaxHp,
+            hp: starterMaxHp,
             exp: 0,
             type: 'electric',
-            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png'
+            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            stats: starterStats
         });
         runIntro();
     } else {
@@ -536,6 +659,16 @@ function loadGame() {
         player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
         player.seen = data.player.seen || [];
         player.seenShiny = data.player.seenShiny || [];
+
+        // Add stats to Pokemon that don't have them (backward compatibility)
+        player.team.forEach(p => {
+            if (!p.stats) {
+                p.stats = generatePokemonStats();
+                // Recalculate maxHp based on stats
+                p.maxHp = p.level * 5 + p.stats.hp;
+                if (p.hp > p.maxHp) p.hp = p.maxHp;
+            }
+        });
 
         document.getElementById('meta-level').innerText = player.pLevel;
 
@@ -699,11 +832,17 @@ function showPokedexTab(tab) {
                 <div class="dex-name">...</div>
             `;
 
-            // Fetch name async
+            div.style.cursor = 'pointer';
+
+            // Fetch name async and make clickable
             fetch(`https://pokeapi.co/api/v2/pokemon/${i}`)
                 .then(res => res.json())
                 .then(data => {
-                    div.querySelector('.dex-name').innerText = data.name.toUpperCase();
+                    const pokemonName = data.name.toUpperCase();
+                    div.querySelector('.dex-name').innerText = pokemonName;
+
+                    // Add click handler to show owned Pokemon of this species
+                    div.onclick = () => showOwnedPokemon(pokemonName, i);
                 });
         } else {
             div.className += ' unknown';
@@ -722,6 +861,75 @@ function showPokedexTab(tab) {
 
     let tabLabel = tab === 'shiny' ? 'Shiny Seen' : 'Seen';
     document.getElementById('pokedex-count').innerText = `${tabLabel}: ${seenCount}/151`;
+}
+
+// Show all owned Pokemon of a specific species
+function showOwnedPokemon(pokemonName, pokemonId) {
+    const modal = document.getElementById('pokemon-list-modal');
+    const title = document.getElementById('pokemon-list-title');
+    const content = document.getElementById('pokemon-list-content');
+
+    title.innerText = `${pokemonName} (Owned)`;
+    content.innerHTML = '';
+
+    // Collect all Pokemon of this species from team and PC storage
+    const ownedPokemon = [];
+
+    // Check team
+    player.team.forEach((p, index) => {
+        if (p.name === pokemonName) {
+            ownedPokemon.push({ pokemon: p, location: `Team Slot ${index + 1}` });
+        }
+    });
+
+    // Check PC storage
+    player.storage.forEach((box, boxIndex) => {
+        box.forEach((p, slotIndex) => {
+            if (p && p.name === pokemonName) {
+                ownedPokemon.push({ pokemon: p, location: `Box ${boxIndex + 1}, Slot ${slotIndex + 1}` });
+            }
+        });
+    });
+
+    if (ownedPokemon.length === 0) {
+        content.innerHTML = '<p style="text-align:center; color: #999; padding: 20px;">You don\'t own any of these Pokemon yet!</p>';
+    } else {
+        ownedPokemon.forEach(({ pokemon, location }) => {
+            const div = document.createElement('div');
+            div.className = 'menu-item';
+            div.style.cursor = 'pointer';
+            div.style.padding = '15px';
+            div.style.marginBottom = '10px';
+
+            const stats = pokemon.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+            const isFainted = pokemon.hp <= 0;
+
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 16px; color: #ffd700;"><strong>${pokemon.name}</strong> Lv.${pokemon.level}</div>
+                        <div style="font-size: 12px; color: #aaa;">${location}</div>
+                        <div style="font-size: 11px; color: ${isFainted ? '#e74c3c' : '#2ecc71'}; margin-top: 3px;">
+                            ${isFainted ? 'FAINTED' : `HP: ${pokemon.hp}/${pokemon.maxHp}`}
+                        </div>
+                    </div>
+                    <div style="text-align: right; font-size: 10px; color: #888;">
+                        <div>STR:${stats.strength} DEF:${stats.defense}</div>
+                        <div>SPD:${stats.speed} SPC:${stats.special}</div>
+                    </div>
+                </div>
+            `;
+
+            div.onclick = () => {
+                closePokemonList();
+                showPokemonStats(pokemon);
+            };
+
+            content.appendChild(div);
+        });
+    }
+
+    modal.classList.remove('hidden');
 }
 
 function closePokedex() {

@@ -39,6 +39,17 @@ class BattleSystem {
         return 'sfx-attack1'; // Default to heavy sound
     }
 
+    // Generate random stats for Pokemon (12-100 range)
+    generateStats() {
+        return {
+            strength: Math.floor(Math.random() * 89) + 12,  // 12-100
+            defense: Math.floor(Math.random() * 89) + 12,   // 12-100
+            speed: Math.floor(Math.random() * 89) + 12,     // 12-100
+            hp: Math.floor(Math.random() * 89) + 12,        // 12-100
+            special: Math.floor(Math.random() * 89) + 12    // 12-100
+        };
+    }
+
     delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     // Comic Book Style Attack Text
@@ -167,17 +178,22 @@ class BattleSystem {
             let battleSprite = isShiny ? shinySprite : normalSprite;
             let catchSprite = isShiny ? animatedShiny : animatedSprite;
 
+            // Generate unique stats for this Pokemon
+            const stats = this.generateStats();
+            const maxHp = level * 5 + stats.hp; // HP stat affects total health
+
             this.enemy = {
                 name: data.name.toUpperCase(),
                 sprite: battleSprite,
                 animatedSprite: catchSprite,
-                maxHp: level * 5 + 20,
-                hp: level * 5 + 20,
+                maxHp: maxHp,
+                hp: maxHp,
                 level: level,
                 type: type,
                 move: enemyMove,
                 isShiny: isShiny,
-                id: id // Store ID for Pokedex tracking
+                id: id, // Store ID for Pokedex tracking
+                stats: stats // Store all stats
             };
 
             // Render Enemy
@@ -337,10 +353,14 @@ class BattleSystem {
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        // TYPE EFFECTIVENESS DAMAGE CALC!
-        let baseDmg = Math.floor(move.power * (p.level / this.enemy.level));
+        // TYPE EFFECTIVENESS DAMAGE CALC WITH STATS!
+        const attackerStrength = p.stats ? p.stats.strength : 50; // Default if no stats
+        const defenderDefense = this.enemy.stats ? this.enemy.stats.defense : 50;
+
+        let baseDmg = Math.floor(move.power * (p.level / this.enemy.level) * (attackerStrength / 50));
         let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
-        let dmg = Math.floor(baseDmg * effectiveness);
+        let rawDmg = Math.floor(baseDmg * effectiveness);
+        let dmg = Math.max(1, Math.floor(rawDmg * (100 / (100 + defenderDefense)))); // Defense reduces damage
 
         this.enemy.hp -= dmg;
         if (this.enemy.hp < 0) this.enemy.hp = 0;
@@ -395,7 +415,13 @@ class BattleSystem {
         await this.delay(300);
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        let dmg = Math.floor(10 * (this.enemy.level / p.level));
+        // Enemy damage with stats
+        const enemyStrength = this.enemy.stats ? this.enemy.stats.strength : 50;
+        const playerDefense = p.stats ? p.stats.defense : 50;
+
+        let baseDmg = Math.floor(10 * (this.enemy.level / p.level) * (enemyStrength / 50));
+        let dmg = Math.max(1, Math.floor(baseDmg * (100 / (100 + playerDefense))));
+
         p.hp -= dmg;
         if (p.hp < 0) p.hp = 0;
 
@@ -568,12 +594,16 @@ class BattleSystem {
 
         // Show Stats
         const stats = document.getElementById('catch-stats');
+        const st = this.enemy.stats;
         stats.innerHTML = `
             <img src="${this.enemy.animatedSprite}" style="width: 96px; height: 96px; image-rendering: pixelated; margin-bottom: 10px;">
             <h3>${this.enemy.name}</h3>
-            <p>Level: ${this.enemy.level}</p>
-            <p>Type: ${this.enemy.type}</p>
-            <p>HP: ${this.enemy.maxHp}</p>
+            <p>Level: ${this.enemy.level} | Type: ${this.enemy.type}</p>
+            <div style="text-align: left; display: inline-block; font-size: 12px; margin-top: 5px;">
+                <div><strong>HP:</strong> ${this.enemy.maxHp}</div>
+                <div><strong>Strength:</strong> ${st.strength} | <strong>Defense:</strong> ${st.defense}</div>
+                <div><strong>Speed:</strong> ${st.speed} | <strong>Special:</strong> ${st.special}</div>
+            </div>
         `;
         document.getElementById('new-catch-overlay').classList.remove('hidden');
         // Waits for user to click Continue -> closeCatchScreen -> win(true)
@@ -688,12 +718,40 @@ class BattleSystem {
         while (p.exp >= p.level * 100) {
             p.exp -= p.level * 100;
             p.level++;
-            p.maxHp += 5;
+
+            // Ensure stats exist (for old saves)
+            if (!p.stats) {
+                p.stats = generatePokemonStats();
+            }
+
+            // Increase stats on level up (1-3 points randomly per stat)
+            const statIncreases = {
+                strength: Math.floor(Math.random() * 3) + 1,
+                defense: Math.floor(Math.random() * 3) + 1,
+                speed: Math.floor(Math.random() * 3) + 1,
+                hp: Math.floor(Math.random() * 3) + 1,
+                special: Math.floor(Math.random() * 3) + 1
+            };
+
+            p.stats.strength += statIncreases.strength;
+            p.stats.defense += statIncreases.defense;
+            p.stats.speed += statIncreases.speed;
+            p.stats.hp += statIncreases.hp;
+            p.stats.special += statIncreases.special;
+
+            // Recalculate maxHp based on new HP stat
+            const oldMaxHp = p.maxHp;
+            p.maxHp = p.level * 5 + p.stats.hp;
+            const hpIncrease = p.maxHp - oldMaxHp;
+
             // Only heal on level up, not regular wins!
             p.hp = p.maxHp;
 
             this.updateBattleUI();
-            await this.showLevelUpScreen(p);
+            await this.showLevelUpScreen(p, statIncreases, hpIncrease);
+
+            // Check for evolution
+            await this.checkEvolution(p);
         }
 
         this.updateBattleUI();
@@ -702,7 +760,39 @@ class BattleSystem {
         this.endBattle();
     }
 
-    async showLevelUpScreen(p) {
+    async checkEvolution(p) {
+        const evolution = EVOLUTIONS[p.name];
+
+        if (evolution && p.level >= evolution.level) {
+            showDialog(`What? ${p.name} is evolving!`, 2000);
+            await this.delay(2000);
+
+            const oldName = p.name;
+            p.name = evolution.evolvesInto;
+
+            // Fetch new Pokemon data for sprites
+            try {
+                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evolution.id}`);
+                const data = await res.json();
+
+                // Update sprites
+                p.backSprite = data.sprites.back_default;
+                p.sprite = data.sprites.front_default;
+
+                // Update type if needed
+                p.type = data.types[0].type.name;
+
+                showDialog(`Congratulations! ${oldName} evolved into ${p.name}!`, 3000);
+                await this.delay(3000);
+            } catch (e) {
+                console.error("Evolution fetch failed", e);
+                showDialog(`Congratulations! ${oldName} evolved into ${p.name}!`, 3000);
+                await this.delay(3000);
+            }
+        }
+    }
+
+    async showLevelUpScreen(p, statIncreases, hpIncrease) {
         const overlay = document.getElementById('level-up-overlay');
         const content = document.getElementById('levelup-content');
         const moveContainer = document.getElementById('move-learn-container');
@@ -714,8 +804,13 @@ class BattleSystem {
 
         content.innerHTML = `
             <strong style="color:cyan; font-size: 24px;">${p.name} grew to Lv.${p.level}!</strong><br><br>
-            Max HP +5<br>
-            Stats increased!
+            <div style="text-align: left; display: inline-block; font-size: 14px;">
+                <div>Max HP: ${p.maxHp - hpIncrease} → ${p.maxHp} (+${hpIncrease})</div>
+                <div>Strength: +${statIncreases.strength}</div>
+                <div>Defense: +${statIncreases.defense}</div>
+                <div>Speed: +${statIncreases.speed}</div>
+                <div>Special: +${statIncreases.special}</div>
+            </div>
         `;
 
         // Check for new move (Every 5 levels for demo)
