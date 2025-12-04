@@ -243,7 +243,7 @@ function gameLoop(timestamp) {
         let nearbyPokeCenter = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
-                    Math.pow(building.y - player.y, 2)
+                Math.pow(building.y - player.y, 2)
             );
             return dist < 1.5 && building.type === 'pokecenter';
         });
@@ -268,24 +268,34 @@ function gameLoop(timestamp) {
         }
 
         // Egg Hatching Logic
-        player.team.forEach((p) => {
+        player.team.forEach(p => {
             if (p.isEgg) {
                 p.eggSteps--;
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
                     p.name = p.species; // Hatch!
 
-                    // If stats were inherited (from breeding), use them.
-                    // If random egg (from cheat or bug), generate them.
+                    // --- SPRITE RESTORATION FIX ---
+                    // Restore the sprite we saved when the egg was created
+                    if (p.storedSprite) {
+                        p.backSprite = p.storedSprite;
+                    } else {
+                        // Fallback if data is missing (old saves)
+                        p.backSprite = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+                    }
+
+                    // Stat Logic
                     if (!p.stats) {
                         p.stats = generatePokemonStats();
                     }
 
-                    // Recalculate maxHp based on stats (Inherited or Generated)
                     p.maxHp = p.level * 5 + p.stats.hp;
                     p.hp = p.maxHp;
 
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
+
+                    // Force UI refresh immediately
+                    updateHUD();
                 }
             }
         });
@@ -302,7 +312,7 @@ input.press = (key) => {
         let nearbyPokeCenter = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
-                    Math.pow(building.y - player.y, 2)
+                Math.pow(building.y - player.y, 2)
             );
             return dist < 1.5 && building.type === 'pokecenter';
         });
@@ -378,8 +388,8 @@ function showBagTab(tab) {
             let status = p.isEgg
                 ? 'EGG'
                 : isFainted
-                  ? 'FAINTED'
-                  : `HP: ${p.hp}/${p.maxHp}`;
+                    ? 'FAINTED'
+                    : `HP: ${p.hp}/${p.maxHp}`;
 
             // Get stats safely
             const stats = p.stats || {
@@ -400,9 +410,8 @@ function showBagTab(tab) {
                 <div class="pokemon-info">
                     <div><strong>${p.name}</strong> Lv.${p.level}</div>
                     <div style="font-size: 10px; color: ${isFainted ? '#e74c3c' : '#2ecc71'};">${status}</div>
-                    ${
-                        !p.isEgg
-                            ? `
+                    ${!p.isEgg
+                    ? `
                         <div style="font-size: 9px; color: #aaa; margin-top: 3px;">
                             STR:${stats.strength} DEF:${stats.defense} SPD:${stats.speed} SPC:${stats.special}
                         </div>
@@ -410,8 +419,8 @@ function showBagTab(tab) {
                             SR: ${scoreRating}
                         </div>
                     `
-                            : ''
-                    }
+                    : ''
+                }
                 </div>
                 <div class="pokemon-actions">
                     ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
@@ -482,7 +491,7 @@ async function showPokemonStats(pokemon) {
             const data = await res.json();
             sprite =
                 data.sprites.versions['generation-v']['black-white'][
-                    'animated'
+                'animated'
                 ]['front_default'] || data.sprites.front_default;
         } catch (e) {
             console.log('Could not fetch animated sprite');
@@ -535,15 +544,14 @@ async function showPokemonStats(pokemon) {
                     </div>
                 </div>
                 
-                ${
-                    pokemon.exp !== undefined
-                        ? `
+                ${pokemon.exp !== undefined
+            ? `
                     <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
                         EXP: ${pokemon.exp} / ${pokemon.level * 100}
                     </div>
                 `
-                        : ''
-                }
+            : ''
+        }
             </div>
         </div>
     `;
@@ -624,7 +632,7 @@ function handleNPCInteraction(npc) {
         }
     } else if (npc.type === 'daycare') {
         if (player.team.length < 2) {
-            showDialog('Daycare: Come back with at least 2 Pokemon.', 3000);
+            showDialog("Daycare: Come back with at least 2 Pokemon.", 3000);
             return;
         }
 
@@ -632,21 +640,34 @@ function handleNPCInteraction(npc) {
         let p2 = player.team[1];
 
         if (p1.isEgg || p2.isEgg) {
-            showDialog('Daycare: Eggs cannot breed!', 3000);
+            showDialog("Daycare: Eggs cannot breed!", 3000);
+            return;
+        }
+
+        // --- NEW COOLDOWN LOGIC ---
+        // Check if either Pokemon has bred recently (within 30 days)
+        let currentDay = clock.gameDays;
+
+        // Default to -100 so they can breed immediately if never bred before
+        let lastBredP1 = p1.lastBredDay || -100;
+        let lastBredP2 = p2.lastBredDay || -100;
+
+        if ((currentDay - lastBredP1 < 30) || (currentDay - lastBredP2 < 30)) {
+            showDialog("Daycare: They are too tired. Come back later.", 3000);
             return;
         }
 
         if (p1.type === p2.type) {
             if (player.team.length >= 6) {
-                showDialog('Daycare: Your party is full.', 3000);
+                showDialog("Daycare: Your party is full.", 3000);
             } else {
-                showDialog(
-                    'Daycare: They get along great! Here is an Egg!',
-                    3000
-                );
+                showDialog("Daycare: They get along great! Here is an Egg!", 3000);
 
-                // STAT INHERITANCE LOGIC
-                // Ensure parents have stats
+                // Mark them as having bred today
+                p1.lastBredDay = currentDay;
+                p2.lastBredDay = currentDay;
+
+                // STAT INHERITANCE
                 if (!p1.stats) p1.stats = generatePokemonStats();
                 if (!p2.stats) p2.stats = generatePokemonStats();
 
@@ -660,17 +681,19 @@ function handleNPCInteraction(npc) {
 
                 player.team.push({
                     name: 'EGG',
-                    species: p1.name, // Offspring is mother's species
+                    species: p1.name,
                     level: 1,
-                    maxHp: 15, // Placeholder HP
+                    maxHp: 15,
                     hp: 15,
                     exp: 0,
                     type: p1.type,
-                    backSprite:
-                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/egg.png',
+                    // Use a reliable Egg Sprite
+                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
+                    // SAVE PARENT SPRITE FOR HATCHING
+                    storedSprite: p1.backSprite,
                     isEgg: true,
                     eggSteps: 500,
-                    stats: inheritedStats // Attach the inherited stats NOW
+                    stats: inheritedStats
                 });
             }
         } else {
