@@ -1,4 +1,5 @@
 // Global Instances
+const VERSION = 'v4.0';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -704,6 +705,10 @@ function handleNPCInteraction(npc) {
 
 // Init
 window.onload = async () => {
+    // 1. UPDATE VERSION TEXT IN MENU
+    const verEl = document.getElementById('game-version');
+    if (verEl) verEl.innerText = `Version: ${VERSION}`;
+
     // Start Loading Assets
     await assetLoader.loadAll();
 
@@ -730,7 +735,6 @@ window.onload = async () => {
 
     requestAnimationFrame(gameLoop);
 
-    // Initialize Music
     // Initialize Music
     const mainMusic = /** @type {HTMLAudioElement} */ (
         document.getElementById('main-music')
@@ -762,12 +766,35 @@ window.onload = async () => {
     // Auto-Save every 30s
     setInterval(saveGame, 30000);
 
-    // Register Service Worker
+    // Register Service Worker with AUTO-UPDATE Logic
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-            .register('./sw.js')
-            .then(() => console.log('Service Worker Registered'))
-            .catch((err) => console.error('SW Registration Failed', err));
+        navigator.serviceWorker.register('./sw.js').then(registration => {
+            console.log('Service Worker Registered');
+
+            // 1. Check for updates immediately
+            registration.update();
+
+            // 2. Detect if a new version is being installed
+            registration.onupdatefound = () => {
+                const newWorker = registration.installing;
+                newWorker.onstatechange = () => {
+                    if (newWorker.state === 'installed') {
+                        if (navigator.serviceWorker.controller) {
+                            // New update found! Notify user and reload
+                            showDialog("Update found! Reloading...", 2000);
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        }
+                    }
+                };
+            };
+        }).catch(err => console.error('SW Registration Failed', err));
+
+        // 3. Force reload if the controller changes (ensures you get the new version)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+        });
     }
 };
 
