@@ -1451,3 +1451,49 @@ canvas {
         bottom: 130px;
     }
 }
+
+/* ========================================= */
+/*      BIGGER BATTLE SPRITES FIX            */
+/* ========================================= */
+
+/* DESKTOP / LANDSCAPE (Default) */
+#player-sprite, #enemy-sprite {
+    width: 320px !important;  /* Increased from 150px to 320px */
+    height: 320px !important;
+}
+
+/* Adjust Desktop positions so they don't overlap the HUD */
+#player-sprite {
+    bottom: 220px !important; 
+    left: 10% !important;
+}
+
+#enemy-sprite {
+    top: 60px !important;
+    right: 10% !important;
+}
+
+/* MOBILE PORTRAIT MODE (Phones) */
+@media (max-width: 768px) and (orientation: portrait) {
+    #player-sprite, #enemy-sprite {
+        width: 240px !important; /* Increased from 180px to 240px */
+        height: 240px !important;
+    }
+
+    /* Adjust vertical spacing for mobile so they don't overlap text */
+    #enemy-sprite {
+        top: 130px !important;
+    }
+
+    #player-sprite {
+        bottom: 350px !important;
+    }
+}
+
+/* SMALL PHONES */
+@media (max-width: 480px) and (orientation: portrait) {
+    #player-sprite, #enemy-sprite {
+        width: 200px !important; /* Increased from 150px to 200px */
+        height: 200px !important;
+    }
+}
