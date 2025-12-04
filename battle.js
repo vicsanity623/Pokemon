@@ -806,10 +806,14 @@ class BattleSystem {
         moveContainer.classList.add('hidden');
         continueBtn.classList.remove('hidden');
 
+        // Fix: Clone the button to remove old event listeners and ensure a fresh start
+        const newContinueBtn = continueBtn.cloneNode(true);
+        continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
+
         content.innerHTML = `
             <strong style="color:cyan; font-size: 24px;">${p.name} grew to Lv.${p.level}!</strong><br><br>
             <div style="text-align: left; display: inline-block; font-size: 14px;">
-                <div>Max HP: ${p.maxHp - hpIncrease} → ${p.maxHp} (+${hpIncrease})</div>
+                <div>Max HP: ${p.maxHp - hpIncrease} → ${p.maxHp} <span style="color:#2ecc71">(+${hpIncrease})</span></div>
                 <div>Strength: +${statIncreases.strength}</div>
                 <div>Defense: +${statIncreases.defense}</div>
                 <div>Speed: +${statIncreases.speed}</div>
@@ -824,8 +828,6 @@ class BattleSystem {
             let newMove = getMove(p.type, Math.min(3, Math.floor(p.level / 15)));
 
             // Check if we already have it
-            // We need to store moves in pokemon object now.
-            // If not present, we assume they have 1 move based on level.
             if (!p.moves) p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
 
             let hasMove = p.moves.find(m => m.name === newMove.name);
@@ -835,43 +837,45 @@ class BattleSystem {
                     content.innerHTML += `<br><br><span style="color:yellow;">Learned ${newMove.name}!</span>`;
                 } else {
                     // Move Learning UI
-                    continueBtn.classList.add('hidden'); // Hide continue until decision
+                    newContinueBtn.classList.add('hidden'); // Hide continue until decision
                     moveContainer.classList.remove('hidden');
                     document.getElementById('new-move-name').innerText = newMove.name;
 
                     const list = document.getElementById('move-forget-list');
                     list.innerHTML = '';
 
-                    p.moves.forEach((m, i) => {
-                        let btn = document.createElement('div');
-                        btn.className = 'forget-btn';
-                        btn.innerText = `Forget ${m.name}`;
-                        btn.onclick = () => {
-                            p.moves[i] = newMove;
-                            this.closeLevelUp();
-                            showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
-                        };
-                        list.appendChild(btn);
-                    });
-
-                    // Wait for user interaction
+                    // Wait for user interaction to forget a move
                     return new Promise(resolve => {
-                        this.closeLevelUp = () => {
+                        const close = () => {
                             overlay.classList.add('hidden');
                             resolve();
                         };
+
+                        p.moves.forEach((m, i) => {
+                            let btn = document.createElement('div');
+                            btn.className = 'forget-btn';
+                            btn.innerText = `Forget ${m.name}`;
+                            btn.onclick = () => {
+                                p.moves[i] = newMove;
+                                showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
+                                close();
+                            };
+                            list.appendChild(btn);
+                        });
+
+                        // "Give Up" option
                         this.skipLearnMove = () => {
                             showDialog(`Gave up on learning ${newMove.name}.`, 2000);
-                            this.closeLevelUp();
+                            close();
                         };
                     });
                 }
             }
         }
 
-        // Wait for Continue
+        // Wait for Continue Button Click
         return new Promise(resolve => {
-            this.closeLevelUp = () => {
+            newContinueBtn.onclick = () => {
                 overlay.classList.add('hidden');
                 resolve();
             };
