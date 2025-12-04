@@ -1589,3 +1589,224 @@ canvas {
     /* Purple button for Merge action */
     border-color: #8e44ad !important;
 }
+
+/* ========================================
+   PORTRAIT MODE FIXES FOR MOBILE
+   ======================================== */
+
+/* Portrait mode (narrow screens) - Battle UI optimizations */
+@media (max-width: 600px) and (orientation: portrait) {
+
+    /* Comic Book Attack Text - MUCH SMALLER for portrait */
+    #attack-text {
+        font-size: 24px !important;
+        /* Reduced from 80px */
+        letter-spacing: 2px !important;
+        /* Reduced from 8px */
+        top: 25% !important;
+        text-shadow:
+            2px 2px 0 #000,
+            -2px -2px 0 #000,
+            2px -2px 0 #000,
+            -2px 2px 0 #000,
+            0 0 10px #FFF,
+            0 0 20px #FF0;
+    }
+
+    /* Damage Numbers - Smaller */
+    #damage-text {
+        font-size: 28px !important;
+        /* Reduced from 60px */
+        text-shadow:
+            2px 2px 0 #000,
+            -2px -2px 0 #000,
+            2px -2px 0 #000,
+            -2px 2px 0 #000,
+            0 0 10px #FFF,
+            0 0 15px #F00;
+    }
+
+    /* Effectiveness Text - Smaller */
+    #effectiveness-text {
+        font-size: 20px !important;
+        /* Reduced from 40px */
+        text-shadow:
+            1px 1px 0 #000,
+            -1px -1px 0 #000,
+            1px -1px 0 #000,
+            -1px 1px 0 #000,
+            0 0 10px #FFD700;
+    }
+
+    /* Enemy Stat Box - Move to top left, smaller */
+    #enemy-stat-box {
+        top: 10px !important;
+        left: 10px !important;
+        padding: 6px !important;
+        font-size: 9px !important;
+    }
+
+    /* Player Stat Box - Reposition to avoid overlap with XP bar */
+    #player-stat-box {
+        bottom: 160px !important;
+        /* Moved up from lower position */
+        right: 10px !important;
+        padding: 6px !important;
+        font-size: 9px !important;
+    }
+
+    /* HP Bars - Smaller */
+    .hp-bar-bg {
+        width: 70px !important;
+        /* Reduced from 100px */
+        height: 8px !important;
+    }
+
+    .exp-bar-bg {
+        width: 70px !important;
+        height: 3px !important;
+    }
+
+    /* Battle Sprites - Smaller and repositioned */
+    #enemy-sprite {
+        top: 60px !important;
+        right: 20px !important;
+        width: 100px !important;
+        /* Reduced from 150px */
+        height: 100px !important;
+    }
+
+    #player-sprite {
+        bottom: 180px !important;
+        /* Adjusted for better spacing */
+        left: 20px !important;
+        width: 100px !important;
+        /* Reduced from 150px */
+        height: 100px !important;
+    }
+
+    /* Bottom HUD - Adjust position */
+    #bottom-hud {
+        width: 90% !important;
+        height: 35px !important;
+        font-size: 9px !important;
+        padding: 0 8px !important;
+    }
+
+    .hud-battle {
+        bottom: 135px !important;
+        /* Adjust for smaller battle menu */
+    }
+
+    #hud-money {
+        font-size: 11px !important;
+        margin-right: 8px !important;
+    }
+
+    #hud-xp-text {
+        font-size: 8px !important;
+    }
+
+    /* Battle Menu - Smaller height to give more room */
+    #battle-menu {
+        height: 100px !important;
+        /* Reduced from 120px */
+    }
+
+    /* Battle Text - Smaller font */
+    #battle-text {
+        padding: 10px !important;
+        font-size: 10px !important;
+        line-height: 1.3 !important;
+    }
+
+    /* Battle Options Buttons - LARGER and more touch-friendly */
+    .battle-options {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .battle-options button {
+        font-size: 12px !important;
+        /* Increased from 10px */
+        padding: 10px !important;
+        min-height: 40px !important;
+        /* Ensures touch-friendly size */
+        font-weight: bold;
+    }
+
+    /* Move Selector - Better sizing */
+    #move-selector {
+        width: 100% !important;
+        /* Full width instead of 50% */
+        height: 100px !important;
+        grid-template-columns: 1fr 1fr;
+        /* 2 columns for moves */
+        gap: 4px;
+        padding: 4px;
+    }
+
+    #move-selector button {
+        font-size: 10px !important;
+        padding: 8px !important;
+        min-height: 40px !important;
+        line-height: 1.2;
+    }
+
+    /* Dialog Box - Better positioning */
+    #dialog-box {
+        bottom: 25% !important;
+        width: 85% !important;
+        min-width: 250px !important;
+        height: 80px !important;
+        font-size: 10px !important;
+        padding: 8px !important;
+    }
+
+    /* Quest Tracker - Smaller */
+    #quest-tracker {
+        font-size: 8px !important;
+        padding: 6px !important;
+        max-width: 150px !important;
+        top: 5px !important;
+        right: 5px !important;
+    }
+
+    /* Stats Overlay - Smaller */
+    #stats-overlay {
+        font-size: 8px !important;
+        top: 5px !important;
+        left: 5px !important;
+    }
+}
+
+/* Even narrower screens (very small phones) */
+@media (max-width: 400px) and (orientation: portrait) {
+
+    #attack-text {
+        font-size: 24px !important;
+        /* Even smaller */
+        letter-spacing: 1px !important;
+    }
+
+    #damage-text {
+        font-size: 20px !important;
+    }
+
+    #effectiveness-text {
+        font-size: 16px !important;
+    }
+
+    .battle-options button {
+        font-size: 10px !important;
+        padding: 8px !important;
+    }
+
+    #move-selector button {
+        font-size: 8px !important;
+        padding: 6px !important;
+    }
+}
