@@ -683,48 +683,19 @@ class BattleSystem {
         this.player.money += moneyGain;
         questSystem.update('hunt');
 
-        // Animate XP bar filling up
-        let expPerFrame = Math.ceil(xpGain / 30); // Animate over ~30 frames
-        for (let i = 0; i < xpGain; i += expPerFrame) {
-            p.exp = Math.min(startExp + i + expPerFrame, startExp + xpGain);
-
-            // Update XP bar
-            let maxExp = p.level * 100;
-            let expPct = (p.exp / maxExp) * 100;
-            document.getElementById('player-exp-bar').style.width = `${expPct}%`;
-
-            // Check for level up during animation
-            if (p.exp >= p.level * 100) {
-                p.exp -= p.level * 100;
-                p.level++;
-                p.maxHp += 5;
-                p.hp = p.maxHp;
-
-                // VISUAL RESET
-                document.getElementById('player-exp-bar').style.width = '0%';
-                await this.delay(200); // Pause to show empty bar
-
-                this.updateBattleUI();
-
-                // LEVEL UP UI
-                await this.showLevelUpScreen(p);
-            }
-
-            await this.delay(50); // Smooth animation
-        }
-
-        // Final update
-        p.exp = startExp + xpGain;
-        while (p.exp >= p.level * 100) {
+        // --- DEFINE LEVEL UP LOGIC ONCE ---
+        const performLevelUp = async () => {
             p.exp -= p.level * 100;
             p.level++;
 
-            // Ensure stats exist (for old saves)
+            // Ensure stats exist (safeguard for old saves or glitches)
             if (!p.stats) {
-                p.stats = generatePokemonStats();
+                if (this.generateStats) p.stats = this.generateStats();
+                else if (typeof generatePokemonStats === 'function') p.stats = generatePokemonStats();
+                else p.stats = { strength: 10, defense: 10, speed: 10, hp: 10, special: 10 };
             }
 
-            // Increase stats on level up (1-3 points randomly per stat)
+            // 1. Determine Stat Increases
             const statIncreases = {
                 strength: Math.floor(Math.random() * 3) + 1,
                 defense: Math.floor(Math.random() * 3) + 1,
@@ -733,25 +704,58 @@ class BattleSystem {
                 special: Math.floor(Math.random() * 3) + 1
             };
 
+            // 2. Apply Increases
             p.stats.strength += statIncreases.strength;
             p.stats.defense += statIncreases.defense;
             p.stats.speed += statIncreases.speed;
             p.stats.hp += statIncreases.hp;
             p.stats.special += statIncreases.special;
 
-            // Recalculate maxHp based on new HP stat
+            // 3. Recalculate Max HP
             const oldMaxHp = p.maxHp;
             p.maxHp = p.level * 5 + p.stats.hp;
             const hpIncrease = p.maxHp - oldMaxHp;
 
-            // Only heal on level up, not regular wins!
+            // Full heal on level up
             p.hp = p.maxHp;
 
+            // 4. Update UI
             this.updateBattleUI();
+            
+            // 5. Show Screen
             await this.showLevelUpScreen(p, statIncreases, hpIncrease);
 
-            // Check for evolution
+            // 6. Check Evolution
             await this.checkEvolution(p);
+        };
+
+        // --- ANIMATION LOOP ---
+        let expPerFrame = Math.ceil(xpGain / 30); 
+        for (let i = 0; i < xpGain; i += expPerFrame) {
+            p.exp = Math.min(startExp + i + expPerFrame, startExp + xpGain);
+
+            // Update XP bar visual
+            let maxExp = p.level * 100;
+            let expPct = (p.exp / maxExp) * 100;
+            document.getElementById('player-exp-bar').style.width = `${expPct}%`;
+
+            // Check for level up DURING animation
+            if (p.exp >= p.level * 100) {
+                document.getElementById('player-exp-bar').style.width = '0%';
+                await this.delay(200); 
+                
+                // EXECUTE THE LOGIC DEFINED ABOVE
+                await performLevelUp();
+            }
+
+            await this.delay(50);
+        }
+
+        // --- FINAL CHECK ---
+        // Just in case we gained so much XP we leveled up multiple times
+        p.exp = startExp + xpGain;
+        while (p.exp >= p.level * 100) {
+            await performLevelUp();
         }
 
         this.updateBattleUI();
