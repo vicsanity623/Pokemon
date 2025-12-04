@@ -677,18 +677,19 @@ class BattleSystem {
         // XP and Money Gain
         let xpGain = this.enemy.level * 10;
         let p = this.player.team[0];
-        let startExp = p.exp;
         let moneyGain = 100;
 
         this.player.money += moneyGain;
         questSystem.update('hunt');
 
-        // --- DEFINE LEVEL UP LOGIC ONCE ---
+        // --- DEFINE LEVEL UP LOGIC ---
         const performLevelUp = async () => {
-            p.exp -= p.level * 100;
+            // Subtract the required XP for the current level to reset the "bucket"
+            // Example: If you have 105 XP and need 100, you keep 5 XP.
+            p.exp -= p.level * 100; 
             p.level++;
 
-            // Ensure stats exist (safeguard for old saves or glitches)
+            // Ensure stats exist
             if (!p.stats) {
                 if (this.generateStats) p.stats = this.generateStats();
                 else if (typeof generatePokemonStats === 'function') p.stats = generatePokemonStats();
@@ -729,33 +730,34 @@ class BattleSystem {
             await this.checkEvolution(p);
         };
 
-        // --- ANIMATION LOOP ---
-        let expPerFrame = Math.ceil(xpGain / 30); 
-        for (let i = 0; i < xpGain; i += expPerFrame) {
-            p.exp = Math.min(startExp + i + expPerFrame, startExp + xpGain);
+        // --- NEW ANIMATION LOOP (Relative Addition) ---
+        // Instead of calculating based on "Start XP", we just add chunks until empty.
+        let expRemaining = xpGain;
+        let step = Math.max(1, Math.ceil(xpGain / 30)); // Add in ~30 frames
 
-            // Update XP bar visual
+        while (expRemaining > 0) {
+            // Add a small chunk
+            let addAmt = Math.min(step, expRemaining);
+            p.exp += addAmt;
+            expRemaining -= addAmt;
+
+            // Calculate percentage for bar
             let maxExp = p.level * 100;
             let expPct = (p.exp / maxExp) * 100;
             document.getElementById('player-exp-bar').style.width = `${expPct}%`;
 
-            // Check for level up DURING animation
-            if (p.exp >= p.level * 100) {
+            // Check for Level Up
+            if (p.exp >= maxExp) {
+                // Visual flare: fill bar to 100% before resetting
+                document.getElementById('player-exp-bar').style.width = '100%';
+                await this.delay(200);
                 document.getElementById('player-exp-bar').style.width = '0%';
-                await this.delay(200); 
                 
-                // EXECUTE THE LOGIC DEFINED ABOVE
+                // Run Logic (This subtracts the XP and resets p.exp close to 0)
                 await performLevelUp();
             }
 
             await this.delay(50);
-        }
-
-        // --- FINAL CHECK ---
-        // Just in case we gained so much XP we leveled up multiple times
-        p.exp = startExp + xpGain;
-        while (p.exp >= p.level * 100) {
-            await performLevelUp();
         }
 
         this.updateBattleUI();
