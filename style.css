@@ -1266,3 +1266,168 @@ canvas {
         display: none;
     }
 }
+
+/* Mobile Battle UI Fixes - Portrait Mode */
+@media (max-width: 768px) and (orientation: portrait) {
+
+    /* Reposition enemy sprite - move down from top and center horizontally */
+    #enemy-sprite {
+        top: 120px;
+        /* Move down from 50px to make it visible */
+        right: 50%;
+        transform: translateX(50%);
+        width: 180px;
+        /* Increase from 150px */
+        height: 180px;
+        z-index: 10;
+    }
+
+    /* Reposition player sprite - move up from bottom and center horizontally */
+    #player-sprite {
+        bottom: 320px;
+        /* Move up from 250px to be more visible */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 180px;
+        /* Increase from 150px */
+        height: 180px;
+        z-index: 10;
+    }
+
+    /* Adjust enemy stat box */
+    #enemy-stat-box {
+        top: 60px;
+        /* Move down slightly */
+        left: 10px;
+        font-size: 11px;
+        padding: 8px;
+    }
+
+    /* Adjust player stat box */
+    #player-stat-box {
+        bottom: 160px;
+        /* Move up to avoid battle menu */
+        right: 10px;
+        font-size: 11px;
+        padding: 8px;
+    }
+
+    /* Make HP bars slightly larger on mobile */
+    .hp-bar-bg {
+        width: 120px;
+        /* Increase from 100px */
+    }
+
+    /* Adjust battle menu for mobile */
+    #battle-menu {
+        height: 140px;
+        /* Slightly taller for better touch targets */
+    }
+
+    #battle-text {
+        font-size: 12px;
+        padding: 15px;
+    }
+
+    /* Larger touch targets for battle buttons */
+    .battle-options button {
+        font-size: 11px;
+        padding: 5px;
+    }
+
+    /* Move selector buttons */
+    #move-selector button {
+        font-size: 11px;
+        padding: 12px;
+    }
+
+    /* Adjust attack/damage text for mobile */
+    #attack-text {
+        font-size: 50px;
+        /* Reduce from 80px */
+        top: 35%;
+    }
+
+    #damage-text {
+        font-size: 40px;
+        /* Reduce from 60px */
+    }
+
+    #effectiveness-text {
+        font-size: 28px;
+        /* Reduce from 40px */
+    }
+
+    /* Adjust quest tracker position */
+    #quest-tracker {
+        top: 5px;
+        right: 5px;
+        font-size: 9px;
+        max-width: 150px;
+        padding: 8px;
+    }
+}
+
+/* Additional fixes for very small screens (phones) */
+@media (max-width: 480px) and (orientation: portrait) {
+
+    /* Further adjust sprite positions for smaller screens */
+    #enemy-sprite {
+        top: 100px;
+        width: 150px;
+        height: 150px;
+    }
+
+    #player-sprite {
+        bottom: 300px;
+        width: 150px;
+        height: 150px;
+    }
+
+    /* Smaller stat boxes */
+    #enemy-stat-box,
+    #player-stat-box {
+        font-size: 10px;
+        padding: 6px;
+    }
+
+    .hp-bar-bg {
+        width: 100px;
+    }
+
+    /* Smaller text overlays */
+    #attack-text {
+        font-size: 40px;
+    }
+
+    #damage-text {
+        font-size: 32px;
+    }
+
+    #effectiveness-text {
+        font-size: 24px;
+    }
+}
+
+/* Landscape mode optimizations */
+@media (max-height: 500px) and (orientation: landscape) {
+
+    /* Adjust for landscape - sprites should be more spread horizontally */
+    #enemy-sprite {
+        top: 30px;
+        right: 80px;
+        width: 120px;
+        height: 120px;
+    }
+
+    #player-sprite {
+        bottom: 180px;
+        left: 80px;
+        width: 120px;
+        height: 120px;
+    }
+
+    #player-stat-box {
+        bottom: 130px;
+    }
+}
