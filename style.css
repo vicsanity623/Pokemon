@@ -1890,3 +1890,53 @@ canvas {
 .anim-evolve {
     animation: evolve-flash 2s infinite;
 }
+/* --- BAG SELECTION & ACTIONS --- */
+
+/* Highlight selected item */
+.menu-item.selected {
+    border: 2px solid #ffd700 !important; /* Gold border */
+    background-color: rgba(255, 215, 0, 0.2) !important;
+    transform: scale(1.02);
+}
+
+/* Container for Use/Toss buttons */
+.bag-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #555;
+}
+
+.bag-btn {
+    flex: 1;
+    padding: 15px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 12px;
+    border: 2px solid #fff;
+    cursor: pointer;
+    color: white;
+    text-transform: uppercase;
+}
+
+.btn-use {
+    background-color: #27ae60; /* Green */
+    border-color: #2ecc71;
+}
+
+.btn-use:active { background-color: #1e8449; }
+
+.btn-toss {
+    background-color: #c0392b; /* Red */
+    border-color: #e74c3c;
+}
+
+.btn-toss:active { background-color: #922b21; }
+
+/* Disable buttons if nothing selected */
+.bag-btn:disabled {
+    background-color: #555;
+    border-color: #777;
+    color: #999;
+    cursor: not-allowed;
+}
