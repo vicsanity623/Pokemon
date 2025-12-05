@@ -828,6 +828,18 @@ window.onload = async () => {
             window.location.reload();
         });
     }
+    // --- ITEM RESPAWN TIMER ---
+    // Runs every 2 minutes (120,000 ms)
+    setInterval(() => {
+        if (world && player) {
+            // Spawn a batch of 3 items at once so it feels noticeable
+            world.respawnItem(player.x, player.y);
+            world.respawnItem(player.x, player.y);
+            world.respawnItem(player.x, player.y);
+            
+            // console.log("World items replenished.");
+        }
+    }, 120000);
 };
 
 // Save System
