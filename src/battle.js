@@ -383,24 +383,37 @@ class BattleSystem {
     }
 
     async useMove(slot) {
+        if (typeof slot !== 'number' || slot < 0) {
+            this.closeMoves();
+            return;
+        }
+
         if (this.isAttacking) return;
         this.isAttacking = true;
 
         this.closeMoves();
         let p = this.player.team[0];
-        let tier = Math.floor(p.level / 20);
-        let move = getMove(p.type, tier);
+
+        // --- FIX: Use the ACTUAL move from the slot, not a random one ---
+        // Fallback: If pokemon has no moves (old save), generate one
+        if (!p.moves || p.moves.length === 0) {
+            let tier = Math.floor(p.level / 20);
+            p.moves = [getMove(p.type, tier)];
+        }
+
+        // Get the specific move clicked. If slot empty, fallback to first move.
+        let move = p.moves[slot] || p.moves[0];
 
         showDialog(`${p.name} used ${move.name}!`);
         await this.delay(500);
 
-        // COMIC BOOK STYLE ATTACK TEXT!
+        // 1. SHOW MOVE NAME (Comic Style)
         this.showAttackText(move.name);
 
         // Play attack sound based on move type
         const attackSound = this.getAttackSound(move.name);
 
-        // Try to use cache first
+        // Try to use cache first (Your existing audio logic)
         if (
             /** @type {any} */ (window).assetLoader &&
             /** @type {any} */ (window).assetLoader.cache.audio[
@@ -424,71 +437,103 @@ class BattleSystem {
             }
         }
 
-        // Player Attack Animation
-        // We don't have a DOM element for player sprite (it's on canvas),
-        // so we'll just flash the screen or shake the enemy UI
+        // Status Move Handling
         if (move.category === 'status') {
-            // SHINY ANIMATION FOR STATUS MOVES
             document.getElementById('flash-overlay').style.backgroundColor =
                 'rgba(255, 255, 0, 0.5)'; // Yellow glow
-            document
-                .getElementById('flash-overlay')
-                .classList.add('anim-flash');
+            document.getElementById('flash-overlay').classList.add('anim-flash');
             await this.delay(500);
-            document
-                .getElementById('flash-overlay')
-                .classList.remove('anim-flash');
-            document.getElementById('flash-overlay').style.backgroundColor = ''; // Reset
+            document.getElementById('flash-overlay').classList.remove('anim-flash');
+            document.getElementById('flash-overlay').style.backgroundColor = '';
 
             showDialog(`${p.name}'s stats rose!`);
+            // Simple buff: Heal 10%
+            p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.1));
+            this.updateBattleUI();
+            
             await this.delay(1000);
             this.enemyTurn();
-            return; // Skip damage
+            return; 
         }
 
-        document.getElementById('gameCanvas').classList.add('anim-shake'); // Shake screen
+        // Animation
+        document.getElementById('gameCanvas').classList.add('anim-shake');
         document.getElementById('flash-overlay').classList.add('anim-flash');
 
         await this.delay(500);
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        // TYPE EFFECTIVENESS DAMAGE CALC WITH STATS!
-        const attackerStrength = p.stats ? p.stats.strength : 50; // Default if no stats
-        const defenderDefense = this.enemy.stats
-            ? this.enemy.stats.defense
-            : 50;
+        // --- NEW DAMAGE LOGIC START ---
 
+        const attackerStrength = p.stats ? p.stats.strength : 50;
+        const attackerSpecial = p.stats ? p.stats.special : 50;
+        const defenderDefense = this.enemy.stats ? this.enemy.stats.defense : 50;
+
+        // 1. CRITICAL HIT CALCULATION
+        // Chance = Special Stat / 4. (e.g., 40 Special = 10%)
+        // Cap = 15%
+        const critChance = Math.min(15, attackerSpecial / 4);
+        const isCrit = Math.random() * 100 < critChance;
+        const critMultiplier = isCrit ? 2.0 : 1.0;
+
+        // 2. VARIANCE (Randomness)
+        // Damage ranges from 85% to 115%
+        const variance = (Math.random() * 0.3) + 0.85;
+
+        // 3. BASE DAMAGE
         let baseDmg = Math.floor(
             move.power * (p.level / this.enemy.level) * (attackerStrength / 50)
         );
         let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
-        let rawDmg = Math.floor(baseDmg * effectiveness);
+        
+        // 4. FINAL CALCULATION
+        let rawDmg = baseDmg * effectiveness * critMultiplier * variance;
         let dmg = Math.max(
             1,
             Math.floor(rawDmg * (100 / (100 + defenderDefense)))
-        ); // Defense reduces damage
+        );
+
+        // --- NEW DAMAGE LOGIC END ---
 
         this.enemy.hp -= dmg;
         if (this.enemy.hp < 0) this.enemy.hp = 0;
         this.updateBattleUI();
 
-        // Show Effectiveness Message
-        this.showEffectivenessText(effectiveness);
+        // --- VISUALS ---
 
-        // Enemy Shake (Visual feedback on UI box)
+        // A. Critical Hit Display
+        if (isCrit) {
+            // Modify the attack text to show CRIT
+            const attackText = document.getElementById('attack-text');
+            // Save old style
+            const oldColor = attackText.style.color;
+            
+            attackText.style.color = "#FF0000"; // Red
+            this.showAttackText("CRITICAL HIT!");
+            
+            // Revert color after animation
+            setTimeout(() => {
+                attackText.style.color = oldColor || "#FFD700";
+            }, 1500);
+        } else {
+            // Normal Effectiveness Message
+            this.showEffectivenessText(effectiveness);
+        }
+
+        // B. Enemy Shake
         document.getElementById('enemy-stat-box').classList.add('anim-shake');
 
-        // FLOATING DAMAGE NUMBER! (Position near enemy sprite - top right)
+        // Floating Damage Number
         this.showDamageNumber(dmg, 70, 25);
 
         await this.delay(500);
-        document
-            .getElementById('enemy-stat-box')
-            .classList.remove('anim-shake');
+        document.getElementById('enemy-stat-box').classList.remove('anim-shake');
 
         // Detailed Damage Log
-        showDialog(`Dealt ${dmg} damage!`);
+        if (isCrit) showDialog(`Critical Hit! Dealt ${dmg} damage!`);
+        else showDialog(`Dealt ${dmg} damage!`);
+        
         await this.delay(1000);
 
         if (this.enemy.hp <= 0) {
