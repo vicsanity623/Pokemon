@@ -808,8 +808,12 @@ class BattleSystem {
         // XP and Money Gain
         let xpGain = this.enemy.level * 10;
         let p = this.player.team[0];
-        let moneyGain = 100;
-
+        // Base $50 + ($25 per Enemy Level)
+        // Level 5 Enemy = $175
+        // Level 20 Enemy = $550
+        // Level 50 Enemy = $1300
+        let moneyGain = 50 + (this.enemy.level * 25);
+        
         this.player.money += moneyGain;
         questSystem.update('hunt');
 
