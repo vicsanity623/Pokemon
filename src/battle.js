@@ -979,36 +979,48 @@ class BattleSystem {
 
         // Check for new move logic (Same as before)
         if (p.level % 5 === 0) {
-            let tier = Math.floor(p.level / 20) + 1;
-            let newMove = getMove(
-                p.type,
-                Math.min(3, Math.floor(p.level / 15))
-            );
-            if (!p.moves)
-                p.moves = [getMove(p.type, Math.floor((p.level - 1) / 20))];
+            // FIX 1: Make moves get stronger faster (Level 10 = Tier 1, Level 20 = Tier 2)
+            let moveTier = Math.floor(p.level / 10); 
+            
+            // Initialize moves array if missing
+            if (!p.moves) p.moves = [getMove(p.type, 0)];
 
-            let hasMove = p.moves.find((m) => m.name === newMove.name);
-            if (!hasMove) {
+            // FIX 2: Try 10 times to find a move we don't already have
+            let newMove = null;
+            for(let i = 0; i < 10; i++) {
+                // Try to get a move of the current tier, or slightly lower if we know all high ones
+                let tierToTry = Math.max(0, moveTier - (i % 2)); 
+                let candidate = getMove(p.type, tierToTry);
+                
+                // Check if we already have it
+                let alreadyHas = p.moves.find(m => m.name === candidate.name);
+                if (!alreadyHas) {
+                    newMove = candidate;
+                    break; // Found a valid new move!
+                }
+            }
+
+            // If we found a valid new move, start the learning process
+            if (newMove) {
                 if (p.moves.length < 4) {
                     p.moves.push(newMove);
                     content.innerHTML += `<br><br><span style="color:yellow;">Learned ${newMove.name}!</span>`;
                 } else {
-                    // If learning a move, we DO NOT allow tap-anywhere, user must choose
+                    // Move Learning UI (Forget old move)
                     newContinueBtn.classList.add('hidden');
                     moveContainer.classList.remove('hidden');
-                    document.getElementById('new-move-name').innerText =
-                        newMove.name;
+                    document.getElementById('new-move-name').innerText = newMove.name;
 
                     const list = document.getElementById('move-forget-list');
                     list.innerHTML = '';
 
-                    // Remove the onclick from overlay so they can't skip move learning by accident
+                    // Remove the onclick from overlay
                     overlay.onclick = null;
 
-                    return new Promise((resolve) => {
+                    return new Promise(resolve => {
                         const close = () => {
                             overlay.classList.add('hidden');
-                            overlay.onclick = null; // Clean up
+                            overlay.onclick = null; 
                             resolve();
                         };
 
@@ -1019,20 +1031,14 @@ class BattleSystem {
                             btn.onclick = (e) => {
                                 e.stopPropagation();
                                 p.moves[i] = newMove;
-                                showDialog(
-                                    `Forgot ${m.name} and learned ${newMove.name}!`,
-                                    2000
-                                );
+                                showDialog(`Forgot ${m.name} and learned ${newMove.name}!`, 2000);
                                 close();
                             };
                             list.appendChild(btn);
                         });
 
                         this.skipLearnMove = () => {
-                            showDialog(
-                                `Gave up on learning ${newMove.name}.`,
-                                2000
-                            );
+                            showDialog(`Gave up on learning ${newMove.name}.`, 2000);
                             close();
                         };
                     });
