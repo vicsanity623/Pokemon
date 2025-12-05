@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v5.1';
+const VERSION = 'v5.2';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -607,8 +607,54 @@ function closePokemonList() {
     document.getElementById('pokemon-list-modal').classList.add('hidden');
 }
 
+// --- UPDATED BAG LOGIC (Handles Candies) ---
 function useBagItem(itemName) {
     if (!player.bag[itemName] || player.bag[itemName] <= 0) return;
+
+    // 1. CANDY LOGIC
+    if (itemName.includes('Candy')) {
+        let p = player.team[0]; // Apply to lead Pokemon
+        
+        // Extract Species from "Pikachu Candy" -> "Pikachu"
+        let requiredSpecies = itemName.replace(' Candy', '');
+        
+        // Clean player pokemon name (Remove stars for comparison)
+        let currentSpecies = p.name.split(' ')[0];
+
+        if (currentSpecies !== requiredSpecies) {
+            showDialog(`Can't use this! It's for ${requiredSpecies} only.`, 2000);
+            return;
+        }
+
+        // Apply XP Boost (10% of current level requirement)
+        let xpNeededForLevel = p.level * 100;
+        let xpBoost = Math.floor(xpNeededForLevel * 0.10);
+        
+        p.exp += xpBoost;
+        player.bag[itemName]--;
+        if (player.bag[itemName] === 0) delete player.bag[itemName];
+
+        // Check for Level Up immediately
+        if (p.exp >= xpNeededForLevel) {
+            // Perform silent level up
+            p.exp -= xpNeededForLevel;
+            p.level++;
+            
+            // Recalculate stats briefly
+            if(p.stats) {
+                p.maxHp = p.level * 5 + p.stats.hp;
+                p.hp = p.maxHp;
+            }
+            
+            showDialog(`${p.name} leveled up to ${p.level}!`, 2000);
+        } else {
+            showDialog(`Used ${itemName}! +${xpBoost} XP.`, 1000);
+        }
+
+        updateHUD();
+        showBagTab('items'); // Refresh menu
+        return;
+    }
 
     const itemData = ITEMS[itemName];
     if (!itemData) return;
@@ -1319,6 +1365,46 @@ function closePC() {
     document.getElementById('main-menu-modal').classList.remove('hidden');
 }
 
+// --- NEW SACRIFICE FUNCTION ---
+function sacrificePokemon() {
+    if (!selectedSlot) return;
+
+    // Safety: Don't allow sacrificing the last party member
+    if (selectedSlot.type === 'party' && player.team.length <= 1) {
+        showDialog("You cannot sacrifice your last Pokemon!", 2000);
+        return;
+    }
+
+    let pokemon;
+    if (selectedSlot.type === 'party') pokemon = player.team[selectedSlot.index];
+    else pokemon = player.storage[currentBox][selectedSlot.index];
+
+    // Clean name for candy (Remove stars if merged)
+    // We split by space and take the first part to avoid "Pikachu ✨ Candy"
+    let speciesName = pokemon.name.split(' ')[0]; 
+    let candyName = `${speciesName} Candy`;
+
+    // 1. Give Candies
+    if (!player.bag[candyName]) player.bag[candyName] = 0;
+    player.bag[candyName] += 100;
+
+    // 2. Delete Pokemon
+    if (selectedSlot.type === 'party') {
+        player.team.splice(selectedSlot.index, 1);
+    } else {
+        player.storage[currentBox][selectedSlot.index] = null;
+    }
+
+    // 3. Feedback
+    playSFX('sfx-attack1'); // Crunch sound effect
+    showDialog(`Sacrificed ${pokemon.name}... Obtained 100 ${candyName}!`, 3000);
+    
+    selectedSlot = null;
+    renderPC();
+    updateHUD();
+}
+
+// --- UPDATED RENDER PC (Visuals + Sacrifice Button) ---
 function renderPC() {
     // 1. Render Party
     const partyList = document.getElementById('pc-party-list');
@@ -1327,7 +1413,14 @@ function renderPC() {
     player.team.forEach((p, index) => {
         let div = document.createElement('div');
         div.className = 'pc-slot';
-        div.innerHTML = `<img src="${p.backSprite}">`;
+        // NEW: Add Info Divs for Level and Name
+        div.innerHTML = `
+            <img src="${p.backSprite}">
+            <div class="pc-info">
+                <div class="pc-lv">Lv.${p.level}</div>
+                <div class="pc-name">${p.name}</div>
+            </div>
+        `;
         div.onclick = () => {
             selectedSlot = { type: 'party', index: index };
             renderPC();
@@ -1351,7 +1444,14 @@ function renderPC() {
         let div = document.createElement('div');
         div.className = 'pc-slot';
         if (p) {
-            div.innerHTML = `<img src="${p.backSprite}">`;
+            // NEW: Add Info Divs for Level and Name
+            div.innerHTML = `
+                <img src="${p.backSprite}">
+                <div class="pc-info">
+                    <div class="pc-lv">Lv.${p.level}</div>
+                    <div class="pc-name">${p.name}</div>
+                </div>
+            `;
         }
 
         div.onclick = () => {
@@ -1385,7 +1485,8 @@ function renderPC() {
 
     // 4. Update Actions Buttons
     const actionsDiv = document.getElementById('pc-actions');
-    // Ensure the Merge Button exists in DOM or create it dynamically
+    
+    // Ensure the Merge Button exists
     if (!document.getElementById('pc-merge-btn')) {
         const mergeBtn = document.createElement('button');
         mergeBtn.id = 'pc-merge-btn';
@@ -1395,13 +1496,25 @@ function renderPC() {
         actionsDiv.appendChild(mergeBtn);
     }
 
+    // NEW: Ensure the Sacrifice Button exists
+    if (!document.getElementById('pc-sacrifice-btn')) {
+        const sacBtn = document.createElement('button');
+        sacBtn.id = 'pc-sacrifice-btn';
+        sacBtn.innerText = 'SACRIFICE 💀';
+        sacBtn.className = 'hidden';
+        sacBtn.onclick = sacrificePokemon;
+        actionsDiv.appendChild(sacBtn);
+    }
+
     const addToPartyBtn = document.getElementById('pc-add-to-party');
     const moveToPCBtn = document.getElementById('pc-move-to-pc');
     const mergeActionBtn = document.getElementById('pc-merge-btn');
+    const sacActionBtn = document.getElementById('pc-sacrifice-btn');
 
     if (selectedSlot) {
         actionsDiv.classList.remove('hidden');
-        mergeActionBtn.classList.remove('hidden'); // Show Merge Option
+        mergeActionBtn.classList.remove('hidden'); 
+        sacActionBtn.classList.remove('hidden'); // Show Sacrifice
 
         if (selectedSlot.type === 'party') {
             addToPartyBtn.classList.add('hidden');
