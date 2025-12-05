@@ -826,6 +826,8 @@ function saveGame() {
         player: {
             x: player.x,
             y: player.y,
+            // --- NEW: Save Money ---
+            money: player.money, 
             stats: {
                 level: player.pLevel,
                 steps: player.steps
@@ -866,6 +868,10 @@ function loadGame() {
         // Restore Player
         player.x = data.player.x;
         player.y = data.player.y;
+        
+        // --- NEW: Restore Money (Default to 0 if missing in old save) ---
+        player.money = (typeof data.player.money !== 'undefined') ? data.player.money : 0;
+        
         player.pLevel = data.player.stats.level;
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
@@ -914,15 +920,12 @@ function loadGame() {
                     )
             );
         }
-        // If no NPCs in save, they're already initialized in world constructor
 
         // Restore Buildings (with fallback for old saves)
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
-        // If no buildings in save, they're already initialized in world constructor
 
-        // Restore Time
         // Restore Time
         if (typeof data.gameDays !== 'undefined') {
             clock.elapsedTime = data.time;
@@ -930,7 +933,7 @@ function loadGame() {
         } else {
             // Legacy Save Support
             clock.gameDays = data.time;
-            clock.elapsedTime = clock.gameDays * 3600000; // Estimate based on days
+            clock.elapsedTime = clock.gameDays * 3600000; 
         }
 
         // Restore Quest
@@ -941,7 +944,7 @@ function loadGame() {
             questSystem.generate();
         }
 
-        // Validate Positions (Ensure no one is in water due to seed change)
+        // Validate Positions
         world.validatePositions();
 
         // Validate Player Position
@@ -954,6 +957,9 @@ function loadGame() {
             player.y = safe.y;
             console.log('Player moved to safe ground:', player.x, player.y);
         }
+
+        // Force UI Update immediately
+        updateHUD();
 
         return true;
     } catch (e) {
