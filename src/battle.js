@@ -666,34 +666,45 @@ class BattleSystem {
         ballAnim.classList.remove('anim-throw');
         ballAnim.classList.add('anim-shake');
 
-        // Catch Logic
+        // --- NEW CATCH LOGIC ---
         let ballData = ITEMS[ballType];
-        let catchRate = ballData.val; // 1.0, 1.5, 2.0, 255
+        let ballRate = ballData.val; // Pokeball=1, Great=1.5, Ultra=2.0
 
         // Master Ball Check
-        if (catchRate >= 255) {
-            await this.delay(500); // Short suspense
+        if (ballRate >= 255) {
+            await this.delay(500);
             this.catchSuccess();
             return;
         }
 
-        // Standard Catch Formula (Simplified)
-        let hpFactor =
-            (3 * this.enemy.maxHp - 2 * this.enemy.hp) / (3 * this.enemy.maxHp);
-        let catchChance = (catchRate * hpFactor) / (this.enemy.tier || 1); // Harder for higher tiers
+        // 1. Calculate HP Percent (0.0 to 1.0)
+        let hpPercent = this.enemy.hp / this.enemy.maxHp;
 
-        // 3 Shakes
+        // 2. Base Chance (Higher is better)
+        // Formula: The lower the health, the higher the multiplier (1x to 3x)
+        let hpFactor = (1 - hpPercent) * 2 + 1; 
+
+        // 3. Final Calculation
+        // Example: Pokeball (1 * 30) * LowHP (3) = 90% chance.
+        // Difficulty reduces chance slightly for high levels
+        let difficulty = Math.max(1, this.enemy.level / 10); 
+        let catchChance = ((ballRate * 30) * hpFactor) / difficulty;
+
+        // Random roll (0 to 100)
+        let roll = Math.random() * 100;
+
+        // 3 Shakes Animation
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-            if (Math.random() > catchChance * 0.8) {
-                // 80% base chance factor
+            
+            // Fail Check with tension
+            // We add (i * 5) so each subsequent shake is slightly harder to pass if borderline
+            if (roll > catchChance + (i * 5)) { 
                 // Break free
                 ballAnim.classList.remove('anim-shake');
                 ballAnim.classList.add('hidden');
-                document
-                    .getElementById('enemy-sprite')
-                    .classList.remove('anim-shrink');
-                showDialog('Darn! It broke free!');
+                document.getElementById('enemy-sprite').classList.remove('anim-shrink');
+                showDialog("Darn! It broke free!");
                 await this.delay(1000);
                 this.enemyTurn();
                 return;
@@ -705,26 +716,41 @@ class BattleSystem {
     }
 
     async catchSuccess() {
+        // --- FIX 1: HIDE THE POKEBALL ANIMATION IMMEDIATELY ---
+        // This stops it from blocking the stats text
+        const ballAnim = document.getElementById('pokeball-anim');
+        ballAnim.classList.remove('anim-shake');
+        ballAnim.classList.add('hidden');
+
         showDialog(`Gotcha! ${this.enemy.name} was caught!`);
         await this.delay(1000);
 
-        // Add to team (IMPORTANT: Initialize exp property!)
+        // Add to team
         let caughtPokemon = {
             ...this.enemy,
             hp: this.enemy.maxHp,
-            exp: 0, // Initialize XP
-            backSprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.sprite.match(/\/pokemon\/(\d+)\.png/)[1]}.png`
+            exp: 0,
+            // Safe Back Sprite Generation
+            backSprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
         };
         this.player.addPokemon(caughtPokemon);
         questSystem.update('hunt');
 
+        // --- FIX 2: CALCULATE SR (Score Rating) ---
+        const st = this.enemy.stats;
+        const sr = st.strength + st.defense + st.speed + st.hp + st.special;
+
         // Show Stats
         const stats = document.getElementById('catch-stats');
-        const st = this.enemy.stats;
+        
         stats.innerHTML = `
             <img src="${this.enemy.animatedSprite}" style="width: 96px; height: 96px; image-rendering: pixelated; margin-bottom: 10px;">
             <h3>${this.enemy.name}</h3>
             <p>Level: ${this.enemy.level} | Type: ${this.enemy.type}</p>
+            
+            <!-- ADDED SR DISPLAY HERE -->
+            <div style="color: #2ecc71; font-weight: bold; font-size: 14px; margin: 5px 0;">SR: ${sr}</div>
+
             <div style="text-align: left; display: inline-block; font-size: 12px; margin-top: 5px;">
                 <div><strong>HP:</strong> ${this.enemy.maxHp}</div>
                 <div><strong>Strength:</strong> ${st.strength} | <strong>Defense:</strong> ${st.defense}</div>
@@ -732,7 +758,6 @@ class BattleSystem {
             </div>
         `;
         document.getElementById('new-catch-overlay').classList.remove('hidden');
-        // Waits for user to click Continue -> closeCatchScreen -> win(true)
     }
 
     pokemonBtn() {
@@ -1086,7 +1111,7 @@ class BattleSystem {
     endBattle() {
         this.isActive = false;
         this.isAttacking = false;
-        hideDialog(); // Force hide dialog
+        hideDialog(); 
         this.ui.classList.add('hidden');
         document.getElementById('mobile-controls').classList.remove('hidden');
         document
@@ -1107,16 +1132,22 @@ class BattleSystem {
                 .catch((err) => console.log('Main music autoplay blocked'));
         }
 
-        document.getElementById('bottom-hud').classList.remove('hud-battle'); // Reset HUD
-        document.getElementById('level-up-overlay').classList.add('hidden'); // Ensure closed
+        document.getElementById('bottom-hud').classList.remove('hud-battle'); 
+        document.getElementById('level-up-overlay').classList.add('hidden'); 
 
         // Clear any lingering animations
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
-        document.getElementById('enemy-sprite').classList.remove('anim-shrink'); // Ensure enemy is visible next time
+        
+        // --- FIX 3: CLEAR ENEMY SPRITE TO PREVENT FLASHING ---
+        const enemySprite = document.getElementById('enemy-sprite');
+        enemySprite.classList.remove('anim-shrink'); 
+        enemySprite.classList.add('hidden');
+        enemySprite.src = ''; // This removes the image so it doesn't linger!
+
         document.getElementById('pokeball-anim').classList.add('hidden');
 
-        renderer.draw(); // Redraw world
-        updateHUD(); // Update HUD
+        renderer.draw(); 
+        updateHUD(); 
     }
 }
