@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v5.7';
+const VERSION = 'v5.8';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -350,9 +350,11 @@ function togglePlayerBag() {
     const bagMenu = document.getElementById('player-bag-menu');
     if (bagMenu.classList.contains('hidden')) {
         bagMenu.classList.remove('hidden');
+        selectedBagItem = null; // Reset selection on open
         showBagTab('pokemon'); // Default tab
     } else {
         bagMenu.classList.add('hidden');
+        selectedBagItem = null;
     }
 }
 
@@ -360,23 +362,21 @@ function closePlayerBag() {
     document.getElementById('player-bag-menu').classList.add('hidden');
 }
 
+let selectedBagItem = null; // Track what is highlighted
+
 function showBagTab(tab) {
     // Update tab buttons
-    document
-        .getElementById('tab-pokemon')
-        .classList.toggle('active', tab === 'pokemon');
-    document
-        .getElementById('tab-items')
-        .classList.toggle('active', tab === 'items');
+    document.getElementById('tab-pokemon').classList.toggle('active', tab === 'pokemon');
+    document.getElementById('tab-items').classList.toggle('active', tab === 'items');
 
     const content = document.getElementById('bag-content');
     content.innerHTML = '';
 
+    // --- POKEMON TAB (unchanged, just kept context) ---
     if (tab === 'pokemon') {
-        // Show Pokemon Team
+        selectedBagItem = null; // Reset item selection when switching tabs
         if (player.team.length === 0) {
-            content.innerHTML =
-                '<p style="text-align:center; color: #999;">No Pokemon</p>';
+            content.innerHTML = '<p style="text-align:center; color: #999;">No Pokemon</p>';
             return;
         }
 
@@ -386,42 +386,21 @@ function showBagTab(tab) {
             div.style.cursor = 'pointer';
 
             let isFainted = p.hp <= 0 || (p.hp === undefined && !p.isEgg);
-            let status = p.isEgg
-                ? 'EGG'
-                : isFainted
-                    ? 'FAINTED'
-                    : `HP: ${p.hp}/${p.maxHp}`;
-
-            // Get stats safely
-            const stats = p.stats || {
-                strength: 0,
-                defense: 0,
-                speed: 0,
-                hp: 0,
-                special: 0
-            };
-            const scoreRating =
-                stats.strength +
-                stats.defense +
-                stats.speed +
-                stats.hp +
-                stats.special;
+            let status = p.isEgg ? 'EGG' : isFainted ? 'FAINTED' : `HP: ${p.hp}/${p.maxHp}`;
+            
+            // Stats logic
+            const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
+            const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
             div.innerHTML = `
                 <div class="pokemon-info">
                     <div><strong>${p.name}</strong> Lv.${p.level}</div>
                     <div style="font-size: 10px; color: ${isFainted ? '#e74c3c' : '#2ecc71'};">${status}</div>
-                    ${!p.isEgg
-                    ? `
-                        <div style="font-size: 9px; color: #aaa; margin-top: 3px;">
-                            STR:${stats.strength} DEF:${stats.defense} SPD:${stats.speed} SPC:${stats.special}
-                        </div>
+                    ${!p.isEgg ? `
                         <div style="font-size: 11px; color: #2ecc71; margin-top: 2px; font-weight: bold;">
                             SR: ${scoreRating}
                         </div>
-                    `
-                    : ''
-                }
+                    ` : ''}
                 </div>
                 <div class="pokemon-actions">
                     ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
@@ -429,34 +408,92 @@ function showBagTab(tab) {
                 </div>
             `;
 
-            // Click to view detailed stats
-            div.onclick = () => {
-                if (!p.isEgg) {
-                    showPokemonStats(p);
-                }
-            };
-
+            div.onclick = () => { if (!p.isEgg) showPokemonStats(p); };
             content.appendChild(div);
         });
-    } else if (tab === 'items') {
-        // Show Items
+
+    } 
+    // --- ITEMS TAB (NEW SELECTION LOGIC) ---
+    else if (tab === 'items') {
         let hasItems = false;
+        
+        // 1. List Items
         for (let [item, count] of Object.entries(player.bag)) {
             if (count > 0) {
                 hasItems = true;
                 let div = document.createElement('div');
                 div.className = 'menu-item';
+                
+                // Highlight if selected
+                if (selectedBagItem === item) {
+                    div.classList.add('selected');
+                }
+
                 div.innerHTML = `${item} x${count}`;
-                div.onclick = () => useBagItem(item);
+                
+                // On Click: Select it, don't use it yet
+                div.onclick = () => {
+                    selectedBagItem = item;
+                    showBagTab('items'); // Re-render to show highlight
+                };
+                
                 content.appendChild(div);
             }
         }
 
         if (!hasItems) {
-            content.innerHTML =
-                '<p style="text-align:center; color: #999;">No Items</p>';
+            content.innerHTML = '<p style="text-align:center; color: #999;">No Items</p>';
+            selectedBagItem = null;
         }
+
+        // 2. Add Action Buttons (Fixed at bottom of scroll area or appended)
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'bag-actions';
+        
+        // Use Button
+        const useBtn = document.createElement('button');
+        useBtn.className = 'bag-btn btn-use';
+        useBtn.innerText = 'USE';
+        useBtn.disabled = !selectedBagItem; // Disable if nothing selected
+        useBtn.onclick = () => {
+            if(selectedBagItem) useBagItem(selectedBagItem);
+        };
+
+        // Toss Button
+        const tossBtn = document.createElement('button');
+        tossBtn.className = 'bag-btn btn-toss';
+        tossBtn.innerText = 'TOSS';
+        tossBtn.disabled = !selectedBagItem;
+        tossBtn.onclick = () => {
+            if(selectedBagItem) tossBagItem(selectedBagItem);
+        };
+
+        actionDiv.appendChild(useBtn);
+        actionDiv.appendChild(tossBtn);
+        
+        // Append actions to content (or you can append to the parent container if you want it sticky)
+        content.appendChild(actionDiv);
     }
+}
+
+function tossBagItem(itemName) {
+    if (!player.bag[itemName] || player.bag[itemName] <= 0) return;
+
+    // Decrease count
+    player.bag[itemName]--;
+    
+    // Remove from bag if 0
+    if (player.bag[itemName] === 0) {
+        delete player.bag[itemName];
+        selectedBagItem = null; // Deselect if gone
+    }
+
+    playSFX('sfx-attack1'); // Sound effect
+    showDialog(`Tossed 1 ${itemName}.`, 1000);
+    
+    // Refresh UI
+    showBagTab('items');
+    updateHUD();
 }
 
 function swapPokemon(index1, index2) {
