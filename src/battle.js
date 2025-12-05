@@ -493,7 +493,7 @@ class BattleSystem {
         // 1. CRITICAL HIT CALCULATION
         // Chance = Special Stat / 4. (e.g., 40 Special = 10%)
         // Cap = 15%
-        const critChance = Math.min(15, attackerSpecial / 4);
+        const critChance = Math.min(15, (attackerSpecial / 1000) * 15);
         const isCrit = Math.random() * 100 < critChance;
         const critMultiplier = isCrit ? 2.0 : 1.0;
 
