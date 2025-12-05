@@ -360,13 +360,33 @@ class BattleSystem {
         if (this.enemy.hp <= 0) return; // Prevent attacking fainted enemy
 
         document.getElementById('move-selector').classList.remove('hidden');
+        
         let p = this.player.team[0];
-        // Generate moves based on level tier
-        let tier = Math.floor(p.level / 20);
-        let move = getMove(p.type, tier);
-        document.getElementById('move-0').innerText = move.name;
-    }
 
+        // 1. Safety Check: If pokemon has no moves list (old save), create one
+        if (!p.moves || !Array.isArray(p.moves) || p.moves.length === 0) {
+            let tier = Math.floor(p.level / 20);
+            p.moves = [getMove(p.type, tier)];
+        }
+
+        // 2. Update all 4 Move Buttons
+        for (let i = 0; i < 4; i++) {
+            // Find the button (move-0, move-1, move-2, move-3)
+            let btn = document.getElementById(`move-${i}`);
+            
+            if (btn) {
+                // Check if the Pokemon has a move in this slot
+                if (p.moves[i]) {
+                    btn.innerText = p.moves[i].name;
+                    btn.style.color = "black"; // Active
+                } else {
+                    btn.innerText = "-";
+                    btn.style.color = "#ccc"; // Greyed out
+                }
+            }
+        }
+    }
+    
     closeMoves() {
         document.getElementById('move-selector').classList.add('hidden');
     }
