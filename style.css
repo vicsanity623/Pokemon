@@ -1810,3 +1810,13 @@ canvas {
         padding: 6px !important;
     }
 }
+
+.crit-text {
+    color: #ff0000 !important;
+    text-shadow: 
+        4px 4px 0 #000,
+        -4px -4px 0 #000, 
+        0 0 20px #ff0000, 
+        0 0 40px #ff4444 !important;
+    transform: scale(1.2);
+}
