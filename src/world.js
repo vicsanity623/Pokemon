@@ -232,6 +232,49 @@ class World {
         }
         return { x: x, y: y }; // Fallback
     }
+    respawnItem(playerX, playerY) {
+        // 1. Cap the total items to prevent lag (Max 60 items)
+        if (Object.keys(this.items).length >= 60) return;
+
+        // 2. Try 10 times to find a valid spot near the player
+        for (let i = 0; i < 10; i++) {
+            // Pick a random spot within 25 tiles of the player
+            let range = 25;
+            let rx = Math.floor(playerX + (Math.random() * range * 2) - range);
+            let ry = Math.floor(playerY + (Math.random() * range * 2) - range);
+            
+            let tile = this.getTile(rx, ry);
+            let key = `${rx},${ry}`;
+            
+            // Check against existing items
+            if (this.items[key]) continue;
+
+            // Check against buildings
+            let hasBuilding = this.buildings.some(b => Math.round(b.x) === rx && Math.round(b.y) === ry);
+            if (hasBuilding) continue;
+
+            // Strict terrain check (Must be grass, not water/structures)
+            if (tile === 'grass' || tile === 'grass_tall' || tile === 'flowers') {
+                
+                // 3. Determine Item Type (Weighted Rarity)
+                let r = Math.random();
+                let type = 'Potion';
+
+                if (r > 0.99) type = 'Ultra Ball';      // Very Rare
+                else if (r > 0.96) type = 'Max Potion';
+                else if (r > 0.92) type = 'Great Ball';
+                else if (r > 0.85) type = 'Super Potion';
+                else if (r > 0.75) type = 'Pokeball';
+                else if (r > 0.60) type = 'Herb';
+                else type = 'Potion'; // Common (40% chance)
+
+                // Place the item
+                this.items[key] = type;
+                // console.log(`Respawned ${type} at ${rx},${ry}`);
+                break; // Stop loop, item placed
+            }
+        }
+    }
 }
 
 class NPC {
