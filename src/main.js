@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.3';
+const VERSION = 'v4.4';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -615,21 +615,31 @@ function handleNPCInteraction(npc) {
             showDialog('Herbalist: Thanks again for the herbs!', 3000);
         } else if (npc.questGiven && player.inventory['Herb'] >= 10) {
             player.inventory['Herb'] -= 10;
-            player.money += 500;
+            
+            // --- NEW DYNAMIC REWARD ---
+            // Base $500 + ($100 for every Player Level)
+            // Level 5 = $1000, Level 10 = $1500, etc.
+            let rewardMoney = 500 + (player.pLevel * 100);
+            
+            player.money += rewardMoney;
             player.team[0].exp += 200;
+            
             npc.questCompleted = true;
             npc.color = '#2ecc71'; // Green when complete
+            
             showDialog(
-                'Herbalist: Perfect! Here is $500 and XP. Quest complete!',
+                `Herbalist: Perfect! Here is $${rewardMoney} and XP. Quest complete!`,
                 3000
             );
+            updateHUD(); // Force Money UI to update immediately
+            
         } else if (npc.questGiven) {
             let remaining = 10 - (player.inventory['Herb'] || 0);
             showDialog(`Herbalist: Still need ${remaining} more Herbs!`, 3000);
         } else {
             npc.questGiven = true;
             npc.color = '#e74c3c'; // Red when quest active
-            showDialog('Herbalist: Bring me 10 Herbs for $500 and XP!', 3000);
+            showDialog('Herbalist: Bring me 10 Herbs for a reward!', 3000);
         }
     } else if (npc.type === 'daycare') {
         // 1. Check Party Size
