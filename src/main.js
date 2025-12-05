@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.9';
+const VERSION = 'v5.0';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -471,6 +471,7 @@ async function showPokemonStats(pokemon) {
     const modal = document.getElementById('pokemon-stats-modal');
     const display = document.getElementById('pokemon-stats-display');
 
+    // Ensure stats exist (Safety check)
     const stats = pokemon.stats || {
         strength: 0,
         defense: 0,
@@ -492,7 +493,7 @@ async function showPokemonStats(pokemon) {
             const data = await res.json();
             sprite =
                 data.sprites.versions['generation-v']['black-white'][
-                'animated'
+                    'animated'
                 ]['front_default'] || data.sprites.front_default;
         } catch (e) {
             console.log('Could not fetch animated sprite');
@@ -504,6 +505,28 @@ async function showPokemonStats(pokemon) {
     const scoreRating =
         stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
+    // --- NEW CALCULATIONS ---
+    
+    // 1. Critical Chance (Based on Special, Capped at 15%)
+    const critChance = Math.min(15, (stats.special / 4)).toFixed(1);
+    
+    // 2. First Strike Chance (Based on Speed, Capped at 81%)
+    const speedAdvantage = Math.min(81, (stats.speed / 1.5)).toFixed(1);
+
+    // 3. Estimated Damage Output (Rough formula based on Level & Strength)
+    const estDamage = Math.floor((pokemon.level * 0.4) * (stats.strength / 2) + 10);
+
+    // 4. Moves List HTML
+    let movesHtml = '';
+    if (pokemon.moves && pokemon.moves.length > 0) {
+        movesHtml = pokemon.moves.map(m => 
+            `<div style="background: #fff; color: #000; padding: 5px; border-radius: 4px; font-size: 10px; text-align: center; border: 1px solid #ccc; font-weight: bold;">${m.name}</div>`
+        ).join('');
+    } else {
+        movesHtml = '<div style="color:#666; font-size:10px;">No moves known</div>';
+    }
+
+    // --- RENDER HTML ---
     display.innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <img src="${sprite}" style="width: 128px; height: 128px; image-rendering: pixelated; margin-bottom: 15px;">
@@ -515,7 +538,8 @@ async function showPokemonStats(pokemon) {
                 SR: ${scoreRating}
             </div>
             
-            <div style="text-align: left; display: inline-block; width: 80%; max-width: 350px;">
+            <div style="text-align: left; display: inline-block; width: 90%; max-width: 350px;">
+                <!-- HP BAR -->
                 <div style="margin-bottom: 15px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                         <span style="color: #e74c3c;"><strong>HP:</strong></span>
@@ -526,7 +550,8 @@ async function showPokemonStats(pokemon) {
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                <!-- MAIN STATS GRID -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 15px;">
                     <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
                         <div style="color: #f39c12;"><strong>⚔️ Strength</strong></div>
                         <div style="font-size: 20px; color: #fff;">${stats.strength}</div>
@@ -545,14 +570,28 @@ async function showPokemonStats(pokemon) {
                     </div>
                 </div>
                 
-                ${pokemon.exp !== undefined
-            ? `
-                    <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
-                        EXP: ${pokemon.exp} / ${pokemon.level * 100}
+                <div style="margin-top: 5px; font-size: 12px; color: #aaa; text-align: center;">
+                    EXP: ${pokemon.exp || 0} / ${pokemon.level * 100}
+                </div>
+
+                <!-- NEW: DETAILED BATTLE STATS PANEL -->
+                <div style="margin-top: 15px; background: #222; border: 2px solid #444; border-radius: 8px; padding: 10px;">
+                    <h3 style="margin: 0 0 10px 0; color: gold; font-size: 12px; border-bottom: 1px solid #555; padding-bottom: 5px; text-align:center;">BATTLE DETAILS</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px; color: #ccc; margin-bottom: 15px;">
+                        <div>💥 Crit Chance: <span style="color:white; float:right;">${critChance}%</span></div>
+                        <div>⏩ First Strike: <span style="color:white; float:right;">${speedAdvantage}%</span></div>
+                        <div style="grid-column: span 2; border-top: 1px dashed #444; padding-top: 5px;">
+                            ⚔️ Est. Damage Output: <span style="color:white; float:right;">${estDamage}</span>
+                        </div>
                     </div>
-                `
-            : ''
-        }
+
+                    <h3 style="margin: 0 0 5px 0; color: gold; font-size: 12px; text-align:center;">KNOWN MOVES</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                        ${movesHtml}
+                    </div>
+                </div>
+
             </div>
         </div>
     `;
