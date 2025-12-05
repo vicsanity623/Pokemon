@@ -1001,41 +1001,65 @@ class BattleSystem {
     }
 
     async checkEvolution(p) {
-        const evolution = EVOLUTIONS[p.name];
+        // 1. Get Base Name (Ignore "✨" or "✨✨")
+        const cleanName = p.name.split(' ')[0];
+        const evoData = EVOLUTIONS[cleanName];
 
-        if (evolution && p.level >= evolution.level) {
-            showDialog(`What? ${p.name} is evolving!`, 2000);
+        // 2. Check if eligible
+        if (evoData && p.level >= evoData.level) {
+            
+            // --- START EVOLUTION SEQUENCE ---
+            
+            // A. Announce
+            showDialog(`What? ${p.name} is evolving!`);
+            
+            // B. Visuals (Get the Player Sprite element from the UI, not the canvas)
+            // In the level up screen, we don't have the sprite visible, 
+            // so we just play sound and wait.
+            playSFX('sfx-attack2'); // Use a sound effect like a beam
             await this.delay(2000);
 
             const oldName = p.name;
-            p.name = evolution.evolvesInto;
+            
+            // Keep stars if they exist (Merge system)
+            const stars = p.name.includes('✨') ? ' ' + p.name.split(' ').slice(1).join(' ') : '';
+            const newName = evoData.name + stars;
 
-            // Fetch new Pokemon data for sprites
+            // C. Fetch New Sprite Data
             try {
-                const res = await fetch(
-                    `https://pokeapi.co/api/v2/pokemon/${evolution.id}`
-                );
+                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evoData.id}`);
                 const data = await res.json();
 
-                // Update sprites
+                // D. Update Pokemon Data
+                p.name = newName;
+                p.id = evoData.id; // Important for future Pokedex lookups
+                
+                // Update Sprites
                 p.backSprite = data.sprites.back_default;
                 p.sprite = data.sprites.front_default;
-
-                // Update type if needed
+                p.animatedSprite = data.sprites.versions['generation-v']['black-white']['animated']['front_default'];
+                
+                // Update Type
                 p.type = data.types[0].type.name;
 
-                showDialog(
-                    `Congratulations! ${oldName} evolved into ${p.name}!`,
-                    3000
-                );
-                await this.delay(3000);
+                // Boost Stats slightly for evolving
+                p.maxHp += 20;
+                p.hp = p.maxHp;
+                if(p.stats) {
+                    p.stats.strength += 10;
+                    p.stats.defense += 10;
+                    p.stats.speed += 5;
+                    p.stats.special += 10;
+                }
+
+                // E. Success Message
+                showDialog(`Congratulations! Your ${oldName} evolved into ${newName}!`, 4000);
+                playSFX('sfx-pickup'); // Success chime
+                await this.delay(4000);
+
             } catch (e) {
-                console.error('Evolution fetch failed', e);
-                showDialog(
-                    `Congratulations! ${oldName} evolved into ${p.name}!`,
-                    3000
-                );
-                await this.delay(3000);
+                console.error("Evolution fetch failed", e);
+                showDialog(`Evolution failed due to network error.`, 2000);
             }
         }
     }
