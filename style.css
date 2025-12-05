@@ -1820,49 +1820,61 @@ canvas {
         0 0 40px #ff4444 !important;
     transform: scale(1.2);
 }
-/* --- PC BOX UPDATES --- */
+/* --- PC BOX UPDATES (Fixed Visibility) --- */
 .pc-slot {
     display: flex;
-    flex-direction: column; /* Stack items vertically */
-    justify-content: flex-end;
+    flex-direction: column;
+    justify-content: center; /* Center items */
     align-items: center;
     padding: 2px;
     position: relative;
     overflow: hidden;
+    background: rgba(255, 255, 255, 0.05); /* Subtle background */
 }
 
+/* Make Sprite HUGE */
 .pc-slot img {
-    width: 32px; /* Slightly smaller to make room for text */
-    height: 32px;
-    margin-bottom: 2px;
+    width: 96px; /* Increased from 32px to 96px to fill box */
+    height: 96px;
+    image-rendering: pixelated;
+    object-fit: contain;
+    margin-bottom: 5px;
+    z-index: 1;
 }
 
+/* Dark background for text readability */
 .pc-info {
-    width: 100%;
+    width: 95%;
+    background: rgba(0, 0, 0, 0.85); /* Dark background */
+    border-radius: 4px;
+    padding: 4px 0;
     text-align: center;
-    line-height: 1.1;
+    line-height: 1.2;
     z-index: 2;
+    position: absolute; /* Float at bottom */
+    bottom: 5px;
 }
 
 .pc-lv {
-    font-size: 8px;
+    font-size: 10px; /* Readable size */
     color: #ffd700; /* Gold */
     font-weight: bold;
+    text-shadow: 1px 1px 0 #000;
 }
 
 .pc-name {
-    font-size: 7px;
+    font-size: 9px; /* Readable size */
     color: white;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* ... if name is too long */
-    width: 100%;
+    text-overflow: ellipsis;
+    font-weight: bold;
 }
 
 /* SACRIFICE BUTTON STYLE */
 #pc-sacrifice-btn {
-    background: #2c3e50 !important; /* Dark Blue/Black */
+    background: #2c3e50 !important;
     border-color: #000 !important;
-    color: #e74c3c !important; /* Red Text */
+    color: #e74c3c !important;
     margin-left: 10px;
 }
