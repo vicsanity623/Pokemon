@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v5.6';
+const VERSION = 'v5.7';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -508,7 +508,7 @@ async function showPokemonStats(pokemon) {
     // --- NEW CALCULATIONS ---
     
     // 1. Critical Chance (Based on Special, Capped at 15%)
-    const critChance = Math.min(15, (stats.special / 4)).toFixed(1);
+    const critChance = Math.min(15, (stats.special / 1000) * 15).toFixed(1);
     
     // 2. First Strike Chance (Based on Speed, Capped at 81%)
     const speedAdvantage = Math.min(81, (stats.speed / 1.5)).toFixed(1);
