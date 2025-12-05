@@ -1023,7 +1023,7 @@ class BattleSystem {
             
             // Keep stars if they exist (Merge system)
             const stars = p.name.includes('✨') ? ' ' + p.name.split(' ').slice(1).join(' ') : '';
-            const newName = evoData.name + stars;
+            const newName = evoData.evolvesInto + stars;
 
             // C. Fetch New Sprite Data
             try {
