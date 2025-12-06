@@ -768,6 +768,39 @@ class BattleSystem {
 
         await this.delay(1000);
 
+        // --- 1. ARENA BOSS HP CHECK (The "5% Rule") ---
+        if (this.enemy.isArenaBoss) {
+            let hpPercent = this.enemy.hp / this.enemy.maxHp;
+            
+            // If HP is greater than 5%, Fail immediately
+            if (hpPercent > 0.05) {
+                ballAnim.classList.remove('anim-throw');
+                ballAnim.classList.add('hidden');
+                
+                showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
+                await this.delay(1500);
+                
+                this.enemyTurn(); // Boss attacks back
+                return;
+            }
+        }
+
+        // --- 2. LEGENDARY RESTRICTIONS (Mewtwo/Mew) ---
+        const LEGENDARY_IDS = [144, 145, 146, 150, 151]; 
+        const UNCATCHABLE_IDS = [150, 151]; // Mewtwo/Mew
+
+        if (this.enemy.isArenaBoss && UNCATCHABLE_IDS.includes(this.enemy.id)) {
+            ballAnim.classList.remove('anim-throw');
+            ballAnim.classList.add('hidden');
+            
+            const pokemonName = this.enemy.id === 150 ? 'Mewtwo' : 'Mew';
+            showDialog(`${pokemonName} cannot be caught! It's too powerful!`);
+            await this.delay(2000);
+            
+            this.enemyTurn();
+            return;
+        }
+
         // Hide enemy sprite (captured visual)
         document.getElementById('enemy-sprite').classList.add('anim-shrink');
 
@@ -777,60 +810,24 @@ class BattleSystem {
 
         // --- NEW CATCH LOGIC ---
         let ballData = ITEMS[ballType];
-        let ballRate = ballData.val; // Pokeball=1, Great=1.5, Ultra=2.0
+        let ballRate = ballData.val; 
 
-        // --- ARENA LEGENDARY RESTRICTIONS ---
-        const LEGENDARY_IDS = [144, 145, 146, 150, 151]; // Articuno, Zapdos, Moltres, Mewtwo, Mew
-        const UNCATCHABLE_IDS = [150, 151]; // Mewtwo and Mew
-
-        if (this.enemy.isArenaBoss && LEGENDARY_IDS.includes(this.enemy.id)) {
-            // Check if Mewtwo or Mew - completely uncatchable
-            if (UNCATCHABLE_IDS.includes(this.enemy.id)) {
-                // Refuse capture even with Master Ball
-                for (let i = 0; i < 2; i++) {
-                    await this.delay(600);
-                }
-
-                // Break free
-                ballAnim.classList.remove('anim-shake');
-                ballAnim.classList.add('hidden');
-                document.getElementById('enemy-sprite').classList.remove('anim-shrink');
-
-                const pokemonName = this.enemy.id === 150 ? 'Mewtwo' : 'Mew';
-                showDialog(`${pokemonName} cannot be caught! It's too powerful!`);
-                await this.delay(2000);
-                this.enemyTurn();
-                return;
-            }
-        }
-
-        // Master Ball Check (but not for Mewtwo/Mew)
+        // Master Ball Check
         if (ballRate >= 255) {
             await this.delay(500);
             this.catchSuccess();
             return;
         }
 
-        // 1. Calculate HP Percent (0.0 to 1.0)
+        // Calculate Chance
         let hpPercent = this.enemy.hp / this.enemy.maxHp;
-
-        // 2. Base Chance (Higher is better)
-        // Formula: The lower the health, the higher the multiplier (1x to 3x)
         let hpFactor = (1 - hpPercent) * 2 + 1;
-
-        // 3. Final Calculation
-        // Example: Pokeball (1 * 30) * LowHP (3) = 90% chance.
-        // Difficulty reduces chance slightly for high levels
         let difficulty = Math.max(1, this.enemy.level / 10);
         let catchChance = ((ballRate * 30) * hpFactor) / difficulty;
 
-        // --- ARENA LEGENDARY PENALTY ---
-        // Apply severe penalty to legendary birds in arena (but still doable)
+        // --- 3. LEGENDARY BIRD PENALTY ---
         if (this.enemy.isArenaBoss && LEGENDARY_IDS.includes(this.enemy.id)) {
-            // Divide catch chance by 8 (makes it ~8x harder)
-            // Example: Ultra Ball at 1% HP normally = 60% chance
-            //          With penalty = 7.5% chance (very hard but doable)
-            catchChance = catchChance / 8;
+            catchChance = catchChance / 8; // Harder to catch Articuno/Zapdos/Moltres
         }
 
         // Random roll (0 to 100)
@@ -839,9 +836,6 @@ class BattleSystem {
         // 3 Shakes Animation
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-
-            // Fail Check with tension
-            // We add (i * 5) so each subsequent shake is slightly harder to pass if borderline
             if (roll > catchChance + (i * 5)) {
                 // Break free
                 ballAnim.classList.remove('anim-shake');
@@ -976,10 +970,6 @@ class BattleSystem {
         // XP and Money Gain
         let xpGain = this.enemy.level * 10;
         let p = this.player.team[0];
-        // Base $50 + ($25 per Enemy Level)
-        // Level 5 Enemy = $175
-        // Level 20 Enemy = $550
-        // Level 50 Enemy = $1300
         let moneyGain = 50 + (this.enemy.level * 25);
 
         this.player.money += moneyGain;
@@ -987,27 +977,15 @@ class BattleSystem {
 
         // --- DEFINE LEVEL UP LOGIC ---
         const performLevelUp = async () => {
-            // Subtract the required XP for the current level to reset the "bucket"
-            // Example: If you have 105 XP and need 100, you keep 5 XP.
             p.exp -= p.level * 100;
             p.level++;
 
-            // Ensure stats exist
             if (!p.stats) {
                 if (this.generateStats) p.stats = this.generateStats();
-                else if (typeof generatePokemonStats === 'function')
-                    p.stats = generatePokemonStats();
-                else
-                    p.stats = {
-                        strength: 10,
-                        defense: 10,
-                        speed: 10,
-                        hp: 10,
-                        special: 10
-                    };
+                else if (typeof generatePokemonStats === 'function') p.stats = generatePokemonStats();
+                else p.stats = { strength: 10, defense: 10, speed: 10, hp: 10, special: 10 };
             }
 
-            // 1. Determine Stat Increases
             const statIncreases = {
                 strength: Math.floor(Math.random() * 3) + 1,
                 defense: Math.floor(Math.random() * 3) + 1,
@@ -1016,71 +994,53 @@ class BattleSystem {
                 special: Math.floor(Math.random() * 3) + 1
             };
 
-            // 2. Apply Increases
             p.stats.strength += statIncreases.strength;
             p.stats.defense += statIncreases.defense;
             p.stats.speed += statIncreases.speed;
             p.stats.hp += statIncreases.hp;
             p.stats.special += statIncreases.special;
 
-            // 3. Recalculate Max HP
             const oldMaxHp = p.maxHp;
             p.maxHp = p.level * 5 + p.stats.hp;
             const hpIncrease = p.maxHp - oldMaxHp;
 
-            // Full heal on level up
             p.hp = p.maxHp;
 
-            // 4. Update UI
             this.updateBattleUI();
-
-            // 5. Show Screen
             await this.showLevelUpScreen(p, statIncreases, hpIncrease);
-
-            // 6. Check Evolution
             await this.checkEvolution(p);
         };
 
-        // --- NEW ANIMATION LOOP (Relative Addition) ---
-        // Instead of calculating based on "Start XP", we just add chunks until empty.
+        // --- ANIMATION LOOP ---
         let expRemaining = xpGain;
-        let step = Math.max(1, Math.ceil(xpGain / 30)); // Add in ~30 frames
+        let step = Math.max(1, Math.ceil(xpGain / 30)); 
 
         while (expRemaining > 0) {
-            // Add a small chunk
             let addAmt = Math.min(step, expRemaining);
             p.exp += addAmt;
             expRemaining -= addAmt;
 
-            // Calculate percentage for bar
             let maxExp = p.level * 100;
             let expPct = (p.exp / maxExp) * 100;
-            document.getElementById('player-exp-bar').style.width =
-                `${expPct}%`;
+            document.getElementById('player-exp-bar').style.width = `${expPct}%`;
 
-            // Check for Level Up
             if (p.exp >= maxExp) {
-                // Visual flare: fill bar to 100% before resetting
                 document.getElementById('player-exp-bar').style.width = '100%';
                 await this.delay(200);
                 document.getElementById('player-exp-bar').style.width = '0%';
-
-                // Run Logic (This subtracts the XP and resets p.exp close to 0)
                 await performLevelUp();
             }
-
             await this.delay(50);
         }
 
         this.updateBattleUI();
         await this.delay(500);
 
-        // --- ARENA BOSS WIN REWARD ---
-        if (this.enemy.isArenaBoss && !caught) {
-            // Trigger arena win rewards
-            if (typeof arenaSystem !== 'undefined') {
-                arenaSystem.winStage();
-            }
+        // --- ARENA BOSS WIN REWARD (FIXED) ---
+        // We run this regardless of 'caught' status. 
+        // If it's an arena boss, we beat the stage.
+        if (this.enemy.isArenaBoss && typeof arenaSystem !== 'undefined') {
+            arenaSystem.winStage();
         }
 
         this.endBattle();
