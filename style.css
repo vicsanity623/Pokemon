@@ -1943,15 +1943,16 @@ canvas {
 
 /* --- ARENA BOSS VISUALS --- */
 
-/* Massive Boss Sprite (3.5x size) */
+/* 1. GLOBAL / DESKTOP SETTINGS */
 .boss-sprite {
     transform: scale(3.5) !important;
-    top: 150px !important;
+    /* Pushes boss down on big screens so feet are hidden */
+    top: 300px !important; 
     right: 100px !important;
     image-rendering: pixelated;
     filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)); /* Evil red glow */
     z-index: 1 !important; /* Move behind the UI */
-    pointer-events: none !important;
+    pointer-events: none !important; /* Allow clicking through the image */
 }
 
 /* Hide normal enemy UI in boss mode */
@@ -1968,7 +1969,7 @@ canvas {
     width: 90%;
     max-width: 800px;
     text-align: center;
-    z-index: 100;
+    z-index: 200 !important; /* Ensure on top */
 }
 
 /* Boss Name Banner */
@@ -2047,11 +2048,12 @@ canvas {
     pointer-events: none;
 }
 
-/* Mobile Responsive Boss Visuals */
+/* 2. MOBILE PORTRAIT SETTINGS */
 @media (max-width: 600px) {
     .boss-sprite {
         transform: scale(2.5) !important;
-        top: 300px !important;
+        /* Adjusted to 200px: Pushes feet down behind text box, but keeps head visible */
+        top: 200px !important; 
         right: 50px !important;
     }
     
@@ -2069,28 +2071,26 @@ canvas {
     }
 }
 
-/* Landscape Mode Boss Fixes */
+/* 3. LANDSCAPE MODE SETTINGS */
 @media (orientation: landscape) and (max-height: 500px) {
     .boss-sprite {
-        transform: scale(2.5) !important; /* Shrink slightly for short screens */
-        top: 180px !important; /* Move up */
+        transform: scale(2.5) !important; 
+        top: 180px !important; /* Perfect for landscape */
         right: 20% !important;
     }
     
     /* Ensure Battle Menu is ALWAYS on top */
     #battle-menu, #move-selector {
-        z-index: 100 !important;
+        z-index: 200 !important;
         position: absolute;
     }
 }
-/* --- UI LAYERING FIX --- */
-#player-stat-box {
-    z-index: 200 !important; /* Higher than Boss Sprite (z-index 1) */
-    position: absolute; /* Ensure z-index works */
-}
 
-#boss-hud {
-    z-index: 200 !important;
+/* --- UI LAYERING FIX --- */
+/* Forces Player Stats above the Boss Image */
+#player-stat-box {
+    z-index: 200 !important; 
+    position: absolute; 
 }
 
 /* Ensure the Arena Message Box is also on top */
