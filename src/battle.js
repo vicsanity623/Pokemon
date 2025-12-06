@@ -887,7 +887,9 @@ class BattleSystem {
             hp: this.enemy.maxHp,
             exp: 0,
             // Safe Back Sprite Generation
-            backSprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
+            backSprite: this.enemy.isShiny
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png`
+                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
         };
         this.player.addPokemon(caughtPokemon);
         questSystem.update('hunt');
