@@ -527,12 +527,12 @@ class BattleSystem {
 
         // --- 2. APPLY STATUS EFFECTS (New Logic) ---
         // Check if move has an effect defined in MOVE_EFFECTS
-        if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name]) {
-            const effect = MOVE_EFFECTS[move.name];
+        if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name.toUpperCase()]) {
+            const effect = MOVE_EFFECTS[move.name.toUpperCase()];
             // If enemy doesn't already have status, and RNG hits
             if (!this.enemy.status && this.enemy.hp > 0 && Math.random() < effect.chance) {
-                // Bosses have 50% resistance to status
-                if (!this.enemy.isArenaBoss || Math.random() > 0.5) {
+                // Bosses are now fully susceptible (removed 50% resistance)
+                if (true) {
                     this.enemy.status = effect.status;
                     await this.delay(500);
 
@@ -630,6 +630,42 @@ class BattleSystem {
 
     async enemyTurn() {
         let p = this.player.team[0];
+
+        // --- 1. CHECK ENEMY STATUS (Can they move?) ---
+        if (this.enemy.status === 'SLP') {
+            showDialog(`${this.enemy.name} is fast asleep.`);
+            await this.delay(1000);
+            // 33% chance to wake up
+            if (Math.random() < 0.33) {
+                this.enemy.status = null;
+                showDialog(`${this.enemy.name} woke up!`);
+                await this.delay(1000);
+            } else {
+                await this.handleStatusDamage(this.enemy);
+                this.finishEnemyTurn(); // Skip attack
+                return;
+            }
+        }
+        if (this.enemy.status === 'FRZ') {
+            showDialog(`${this.enemy.name} is frozen solid!`);
+            await this.delay(1000);
+            if (Math.random() < 0.2) {
+                this.enemy.status = null;
+                showDialog(`${this.enemy.name} thawed out!`);
+            } else {
+                await this.handleStatusDamage(this.enemy);
+                this.finishEnemyTurn();
+                return;
+            }
+        }
+        if (this.enemy.status === 'PAR' && Math.random() < 0.25) {
+            showDialog(`${this.enemy.name} is paralyzed! It can't move!`);
+            await this.delay(1000);
+            await this.handleStatusDamage(this.enemy);
+            this.finishEnemyTurn();
+            return;
+        }
+
         let moveName = this.enemy.move ? this.enemy.move.name : 'ATTACK';
 
         showDialog(`${this.enemy.name} used ${moveName}!`);
@@ -701,10 +737,24 @@ class BattleSystem {
                 this.lose();
             }
         } else {
-            // Reset to player turn prompt
-            showDialog('What will you do?');
-            this.isAttacking = false; // Unlock input
+            // Apply Status Damage to Enemy at end of their turn
+            await this.handleStatusDamage(this.enemy);
+            if (this.enemy.hp <= 0) {
+                // If enemy died from poison
+                // Win logic is handled in handleStatusDamage? 
+                // No, handleStatusDamage calls win(false) if enemy dies.
+                // But we need to make sure we don't reset turn if they died.
+                return;
+            }
+
+            this.finishEnemyTurn();
         }
+    }
+
+    finishEnemyTurn() {
+        // Reset to player turn prompt
+        showDialog('What will you do?');
+        this.isAttacking = false; // Unlock input
     }
 
     bagBtn() {
