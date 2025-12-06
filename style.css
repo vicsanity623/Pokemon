@@ -1950,7 +1950,8 @@ canvas {
     right: 100px !important;
     image-rendering: pixelated;
     filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)); /* Evil red glow */
-    z-index: 15 !important;
+    z-index: 1 !important; /* Move behind the UI */
+    pointer-events: none !important;
 }
 
 /* Hide normal enemy UI in boss mode */
@@ -2065,5 +2066,20 @@ canvas {
     
     .boss-hp-text {
         font-size: 10px;
+    }
+}
+
+/* Landscape Mode Boss Fixes */
+@media (orientation: landscape) and (max-height: 500px) {
+    .boss-sprite {
+        transform: scale(2.5) !important; /* Shrink slightly for short screens */
+        top: 80px !important; /* Move up */
+        right: 10% !important;
+    }
+    
+    /* Ensure Battle Menu is ALWAYS on top */
+    #battle-menu, #move-selector {
+        z-index: 100 !important;
+        position: absolute;
     }
 }
