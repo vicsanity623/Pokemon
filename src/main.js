@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v6.9';
+const VERSION = 'v7.0';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1737,8 +1737,20 @@ function updatePartySidebar() {
     const sidebar = document.getElementById('party-sidebar');
     if (!sidebar) return;
 
-    // Hide sidebar if in battle or if party is empty
-    if (battleSystem.isActive || player.team.length === 0) {
+    // Check for blocking UI overlays
+    const bagMenu = document.getElementById('player-bag-menu');
+    const pokedexModal = document.getElementById('pokedex-modal');
+    const pcModal = document.getElementById('pc-modal');
+    const mainMenu = document.getElementById('main-menu-modal');
+
+    const isBlocked =
+        (bagMenu && !bagMenu.classList.contains('hidden')) ||
+        (pokedexModal && !pokedexModal.classList.contains('hidden')) ||
+        (pcModal && !pcModal.classList.contains('hidden')) ||
+        (mainMenu && !mainMenu.classList.contains('hidden'));
+
+    // Hide sidebar if in battle, party is empty, or UI is blocked
+    if (battleSystem.isActive || player.team.length === 0 || isBlocked) {
         sidebar.classList.add('hidden');
         return;
     }
