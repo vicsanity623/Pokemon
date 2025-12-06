@@ -1940,3 +1940,130 @@ canvas {
     color: #999;
     cursor: not-allowed;
 }
+
+/* --- ARENA BOSS VISUALS --- */
+
+/* Massive Boss Sprite (3.5x size) */
+.boss-sprite {
+    transform: scale(3.5) !important;
+    top: 150px !important;
+    right: 100px !important;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)); /* Evil red glow */
+    z-index: 15 !important;
+}
+
+/* Hide normal enemy UI in boss mode */
+.boss-mode .normal-enemy-ui {
+    display: none !important;
+}
+
+/* Boss HUD Container */
+#boss-hud {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+    z-index: 100;
+}
+
+/* Boss Name Banner */
+.boss-name {
+    color: #e74c3c;
+    font-size: 24px;
+    text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    margin-bottom: 8px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+                     0 0 10px rgba(231, 76, 60, 0.5);
+    }
+    50% {
+        text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+                     0 0 25px rgba(231, 76, 60, 1), 0 0 35px rgba(231, 76, 60, 0.8);
+    }
+}
+
+/* Demon Souls Style Boss HP Bar */
+.boss-hp-container {
+    width: 100%;
+    height: 35px;
+    background: linear-gradient(to bottom, #1a0000, #330000);
+    border: 4px solid #800000;
+    border-radius: 4px;
+    position: relative;
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.6), inset 0 0 15px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+}
+
+/* Boss HP Fill Bar */
+.boss-hp-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(to right, #e74c3c 0%, #c0392b 50%, #e74c3c 100%);
+    transition: width 0.6s ease-out;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 20px rgba(231, 76, 60, 0.4);
+    position: relative;
+}
+
+/* Animated shine effect on HP bar */
+.boss-hp-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: hp-shine 3s infinite;
+}
+
+@keyframes hp-shine {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Boss HP Text */
+.boss-hp-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Mobile Responsive Boss Visuals */
+@media (max-width: 600px) {
+    .boss-sprite {
+        transform: scale(2.5) !important;
+        top: 120px !important;
+        right: 50px !important;
+    }
+    
+    .boss-name {
+        font-size: 16px;
+        letter-spacing: 2px;
+    }
+    
+    .boss-hp-container {
+        height: 25px;
+    }
+    
+    .boss-hp-text {
+        font-size: 10px;
+    }
+}

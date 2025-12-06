@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v5.8';
+const VERSION = 'v5.9';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -8,6 +8,7 @@ const battleSystem = new BattleSystem(player);
 const questSystem = new QuestSystem(player);
 const clock = new GameClock();
 const mergeSystem = new CombineSystem(player);
+const arenaSystem = new ArenaSystem(player);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -268,6 +269,9 @@ function gameLoop(timestamp) {
             showDialog('A Poke Center appeared nearby!', 3000);
         }
 
+        // Check Arena Pyramid Spawn (Day 2 or later)
+        arenaSystem.checkSpawn(world, clock.gameDays);
+
         // Egg Hatching Logic
         player.team.forEach(p => {
             if (p.isEgg) {
@@ -320,6 +324,20 @@ input.press = (key) => {
 
         if (nearbyPokeCenter) {
             handlePokeCenterInteraction();
+            return;
+        }
+
+        // Check for nearby Arena
+        let nearbyArena = world.buildings.find((building) => {
+            let dist = Math.sqrt(
+                Math.pow(building.x - player.x, 2) +
+                Math.pow(building.y - player.y, 2)
+            );
+            return dist < 1.5 && building.type === 'arena';
+        });
+
+        if (nearbyArena) {
+            arenaSystem.enter();
             return;
         }
 
@@ -387,7 +405,7 @@ function showBagTab(tab) {
 
             let isFainted = p.hp <= 0 || (p.hp === undefined && !p.isEgg);
             let status = p.isEgg ? 'EGG' : isFainted ? 'FAINTED' : `HP: ${p.hp}/${p.maxHp}`;
-            
+
             // Stats logic
             const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
             const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
@@ -412,31 +430,31 @@ function showBagTab(tab) {
             content.appendChild(div);
         });
 
-    } 
+    }
     // --- ITEMS TAB (NEW SELECTION LOGIC) ---
     else if (tab === 'items') {
         let hasItems = false;
-        
+
         // 1. List Items
         for (let [item, count] of Object.entries(player.bag)) {
             if (count > 0) {
                 hasItems = true;
                 let div = document.createElement('div');
                 div.className = 'menu-item';
-                
+
                 // Highlight if selected
                 if (selectedBagItem === item) {
                     div.classList.add('selected');
                 }
 
                 div.innerHTML = `${item} x${count}`;
-                
+
                 // On Click: Select it, don't use it yet
                 div.onclick = () => {
                     selectedBagItem = item;
                     showBagTab('items'); // Re-render to show highlight
                 };
-                
+
                 content.appendChild(div);
             }
         }
@@ -449,14 +467,14 @@ function showBagTab(tab) {
         // 2. Add Action Buttons (Fixed at bottom of scroll area or appended)
         const actionDiv = document.createElement('div');
         actionDiv.className = 'bag-actions';
-        
+
         // Use Button
         const useBtn = document.createElement('button');
         useBtn.className = 'bag-btn btn-use';
         useBtn.innerText = 'USE';
         useBtn.disabled = !selectedBagItem; // Disable if nothing selected
         useBtn.onclick = () => {
-            if(selectedBagItem) useBagItem(selectedBagItem);
+            if (selectedBagItem) useBagItem(selectedBagItem);
         };
 
         // Toss Button
@@ -465,12 +483,12 @@ function showBagTab(tab) {
         tossBtn.innerText = 'TOSS';
         tossBtn.disabled = !selectedBagItem;
         tossBtn.onclick = () => {
-            if(selectedBagItem) tossBagItem(selectedBagItem);
+            if (selectedBagItem) tossBagItem(selectedBagItem);
         };
 
         actionDiv.appendChild(useBtn);
         actionDiv.appendChild(tossBtn);
-        
+
         // Append actions to content (or you can append to the parent container if you want it sticky)
         content.appendChild(actionDiv);
     }
@@ -481,7 +499,7 @@ function tossBagItem(itemName) {
 
     // Decrease count
     player.bag[itemName]--;
-    
+
     // Remove from bag if 0
     if (player.bag[itemName] === 0) {
         delete player.bag[itemName];
@@ -490,7 +508,7 @@ function tossBagItem(itemName) {
 
     playSFX('sfx-attack1'); // Sound effect
     showDialog(`Tossed 1 ${itemName}.`, 1000);
-    
+
     // Refresh UI
     showBagTab('items');
     updateHUD();
@@ -530,7 +548,7 @@ async function showPokemonStats(pokemon) {
             const data = await res.json();
             sprite =
                 data.sprites.versions['generation-v']['black-white'][
-                    'animated'
+                'animated'
                 ]['front_default'] || data.sprites.front_default;
         } catch (e) {
             console.log('Could not fetch animated sprite');
@@ -543,10 +561,10 @@ async function showPokemonStats(pokemon) {
         stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
     // --- NEW CALCULATIONS ---
-    
+
     // 1. Critical Chance (Based on Special, Capped at 15%)
     const critChance = Math.min(15, (stats.special / 1000) * 15).toFixed(1);
-    
+
     // 2. First Strike Chance (Based on Speed, Capped at 81%)
     const speedAdvantage = Math.min(81, (stats.speed / 1.5)).toFixed(1);
 
@@ -556,7 +574,7 @@ async function showPokemonStats(pokemon) {
     // 4. Moves List HTML
     let movesHtml = '';
     if (pokemon.moves && pokemon.moves.length > 0) {
-        movesHtml = pokemon.moves.map(m => 
+        movesHtml = pokemon.moves.map(m =>
             `<div style="background: #fff; color: #000; padding: 5px; border-radius: 4px; font-size: 10px; text-align: center; border: 1px solid #ccc; font-weight: bold;">${m.name}</div>`
         ).join('');
     } else {
@@ -651,10 +669,10 @@ function useBagItem(itemName) {
     // 1. CANDY LOGIC
     if (itemName.includes('Candy')) {
         let p = player.team[0]; // Apply to lead Pokemon
-        
+
         // Extract Species from "Pikachu Candy" -> "Pikachu"
         let requiredSpecies = itemName.replace(' Candy', '');
-        
+
         // Clean player pokemon name (Remove stars for comparison)
         let currentSpecies = p.name.split(' ')[0];
 
@@ -666,7 +684,7 @@ function useBagItem(itemName) {
         // Apply XP Boost (10% of current level requirement)
         let xpNeededForLevel = p.level * 100;
         let xpBoost = Math.floor(xpNeededForLevel * 0.10);
-        
+
         p.exp += xpBoost;
         player.bag[itemName]--;
         if (player.bag[itemName] === 0) delete player.bag[itemName];
@@ -676,13 +694,13 @@ function useBagItem(itemName) {
             // Perform silent level up
             p.exp -= xpNeededForLevel;
             p.level++;
-            
+
             // Recalculate stats briefly
-            if(p.stats) {
+            if (p.stats) {
                 p.maxHp = p.level * 5 + p.stats.hp;
                 p.hp = p.maxHp;
             }
-            
+
             showDialog(`${p.name} leveled up to ${p.level}!`, 2000);
         } else {
             showDialog(`Used ${itemName}! +${xpBoost} XP.`, 1000);
@@ -737,24 +755,24 @@ function handleNPCInteraction(npc) {
             showDialog('Herbalist: Thanks again for the herbs!', 3000);
         } else if (npc.questGiven && player.inventory['Herb'] >= 10) {
             player.inventory['Herb'] -= 10;
-            
+
             // --- NEW DYNAMIC REWARD ---
             // Base $500 + ($100 for every Player Level)
             // Level 5 = $1000, Level 10 = $1500, etc.
             let rewardMoney = 500 + (player.pLevel * 100);
-            
+
             player.money += rewardMoney;
             player.team[0].exp += 200;
-            
+
             npc.questCompleted = true;
             npc.color = '#2ecc71'; // Green when complete
-            
+
             showDialog(
                 `Herbalist: Perfect! Here is $${rewardMoney} and XP. Quest complete!`,
                 3000
             );
             updateHUD(); // Force Money UI to update immediately
-            
+
         } else if (npc.questGiven) {
             let remaining = 10 - (player.inventory['Herb'] || 0);
             showDialog(`Herbalist: Still need ${remaining} more Herbs!`, 3000);
@@ -958,7 +976,7 @@ window.onload = async () => {
             world.respawnItem(player.x, player.y);
             world.respawnItem(player.x, player.y);
             world.respawnItem(player.x, player.y);
-            
+
             // console.log("World items replenished.");
         }
     }, 120000);
@@ -971,7 +989,7 @@ function saveGame() {
             x: player.x,
             y: player.y,
             // --- NEW: Save Money ---
-            money: player.money, 
+            money: player.money,
             stats: {
                 level: player.pLevel,
                 steps: player.steps
@@ -994,6 +1012,7 @@ function saveGame() {
             })),
             buildings: world.buildings
         },
+        arena: arenaSystem.getSaveData(),
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
         quest: questSystem.activeQuest
@@ -1012,10 +1031,10 @@ function loadGame() {
         // Restore Player
         player.x = data.player.x;
         player.y = data.player.y;
-        
+
         // --- NEW: Restore Money (Default to 0 if missing in old save) ---
         player.money = (typeof data.player.money !== 'undefined') ? data.player.money : 0;
-        
+
         player.pLevel = data.player.stats.level;
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
@@ -1070,6 +1089,23 @@ function loadGame() {
             world.buildings = data.world.buildings;
         }
 
+        // Restore Arena (with fallback for legacy saves)
+        if (data.arena) {
+            arenaSystem.loadSaveData(data.arena);
+            // Re-add building to world if it exists
+            if (arenaSystem.pyramidLocation && arenaSystem.hasSpawned) {
+                // Check if building already exists
+                const hasArena = world.buildings.some(b => b.type === 'arena');
+                if (!hasArena) {
+                    world.buildings.push({
+                        type: 'arena',
+                        x: arenaSystem.pyramidLocation.x,
+                        y: arenaSystem.pyramidLocation.y
+                    });
+                }
+            }
+        }
+
         // Restore Time
         if (typeof data.gameDays !== 'undefined') {
             clock.elapsedTime = data.time;
@@ -1077,7 +1113,7 @@ function loadGame() {
         } else {
             // Legacy Save Support
             clock.gameDays = data.time;
-            clock.elapsedTime = clock.gameDays * 3600000; 
+            clock.elapsedTime = clock.gameDays * 3600000;
         }
 
         // Restore Quest
@@ -1418,7 +1454,7 @@ function sacrificePokemon() {
 
     // Clean name for candy (Remove stars if merged)
     // We split by space and take the first part to avoid "Pikachu ✨ Candy"
-    let speciesName = pokemon.name.split(' ')[0]; 
+    let speciesName = pokemon.name.split(' ')[0];
     let candyName = `${speciesName} Candy`;
 
     // 1. Give Candies
@@ -1435,7 +1471,7 @@ function sacrificePokemon() {
     // 3. Feedback
     playSFX('sfx-attack1'); // Crunch sound effect
     showDialog(`Sacrificed ${pokemon.name}... Obtained 100 ${candyName}!`, 3000);
-    
+
     selectedSlot = null;
     renderPC();
     updateHUD();
@@ -1522,7 +1558,7 @@ function renderPC() {
 
     // 4. Update Actions Buttons
     const actionsDiv = document.getElementById('pc-actions');
-    
+
     // Ensure the Merge Button exists
     if (!document.getElementById('pc-merge-btn')) {
         const mergeBtn = document.createElement('button');
@@ -1550,7 +1586,7 @@ function renderPC() {
 
     if (selectedSlot) {
         actionsDiv.classList.remove('hidden');
-        mergeActionBtn.classList.remove('hidden'); 
+        mergeActionBtn.classList.remove('hidden');
         sacActionBtn.classList.remove('hidden'); // Show Sacrifice
 
         if (selectedSlot.type === 'party') {

@@ -20,7 +20,16 @@
             </div>
 
             <div id="battle-ui" class="hidden">
-                <div id="enemy-stat-box">
+                <!-- BOSS HUD (Hidden by default) -->
+                <div id="boss-hud" class="hidden">
+                    <div class="boss-name" id="boss-name">BOSS NAME</div>
+                    <div class="boss-hp-container">
+                        <div class="boss-hp-fill" id="boss-hp-fill"></div>
+                        <div class="boss-hp-text" id="boss-hp-text">1000/1000</div>
+                    </div>
+                </div>
+
+                <div id="enemy-stat-box" class="normal-enemy-ui">
                     <span id="enemy-name"></span> <span id="enemy-level"></span>
                     <div class="hp-bar-bg">
                         <div id="enemy-hp-fill" class="hp-bar-fill"></div>
@@ -294,6 +303,7 @@
     <script src="src/world.js"></script>
     <script src="src/battle.js"></script>
     <script src="src/combine.js"></script>
+    <script src="src/arena.js"></script>
     <script src="src/loading.js"></script>
     <script src="src/main.js"></script>
 </body>

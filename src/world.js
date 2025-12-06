@@ -242,10 +242,10 @@ class World {
             let range = 25;
             let rx = Math.floor(playerX + (Math.random() * range * 2) - range);
             let ry = Math.floor(playerY + (Math.random() * range * 2) - range);
-            
+
             let tile = this.getTile(rx, ry);
             let key = `${rx},${ry}`;
-            
+
             // Check against existing items
             if (this.items[key]) continue;
 
@@ -255,7 +255,7 @@ class World {
 
             // Strict terrain check (Must be grass, not water/structures)
             if (tile === 'grass' || tile === 'grass_tall' || tile === 'flowers') {
-                
+
                 // 3. Determine Item Type (Weighted Rarity)
                 let r = Math.random();
                 let type = 'Potion';
@@ -556,6 +556,68 @@ class Renderer {
 
                 // Reset shadow
                 this.ctx.shadowBlur = 0;
+            } else if (building.type === 'arena') {
+                // Draw Arena Pyramid
+                let drawX =
+                    (building.x - this.player.x) * TILE_SIZE +
+                    this.canvas.width / 2 -
+                    TILE_SIZE / 2;
+                let drawY =
+                    (building.y - this.player.y) * TILE_SIZE +
+                    this.canvas.height / 2 -
+                    TILE_SIZE / 2;
+
+                // Draw large base
+                this.ctx.fillStyle = '#f1c40f'; // Gold
+                this.ctx.fillRect(
+                    Math.floor(drawX) - TILE_SIZE / 2,
+                    Math.floor(drawY) - TILE_SIZE / 2,
+                    TILE_SIZE * 2,
+                    TILE_SIZE * 2
+                );
+
+                // Draw pyramid shape (triangle outline)
+                this.ctx.strokeStyle = '#f39c12';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.moveTo(
+                    Math.floor(drawX) + TILE_SIZE / 2,
+                    Math.floor(drawY) - TILE_SIZE / 2
+                ); // top
+                this.ctx.lineTo(
+                    Math.floor(drawX) - TILE_SIZE / 2,
+                    Math.floor(drawY) + TILE_SIZE * 1.5
+                ); // bottom left
+                this.ctx.lineTo(
+                    Math.floor(drawX) + TILE_SIZE * 1.5,
+                    Math.floor(drawY) + TILE_SIZE * 1.5
+                ); // bottom right
+                this.ctx.closePath();
+                this.ctx.stroke();
+
+                // Glowing center entrance
+                this.ctx.shadowBlur = 25;
+                this.ctx.shadowColor = 'white';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillRect(
+                    Math.floor(drawX) + TILE_SIZE * 0.3,
+                    Math.floor(drawY) + TILE_SIZE,
+                    TILE_SIZE * 0.4,
+                    TILE_SIZE * 0.5
+                );
+
+                // Reset shadow
+                this.ctx.shadowBlur = 0;
+
+                // Text Label
+                this.ctx.fillStyle = '#000';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(
+                    'ARENA',
+                    Math.floor(drawX) + TILE_SIZE / 2,
+                    Math.floor(drawY) + TILE_SIZE * 1.8
+                );
             }
         });
 
