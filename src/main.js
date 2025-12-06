@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v6.4';
+const VERSION = 'v6.5';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1018,8 +1018,7 @@ function saveGame() {
         player: {
             x: player.x,
             y: player.y,
-            // --- NEW: Save Money ---
-            money: player.money,
+            money: player.money, // Saved Money
             stats: {
                 level: player.pLevel,
                 steps: player.steps
@@ -1042,13 +1041,16 @@ function saveGame() {
             })),
             buildings: world.buildings
         },
-        arena: arenaSystem.getSaveData(),
-        rival: rivalSystem.getSaveData(),
-        home: homeSystem.getSaveData(),
+        // Save Systems Data (With safety checks)
+        arena: (typeof arenaSystem !== 'undefined') ? arenaSystem.getSaveData() : null,
+        rival: (typeof rivalSystem !== 'undefined') ? rivalSystem.getSaveData() : null,
+        home: (typeof homeSystem !== 'undefined') ? homeSystem.getSaveData() : null,
+        
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
         quest: questSystem.activeQuest
     };
+    
     localStorage.setItem('poke_save', JSON.stringify(data));
     console.log('Game Saved');
 }
@@ -1060,73 +1062,55 @@ function loadGame() {
     try {
         const data = JSON.parse(raw);
 
-        // Restore Player
+        // 1. Restore Player
         player.x = data.player.x;
         player.y = data.player.y;
-
-        // --- NEW: Restore Money (Default to 0 if missing in old save) ---
         player.money = (typeof data.player.money !== 'undefined') ? data.player.money : 0;
-
         player.pLevel = data.player.stats.level;
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
         player.bag = data.player.bag;
 
-        // Restore Storage & Pokedex (with fallback for legacy saves)
-        player.storage =
-            data.player.storage ||
-            Array(100)
-                .fill()
-                .map(() => Array(25).fill(null));
+        // Restore Storage & Pokedex
+        player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
         player.seen = data.player.seen || [];
         player.seenShiny = data.player.seenShiny || [];
 
-        // Add stats to Pokemon that don't have them (backward compatibility)
+        // Fix missing stats (Legacy Save Support)
         player.team.forEach((p) => {
             if (!p.stats) {
                 p.stats = generatePokemonStats();
-                // Recalculate maxHp based on stats
                 p.maxHp = p.level * 5 + p.stats.hp;
                 if (p.hp > p.maxHp) p.hp = p.maxHp;
             }
         });
 
-        const metaLevel = /** @type {HTMLElement} */ (
-            document.getElementById('meta-level')
-        );
-        metaLevel.innerText = player.pLevel.toString();
+        // Update Meta Level UI
+        const metaLevel = document.getElementById('meta-level');
+        if(metaLevel) metaLevel.innerText = player.pLevel.toString();
 
-        // Restore World
+        // 2. Restore World
         if (data.world.seed) {
             world.rng = new SeededRandom(data.world.seed);
         }
         world.items = data.world.items;
 
-        // Restore NPCs (with fallback for old saves)
-        if (data.world.npcs && data.world.npcs.length > 0) {
+        if (data.world.npcs) {
             world.npcs = data.world.npcs.map(
-                (npcData) =>
-                    new NPC(
-                        npcData.x,
-                        npcData.y,
-                        npcData.name,
-                        npcData.type,
-                        npcData.dialog
-                    )
+                (npcData) => new NPC(npcData.x, npcData.y, npcData.name, npcData.type, npcData.dialog)
             );
         }
 
-        // Restore Buildings (with fallback for old saves)
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
 
-        // Restore Arena (with fallback for legacy saves)
-        if (data.arena) {
+        // 3. Restore Arena System (And ensure Pyramid exists)
+        if (data.arena && typeof arenaSystem !== 'undefined') {
             arenaSystem.loadSaveData(data.arena);
-            // Re-add building to world if it exists
+            
+            // Critical: Ensure the building exists in the world array if the system thinks it spawned
             if (arenaSystem.pyramidLocation && arenaSystem.hasSpawned) {
-                // Check if building already exists
                 const hasArena = world.buildings.some(b => b.type === 'arena');
                 if (!hasArena) {
                     world.buildings.push({
@@ -1138,17 +1122,16 @@ function loadGame() {
             }
         }
 
-        // Restore Rival (with fallback for legacy saves)
-        if (data.rival) {
+        // 4. Restore Rival System
+        if (data.rival && typeof rivalSystem !== 'undefined') {
             rivalSystem.loadSaveData(data.rival);
         }
 
-        // Restore Home (with fallback for legacy saves)
-        if (data.home) {
+        // 5. Restore Home System
+        if (data.home && typeof homeSystem !== 'undefined') {
             homeSystem.loadSaveData(data.home);
-            // Re-add building to world if it exists
+            
             if (homeSystem.houseLocation && homeSystem.hasSpawned) {
-                // Check if building already exists
                 const hasHome = world.buildings.some(b => b.type === 'home');
                 if (!hasHome) {
                     world.buildings.push({
@@ -1160,17 +1143,16 @@ function loadGame() {
             }
         }
 
-        // Restore Time
+        // 6. Restore Time
         if (typeof data.gameDays !== 'undefined') {
             clock.elapsedTime = data.time;
             clock.gameDays = data.gameDays;
         } else {
-            // Legacy Save Support
             clock.gameDays = data.time;
             clock.elapsedTime = clock.gameDays * 3600000;
         }
 
-        // Restore Quest
+        // 7. Restore Quest
         if (data.quest) {
             questSystem.activeQuest = data.quest;
             questSystem.updateUI();
@@ -1178,21 +1160,16 @@ function loadGame() {
             questSystem.generate();
         }
 
-        // Validate Positions
+        // 8. Validate Positions & UI
         world.validatePositions();
 
-        // Validate Player Position
-        if (
-            world.getTile(Math.round(player.x), Math.round(player.y)) ===
-            'water'
-        ) {
+        if (world.getTile(Math.round(player.x), Math.round(player.y)) === 'water') {
             let safe = world.findSafeNear(player.x, player.y);
             player.x = safe.x;
             player.y = safe.y;
             console.log('Player moved to safe ground:', player.x, player.y);
         }
 
-        // Force UI Update immediately
         updateHUD();
 
         return true;
