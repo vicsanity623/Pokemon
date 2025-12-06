@@ -37,6 +37,7 @@ class InputHandler {
             e.target.closest('.battle-sub-menu') ||
             e.target.closest('.bag-tabs') ||
             e.target.closest('.menu-item') ||
+            e.target.closest('#party-sidebar') ||
             e.target.closest('button')
         )
             return;

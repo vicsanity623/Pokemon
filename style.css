@@ -2145,3 +2145,92 @@ canvas {
 }
 
 /* Cyan */
+
+/* --- PARTY SIDEBAR --- */
+#party-sidebar {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+.party-sidebar-item {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #fff;
+    border-radius: 25px;
+    /* Pill shape */
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    width: 160px;
+}
+
+.party-sidebar-item:active {
+    transform: scale(0.95);
+}
+
+.party-sidebar-item.active-lead {
+    border-color: #ffd700;
+    /* Gold border for lead */
+    background: rgba(50, 50, 0, 0.8);
+}
+
+.sidebar-icon {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    margin-right: 8px;
+}
+
+.sidebar-info {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    font-size: 8px;
+    line-height: 1.2;
+    flex: 1;
+}
+
+.sidebar-name {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 2px;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-stats {
+    color: #ccc;
+}
+
+.sidebar-hp-bar {
+    width: 100%;
+    height: 4px;
+    background: #333;
+    margin-top: 2px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.sidebar-hp-fill {
+    height: 100%;
+    background: #2ecc71;
+    transition: width 0.3s;
+}
+
+.sidebar-hp-fill.low {
+    background: #e74c3c;
+}
+
+.sidebar-hp-fill.mid {
+    background: #f1c40f;
+}
