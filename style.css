@@ -997,8 +997,9 @@ canvas {
 /* Main Menu & Modals */
 #hamburger-btn {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 80px;
+    left: auto;
+    right: 20px;
     font-size: 50px;
     /* Increased from 30px */
     color: white;
