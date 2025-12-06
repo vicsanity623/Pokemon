@@ -1297,7 +1297,7 @@ class BattleSystem {
         this.isAttacking = false;
         hideDialog();
         this.ui.classList.add('hidden');
-        document.getElementById('mobile-controls').classList.add('hidden');
+        // Don't hide mobile controls - they should stay visible
         document
             .getElementById('hamburger-btn')
             .classList.remove('battle-hidden');
