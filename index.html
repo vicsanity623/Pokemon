@@ -291,7 +291,8 @@
         <div id="party-sidebar"></div>
 
         <!-- Hamburger Button (Moved to top level for touch access) -->
-        <div id="hamburger-btn" onclick="toggleMainMenu()">☰</div>
+        <div id="hamburger-btn" onclick="toggleMainMenu()" ontouchstart="event.preventDefault(); toggleMainMenu()">☰
+        </div>
 
         <!-- Audio -->
         <audio id="main-music" src="music.mp3" loop preload="auto"></audio>
