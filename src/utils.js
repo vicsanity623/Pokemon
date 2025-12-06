@@ -38,6 +38,9 @@ class InputHandler {
             e.target.closest('.bag-tabs') ||
             e.target.closest('.menu-item') ||
             e.target.closest('#party-sidebar') ||
+            e.target.closest('#hamburger-btn') || // Fix for Menu Button
+            e.target.closest('#dialog-box') ||
+            e.target.closest('#npc-prompt') ||
             e.target.closest('button')
         )
             return;
