@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v7.5';
+const VERSION = 'v7.6';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -268,7 +268,8 @@ function gameLoop(timestamp) {
         // Poke Center Spawning (every 300 steps)
         if (
             Math.floor(player.steps) % 300 === 0 &&
-            player.steps > player.lastPokeCenterStep + 250
+            player.steps > player.lastPokeCenterStep + 250 &&
+            !world.buildings.some(b => b.type === 'pokecenter') // Only one center at a time
         ) {
             let centerX = Math.round(player.x + (Math.random() * 40 - 20));
             let centerY = Math.round(player.y + (Math.random() * 40 - 20));

@@ -12,7 +12,7 @@ class HomeSystem {
         this.hasSpawned = false;
 
         // Teleport cooldown (20 minutes in milliseconds)
-        this.teleportCooldown = 20 * 60 * 1000; // 20 minutes
+        this.teleportCooldown = 60 * 1000; // 60 seconds (was 20 minutes)
         this.lastTeleportTime = -this.teleportCooldown; // Allow immediate first use
 
         // House sprite (using a building icon from Pokemon world)
