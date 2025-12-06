@@ -655,6 +655,11 @@ class Renderer {
             );
         });
 
+        // Draw Rival (if approaching)
+        if (typeof rivalSystem !== 'undefined') {
+            rivalSystem.draw(this.ctx, this.canvas, this.world, this.player);
+        }
+
         // Draw Player (Always Center)
         const px = this.canvas.width / 2 - TILE_SIZE / 2;
         const py = this.canvas.height / 2 - TILE_SIZE / 2;

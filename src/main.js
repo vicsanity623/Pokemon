@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v5.9';
+const VERSION = 'v6.0';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -9,6 +9,7 @@ const questSystem = new QuestSystem(player);
 const clock = new GameClock();
 const mergeSystem = new CombineSystem(player);
 const arenaSystem = new ArenaSystem(player);
+const rivalSystem = new RivalSystem(player);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -145,6 +146,12 @@ function gameLoop(timestamp) {
             }
         }
 
+        // Check if player is frozen by rival
+        if (rivalSystem.isPlayerFrozen()) {
+            dx = 0;
+            dy = 0;
+        }
+
         if (dx !== 0 || dy !== 0) {
             // STRICT Normalization to fix diagonal speed bug
             // Ensure vector length is exactly 1
@@ -271,6 +278,10 @@ function gameLoop(timestamp) {
 
         // Check Arena Pyramid Spawn (Day 2 or later)
         arenaSystem.checkSpawn(world, clock.gameDays);
+
+        // Rival Trainer Encounters (intro + battles)
+        const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
+        rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
         // Egg Hatching Logic
         player.team.forEach(p => {
@@ -1013,6 +1024,7 @@ function saveGame() {
             buildings: world.buildings
         },
         arena: arenaSystem.getSaveData(),
+        rival: rivalSystem.getSaveData(),
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
         quest: questSystem.activeQuest
@@ -1104,6 +1116,11 @@ function loadGame() {
                     });
                 }
             }
+        }
+
+        // Restore Rival (with fallback for legacy saves)
+        if (data.rival) {
+            rivalSystem.loadSaveData(data.rival);
         }
 
         // Restore Time
@@ -1459,7 +1476,7 @@ function sacrificePokemon() {
 
     // 1. Give Candies
     if (!player.bag[candyName]) player.bag[candyName] = 0;
-    player.bag[candyName] += 100;
+    player.bag[candyName] += 1;
 
     // 2. Delete Pokemon
     if (selectedSlot.type === 'party') {
@@ -1470,7 +1487,7 @@ function sacrificePokemon() {
 
     // 3. Feedback
     playSFX('sfx-attack1'); // Crunch sound effect
-    showDialog(`Sacrificed ${pokemon.name}... Obtained 100 ${candyName}!`, 3000);
+    showDialog(`Sacrificed ${pokemon.name}... Obtained 1 ${candyName}!`, 3000);
 
     selectedSlot = null;
     renderPC();

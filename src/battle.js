@@ -794,7 +794,32 @@ class BattleSystem {
         let ballData = ITEMS[ballType];
         let ballRate = ballData.val; // Pokeball=1, Great=1.5, Ultra=2.0
 
-        // Master Ball Check
+        // --- ARENA LEGENDARY RESTRICTIONS ---
+        const LEGENDARY_IDS = [144, 145, 146, 150, 151]; // Articuno, Zapdos, Moltres, Mewtwo, Mew
+        const UNCATCHABLE_IDS = [150, 151]; // Mewtwo and Mew
+
+        if (this.enemy.isArenaBoss && LEGENDARY_IDS.includes(this.enemy.id)) {
+            // Check if Mewtwo or Mew - completely uncatchable
+            if (UNCATCHABLE_IDS.includes(this.enemy.id)) {
+                // Refuse capture even with Master Ball
+                for (let i = 0; i < 2; i++) {
+                    await this.delay(600);
+                }
+
+                // Break free
+                ballAnim.classList.remove('anim-shake');
+                ballAnim.classList.add('hidden');
+                document.getElementById('enemy-sprite').classList.remove('anim-shrink');
+
+                const pokemonName = this.enemy.id === 150 ? 'Mewtwo' : 'Mew';
+                showDialog(`${pokemonName} cannot be caught! It's too powerful!`);
+                await this.delay(2000);
+                this.enemyTurn();
+                return;
+            }
+        }
+
+        // Master Ball Check (but not for Mewtwo/Mew)
         if (ballRate >= 255) {
             await this.delay(500);
             this.catchSuccess();
@@ -813,6 +838,15 @@ class BattleSystem {
         // Difficulty reduces chance slightly for high levels
         let difficulty = Math.max(1, this.enemy.level / 10);
         let catchChance = ((ballRate * 30) * hpFactor) / difficulty;
+
+        // --- ARENA LEGENDARY PENALTY ---
+        // Apply severe penalty to legendary birds in arena (but still doable)
+        if (this.enemy.isArenaBoss && LEGENDARY_IDS.includes(this.enemy.id)) {
+            // Divide catch chance by 8 (makes it ~8x harder)
+            // Example: Ultra Ball at 1% HP normally = 60% chance
+            //          With penalty = 7.5% chance (very hard but doable)
+            catchChance = catchChance / 8;
+        }
 
         // Random roll (0 to 100)
         let roll = Math.random() * 100;
@@ -1267,6 +1301,11 @@ class BattleSystem {
         document
             .getElementById('hamburger-btn')
             .classList.remove('battle-hidden');
+
+        // Trigger rival exit if in the middle of an encounter
+        if (typeof rivalSystem !== 'undefined') {
+            rivalSystem.onBattleEnd();
+        }
 
         // Restore Music
         const mainMusic = /** @type {HTMLAudioElement} */ (
