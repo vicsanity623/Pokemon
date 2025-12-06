@@ -2051,7 +2051,7 @@ canvas {
 @media (max-width: 600px) {
     .boss-sprite {
         transform: scale(2.5) !important;
-        top: 120px !important;
+        top: 300px !important;
         right: 50px !important;
     }
     
@@ -2073,8 +2073,8 @@ canvas {
 @media (orientation: landscape) and (max-height: 500px) {
     .boss-sprite {
         transform: scale(2.5) !important; /* Shrink slightly for short screens */
-        top: 80px !important; /* Move up */
-        right: 10% !important;
+        top: 180px !important; /* Move up */
+        right: 20% !important;
     }
     
     /* Ensure Battle Menu is ALWAYS on top */
