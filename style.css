@@ -1813,28 +1813,32 @@ canvas {
 
 .crit-text {
     color: #ff0000 !important;
-    text-shadow: 
+    text-shadow:
         4px 4px 0 #000,
-        -4px -4px 0 #000, 
-        0 0 20px #ff0000, 
+        -4px -4px 0 #000,
+        0 0 20px #ff0000,
         0 0 40px #ff4444 !important;
     transform: scale(1.2);
 }
+
 /* --- PC BOX UPDATES (Fixed Visibility) --- */
 .pc-slot {
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Center items */
+    justify-content: center;
+    /* Center items */
     align-items: center;
     padding: 2px;
     position: relative;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.05); /* Subtle background */
+    background: rgba(255, 255, 255, 0.05);
+    /* Subtle background */
 }
 
 /* Make Sprite HUGE */
 .pc-slot img {
-    width: 96px; /* Increased from 32px to 96px to fill box */
+    width: 96px;
+    /* Increased from 32px to 96px to fill box */
     height: 96px;
     image-rendering: pixelated;
     object-fit: contain;
@@ -1845,25 +1849,30 @@ canvas {
 /* Dark background for text readability */
 .pc-info {
     width: 95%;
-    background: rgba(0, 0, 0, 0.85); /* Dark background */
+    background: rgba(0, 0, 0, 0.85);
+    /* Dark background */
     border-radius: 4px;
     padding: 4px 0;
     text-align: center;
     line-height: 1.2;
     z-index: 2;
-    position: absolute; /* Float at bottom */
+    position: absolute;
+    /* Float at bottom */
     bottom: 5px;
 }
 
 .pc-lv {
-    font-size: 10px; /* Readable size */
-    color: #ffd700; /* Gold */
+    font-size: 10px;
+    /* Readable size */
+    color: #ffd700;
+    /* Gold */
     font-weight: bold;
     text-shadow: 1px 1px 0 #000;
 }
 
 .pc-name {
-    font-size: 9px; /* Readable size */
+    font-size: 9px;
+    /* Readable size */
     color: white;
     white-space: nowrap;
     overflow: hidden;
@@ -1878,23 +1887,45 @@ canvas {
     color: #e74c3c !important;
     margin-left: 10px;
 }
+
 /* EVOLUTION ANIMATION */
 @keyframes evolve-flash {
-    0% { filter: brightness(1) sepia(0); transform: scale(1); }
-    25% { filter: brightness(100) sepia(1); transform: scale(0.9); }
-    50% { filter: brightness(1) sepia(0); transform: scale(1); }
-    75% { filter: brightness(100) sepia(1); transform: scale(1.1); }
-    100% { filter: brightness(1) sepia(0); transform: scale(1); }
+    0% {
+        filter: brightness(1) sepia(0);
+        transform: scale(1);
+    }
+
+    25% {
+        filter: brightness(100) sepia(1);
+        transform: scale(0.9);
+    }
+
+    50% {
+        filter: brightness(1) sepia(0);
+        transform: scale(1);
+    }
+
+    75% {
+        filter: brightness(100) sepia(1);
+        transform: scale(1.1);
+    }
+
+    100% {
+        filter: brightness(1) sepia(0);
+        transform: scale(1);
+    }
 }
 
 .anim-evolve {
     animation: evolve-flash 2s infinite;
 }
+
 /* --- BAG SELECTION & ACTIONS --- */
 
 /* Highlight selected item */
 .menu-item.selected {
-    border: 2px solid #ffd700 !important; /* Gold border */
+    border: 2px solid #ffd700 !important;
+    /* Gold border */
     background-color: rgba(255, 215, 0, 0.2) !important;
     transform: scale(1.02);
 }
@@ -1920,18 +1951,24 @@ canvas {
 }
 
 .btn-use {
-    background-color: #27ae60; /* Green */
+    background-color: #27ae60;
+    /* Green */
     border-color: #2ecc71;
 }
 
-.btn-use:active { background-color: #1e8449; }
+.btn-use:active {
+    background-color: #1e8449;
+}
 
 .btn-toss {
-    background-color: #c0392b; /* Red */
+    background-color: #c0392b;
+    /* Red */
     border-color: #e74c3c;
 }
 
-.btn-toss:active { background-color: #922b21; }
+.btn-toss:active {
+    background-color: #922b21;
+}
 
 /* Disable buttons if nothing selected */
 .bag-btn:disabled {
@@ -1946,18 +1983,20 @@ canvas {
 /* 1. GLOBAL / DESKTOP SETTINGS */
 .boss-sprite {
     transform: scale(3.5) !important;
-    transform-origin: center center !important; /* Scale from middle */
-    
+    transform-origin: center center !important;
+    /* Scale from middle */
+
     /* Pushes boss DOWN. Higher number = Lower on screen */
-    top: 350px !important; 
-    
+    top: 350px !important;
+
     right: 15% !important;
-    bottom: auto !important; /* Reset bottom */
-    
+    bottom: auto !important;
+    /* Reset bottom */
+
     image-rendering: pixelated;
     filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8));
-    z-index: 1 !important; 
-    pointer-events: none !important; 
+    z-index: 1 !important;
+    pointer-events: none !important;
 }
 
 /* Boss HUD (Health Bar) */
@@ -2011,8 +2050,15 @@ canvas {
 }
 
 @keyframes pulse-glow {
-    0%, 100% { text-shadow: 0 0 10px red; }
-    50% { text-shadow: 0 0 20px red; }
+
+    0%,
+    100% {
+        text-shadow: 0 0 10px red;
+    }
+
+    50% {
+        text-shadow: 0 0 20px red;
+    }
 }
 
 /* 2. MOBILE PORTRAIT SETTINGS */
@@ -2020,23 +2066,26 @@ canvas {
     .boss-sprite {
         transform: scale(2.8) !important;
         /* Push WAY down for portrait */
-        top: 380px !important; 
+        top: 380px !important;
         right: 10% !important;
     }
-    
-    .boss-name { font-size: 16px; }
+
+    .boss-name {
+        font-size: 16px;
+    }
 }
 
 /* 3. LANDSCAPE MODE SETTINGS */
 @media (orientation: landscape) and (max-height: 500px) {
     .boss-sprite {
-        transform: scale(2.2) !important; 
+        transform: scale(2.2) !important;
         /* Push WAY down for landscape */
-        top: 240px !important; 
+        top: 240px !important;
         right: 20% !important;
     }
-    
-    #battle-menu, #move-selector {
+
+    #battle-menu,
+    #move-selector {
         z-index: 200 !important;
         position: absolute;
         bottom: 0;
@@ -2044,5 +2093,55 @@ canvas {
 }
 
 /* --- UI LAYERING FIX --- */
-#player-stat-box { z-index: 200 !important; position: absolute; }
-#battle-dialog { z-index: 200 !important; }
+#player-stat-box {
+    z-index: 200 !important;
+    position: absolute;
+}
+
+#battle-dialog {
+    z-index: 200 !important;
+}
+
+/* --- STATUS EFFECT ICONS --- */
+.status-badge {
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 0 #000;
+    margin-left: 5px;
+    vertical-align: middle;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.status-PSN {
+    background-color: #a040a0;
+}
+
+/* Purple */
+.status-PAR {
+    background-color: #f8d030;
+    color: #333;
+    text-shadow: none;
+}
+
+/* Yellow */
+.status-BRN {
+    background-color: #f08030;
+}
+
+/* Orange */
+.status-SLP {
+    background-color: #8c888c;
+}
+
+/* Grey */
+.status-FRZ {
+    background-color: #98d8d8;
+    color: #333;
+    text-shadow: none;
+}
+
+/* Cyan */

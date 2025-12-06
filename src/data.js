@@ -330,3 +330,27 @@ const EVOLUTIONS = {
     DRATINI: { evolvesInto: 'DRAGONAIR', level: 30, id: 148 },
     DRAGONAIR: { evolvesInto: 'DRAGONITE', level: 55, id: 149 }
 };
+
+// Status Effect Data
+// chance: 1.0 = 100%, 0.3 = 30%
+const MOVE_EFFECTS = {
+    "POISON STING": { status: 'PSN', chance: 0.3 },
+    "SLUDGE": { status: 'PSN', chance: 0.4 },
+    "TOXIC": { status: 'PSN', chance: 1.0 },
+
+    "THUNDER WAVE": { status: 'PAR', chance: 1.0 },
+    "THUNDERSHOCK": { status: 'PAR', chance: 0.1 },
+    "SPARK": { status: 'PAR', chance: 0.3 },
+    "BODY SLAM": { status: 'PAR', chance: 0.3 },
+
+    "EMBER": { status: 'BRN', chance: 0.1 },
+    "FLAMETHROWER": { status: 'BRN', chance: 0.1 },
+    "FIRE BLAST": { status: 'BRN', chance: 0.3 },
+
+    "SING": { status: 'SLP', chance: 0.55 },
+    "HYPNOSIS": { status: 'SLP', chance: 0.6 },
+    "SLEEP POWDER": { status: 'SLP', chance: 0.75 },
+
+    "ICE BEAM": { status: 'FRZ', chance: 0.1 },
+    "BLIZZARD": { status: 'FRZ', chance: 0.1 }
+};

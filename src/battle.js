@@ -149,7 +149,7 @@ class BattleSystem {
         this.isActive = true;
         this.isAttacking = false;
         this.ui.classList.remove('hidden');
-        
+
         // --- FIX: HIDE ALL CONTROLS ---
         document.getElementById('mobile-controls').classList.add('hidden');
         document.getElementById('action-btns').classList.add('hidden'); // <--- ADDED THIS
@@ -183,14 +183,14 @@ class BattleSystem {
 
         let id;
         let attempts = 0;
-        let level; 
-        let isShiny; 
+        let level;
+        let isShiny;
 
         // Arena Boss or Wild Pokemon?
         if (isArenaBoss && bossConfig) {
             id = bossConfig.id;
             level = bossConfig.level;
-            isShiny = Math.random() < 0.5; 
+            isShiny = Math.random() < 0.5;
         } else {
             // Smart Pokemon selection for wild battles
             do {
@@ -199,10 +199,10 @@ class BattleSystem {
 
                 if (this.player.pLevel < 40) {
                     if (LEGENDARY_IDS.includes(id) || EVOLVED_IDS.includes(id)) {
-                        continue; 
+                        continue;
                     }
                 }
-                break; 
+                break;
             } while (attempts < 20);
 
             // Calculate level
@@ -248,7 +248,7 @@ class BattleSystem {
             let catchSprite = isShiny ? animatedShiny : animatedSprite;
 
             const stats = this.generateStats();
-            let maxHp = level * 5 + stats.hp; 
+            let maxHp = level * 5 + stats.hp;
 
             // --- BOSS STAT BOOST ---
             if (isArenaBoss) {
@@ -355,7 +355,7 @@ class BattleSystem {
             this.updateBattleUI();
             document.getElementById('battle-dialog').innerText =
                 `A wild ${this.enemy.name} appeared!`;
-            document.getElementById('bottom-hud').classList.add('hud-battle'); 
+            document.getElementById('bottom-hud').classList.add('hud-battle');
         } catch (e) {
             console.error(e);
             this.endBattle();
@@ -365,39 +365,35 @@ class BattleSystem {
     updateBattleUI() {
         // Player Stats
         let p = this.player.team[0];
-        document.getElementById('player-name').innerText = p.name;
+        // Generate Status HTML
+        let pStatusHtml = p.status ? `<span class="status-badge status-${p.status}">${p.status}</span>` : '';
+
+        document.getElementById('player-name').innerHTML = `${p.name} ${pStatusHtml}`;
         document.getElementById('player-level').innerText = `Lv.${p.level}`;
-        document.getElementById('player-hp-text').innerText =
-            `${p.hp}/${p.maxHp}`;
-        document.getElementById('player-hp-fill').style.width =
-            `${(p.hp / p.maxHp) * 100}%`;
+        document.getElementById('player-hp-text').innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
+        document.getElementById('player-hp-fill').style.width = `${(p.hp / p.maxHp) * 100}%`;
 
         // XP Bar
         let maxExp = p.level * 100;
         let expPct = (p.exp / maxExp) * 100;
         document.getElementById('player-exp-bar').style.width = `${expPct}%`;
 
-        // Enemy Stats - Check if boss or normal
-        if (this.enemy.isArenaBoss) {
-            // Update Boss Bar
-            const pct = (this.enemy.hp / this.enemy.maxHp) * 100;
-            const bossHpFill = document.getElementById('boss-hp-fill');
-            const bossHpText = document.getElementById('boss-hp-text');
-            if (bossHpFill) bossHpFill.style.width = `${pct}%`;
-            if (bossHpText) {
-                bossHpText.innerText = `${Math.ceil(this.enemy.hp)}/${this.enemy.maxHp}`;
-            }
-        } else {
-            // Update Normal Bar
-            document.getElementById('enemy-name').innerText = this.enemy.name;
-            document.getElementById('enemy-level').innerText =
-                `Lv.${this.enemy.level}`;
-            document.getElementById('enemy-hp-fill').style.width =
-                `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
-        }
+        // Enemy Stats
+        let eStatusHtml = this.enemy.status ? `<span class="status-badge status-${this.enemy.status}">${this.enemy.status}</span>` : '';
 
-        // We DO NOT reset the dialog here anymore, to preserve message history
-    }
+        if (this.enemy.isArenaBoss) {
+            let pct = (this.enemy.hp / this.enemy.maxHp) * 100;
+            document.getElementById('boss-hp-fill').style.width = `${pct}%`;
+            document.getElementById('boss-hp-text').innerText = `${Math.ceil(this.enemy.hp)}/${this.enemy.maxHp}`;
+            // Add status to boss name if needed, or overlay it
+            document.getElementById('boss-name').innerHTML = `STAGE ${this.enemy.stage}: ${this.enemy.name} ${eStatusHtml}`;
+        } else {
+            document.getElementById('enemy-name').innerHTML = `${this.enemy.name} ${eStatusHtml}`;
+            document.getElementById('enemy-level').innerText = `Lv.${this.enemy.level}`;
+            document.getElementById('enemy-hp-fill').style.width = `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
+        }
+    }     // We DO NOT reset the dialog here anymore, to preserve message history
+
 
     attackBtn() {
         if (this.isAttacking) return; // Prevent spam
@@ -447,157 +443,130 @@ class BattleSystem {
     }
 
     async useMove(slot) {
-        if (typeof slot !== 'number' || slot < 0) {
-            this.closeMoves();
-            return;
-        }
-
+        if (typeof slot !== 'number' || slot < 0) { this.closeMoves(); return; }
         if (this.isAttacking) return;
         this.isAttacking = true;
 
         this.closeMoves();
         let p = this.player.team[0];
 
-        // --- FIX: Use the ACTUAL move from the slot, not a random one ---
-        // Fallback: If pokemon has no moves (old save), generate one
-        if (!p.moves || p.moves.length === 0) {
-            let tier = Math.floor(p.level / 20);
-            p.moves = [getMove(p.type, tier)];
-        }
-
-        // Get the specific move clicked. If slot empty, fallback to first move.
-        let move = p.moves[slot] || p.moves[0];
-
-        showDialog(`${p.name} used ${move.name}!`);
-        await this.delay(500);
-
-        // 1. SHOW MOVE NAME (Comic Style)
-        this.showAttackText(move.name);
-
-        // Play attack sound based on move type
-        const attackSound = this.getAttackSound(move.name);
-
-        // Try to use cache first (Your existing audio logic)
-        if (
-            /** @type {any} */ (window).assetLoader &&
-            /** @type {any} */ (window).assetLoader.cache.audio[
-            attackSound + '.mp3'
-            ]
-        ) {
-            const cachedAudio = assetLoader.cache.audio[attackSound + '.mp3'];
-            cachedAudio.currentTime = 0;
-            cachedAudio
-                .play()
-                .catch((e) => console.log('Cached audio play failed', e));
-        } else {
-            // Fallback to DOM
-            const sfx = /** @type {HTMLAudioElement} */ (
-                document.getElementById(attackSound)
-            );
-            if (sfx) {
-                sfx.pause();
-                sfx.currentTime = 0;
-                sfx.play().catch((err) => console.log('Attack SFX failed'));
+        // --- 1. CHECK PLAYER STATUS (Can they move?) ---
+        if (p.status === 'SLP') {
+            showDialog(`${p.name} is fast asleep.`);
+            await this.delay(1000);
+            // 33% chance to wake up
+            if (Math.random() < 0.33) {
+                p.status = null;
+                showDialog(`${p.name} woke up!`);
+                await this.delay(1000);
+            } else {
+                this.handleStatusDamage(p); // Check poison even if sleeping
+                this.enemyTurn();
+                return;
             }
         }
-
-        // Status Move Handling
-        if (move.category === 'status') {
-            document.getElementById('flash-overlay').style.backgroundColor =
-                'rgba(255, 255, 0, 0.5)'; // Yellow glow
-            document.getElementById('flash-overlay').classList.add('anim-flash');
-            await this.delay(500);
-            document.getElementById('flash-overlay').classList.remove('anim-flash');
-            document.getElementById('flash-overlay').style.backgroundColor = '';
-
-            showDialog(`${p.name}'s stats rose!`);
-            // Simple buff: Heal 10%
-            p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.1));
-            this.updateBattleUI();
-
+        if (p.status === 'FRZ') {
+            showDialog(`${p.name} is frozen solid!`);
             await this.delay(1000);
+            if (Math.random() < 0.2) {
+                p.status = null;
+                showDialog(`${p.name} thawed out!`);
+            } else {
+                this.handleStatusDamage(p);
+                this.enemyTurn();
+                return;
+            }
+        }
+        if (p.status === 'PAR' && Math.random() < 0.25) {
+            showDialog(`${p.name} is paralyzed! It can't move!`);
+            await this.delay(1000);
+            this.handleStatusDamage(p);
             this.enemyTurn();
             return;
         }
 
+        // --- ATTACK LOGIC ---
+        if (!p.moves || p.moves.length === 0) {
+            let tier = Math.floor(p.level / 20);
+            p.moves = [getMove(p.type, tier)];
+        }
+        let move = p.moves[slot] || p.moves[0];
+
+        showDialog(`${p.name} used ${move.name}!`);
+        await this.delay(500);
+        this.showAttackText(move.name);
+
+        const attackSound = this.getAttackSound(move.name);
+        playSFX(attackSound);
+
         // Animation
         document.getElementById('gameCanvas').classList.add('anim-shake');
         document.getElementById('flash-overlay').classList.add('anim-flash');
-
         await this.delay(500);
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        // --- NEW DAMAGE LOGIC START ---
-
+        // Damage Calculation
         const attackerStrength = p.stats ? p.stats.strength : 50;
         const attackerSpecial = p.stats ? p.stats.special : 50;
         const defenderDefense = this.enemy.stats ? this.enemy.stats.defense : 50;
 
-        // 1. CRITICAL HIT CALCULATION
-        // Chance = Special Stat / 4. (e.g., 40 Special = 10%)
-        // Cap = 15%
         const critChance = Math.min(15, (attackerSpecial / 1000) * 15);
         const isCrit = Math.random() * 100 < critChance;
         const critMultiplier = isCrit ? 2.0 : 1.0;
-
-        // 2. VARIANCE (Randomness)
-        // Damage ranges from 85% to 115%
         const variance = (Math.random() * 0.3) + 0.85;
 
-        // 3. BASE DAMAGE
-        let baseDmg = Math.floor(
-            move.power * (p.level / this.enemy.level) * (attackerStrength / 50)
-        );
+        let baseDmg = Math.floor(move.power * (p.level / this.enemy.level) * (attackerStrength / 50));
         let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
-
-        // 4. FINAL CALCULATION
         let rawDmg = baseDmg * effectiveness * critMultiplier * variance;
-        let dmg = Math.max(
-            1,
-            Math.floor(rawDmg * (100 / (100 + defenderDefense)))
-        );
-
-        // --- NEW DAMAGE LOGIC END ---
+        let dmg = Math.max(1, Math.floor(rawDmg * (100 / (100 + defenderDefense))));
 
         this.enemy.hp -= dmg;
         if (this.enemy.hp < 0) this.enemy.hp = 0;
         this.updateBattleUI();
 
-        // --- VISUALS ---
+        // --- 2. APPLY STATUS EFFECTS (New Logic) ---
+        // Check if move has an effect defined in MOVE_EFFECTS
+        if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name]) {
+            const effect = MOVE_EFFECTS[move.name];
+            // If enemy doesn't already have status, and RNG hits
+            if (!this.enemy.status && this.enemy.hp > 0 && Math.random() < effect.chance) {
+                // Bosses have 50% resistance to status
+                if (!this.enemy.isArenaBoss || Math.random() > 0.5) {
+                    this.enemy.status = effect.status;
+                    await this.delay(500);
 
-        // A. Critical Hit Display
+                    let statusName = effect.status === 'PSN' ? 'poisoned' :
+                        effect.status === 'PAR' ? 'paralyzed' :
+                            effect.status === 'BRN' ? 'burned' :
+                                effect.status === 'SLP' ? 'asleep' : 'frozen';
+
+                    showDialog(`${this.enemy.name} was ${statusName}!`);
+                    playSFX('sfx-attack2'); // Sound cue
+                    this.updateBattleUI();
+                    await this.delay(1000);
+                }
+            }
+        }
+
+        // Visuals
         if (isCrit) {
-            // Modify the attack text to show CRIT
             const attackText = document.getElementById('attack-text');
-            // Save old style
             const oldColor = attackText.style.color;
-
-            attackText.style.color = "#FF0000"; // Red
+            attackText.style.color = "#FF0000";
             this.showAttackText("CRITICAL HIT!");
-
-            // Revert color after animation
-            setTimeout(() => {
-                attackText.style.color = oldColor || "#FFD700";
-            }, 1500);
+            setTimeout(() => { attackText.style.color = oldColor || "#FFD700"; }, 1500);
         } else {
-            // Normal Effectiveness Message
             this.showEffectivenessText(effectiveness);
         }
 
-        // B. Enemy Shake
         document.getElementById('enemy-stat-box').classList.add('anim-shake');
-
-        // Floating Damage Number
         this.showDamageNumber(dmg, 70, 25);
-
         await this.delay(500);
         document.getElementById('enemy-stat-box').classList.remove('anim-shake');
 
-        // Detailed Damage Log
         if (isCrit) showDialog(`Critical Hit! Dealt ${dmg} damage!`);
         else showDialog(`Dealt ${dmg} damage!`);
-
         await this.delay(1000);
 
         if (this.enemy.hp <= 0) {
@@ -605,7 +574,57 @@ class BattleSystem {
             await this.delay(1000);
             this.win(false);
         } else {
+            // Check Player Status Damage (Poison/Burn) at end of their turn
+            await this.handleStatusDamage(p);
+            if (p.hp <= 0) return; // If died from poison
+
             this.enemyTurn();
+        }
+    }
+
+    async handleStatusDamage(pokemon) {
+        if (!pokemon.status) return;
+
+        let damage = 0;
+        let msg = "";
+
+        if (pokemon.status === 'PSN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 8));
+            msg = "is hurt by poison!";
+        } else if (pokemon.status === 'BRN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 16));
+            msg = "is hurt by its burn!";
+        }
+
+        if (damage > 0) {
+            pokemon.hp -= damage;
+            if (pokemon.hp < 0) pokemon.hp = 0;
+
+            this.updateBattleUI();
+
+            // Visual Flash purple/red
+            const overlay = document.getElementById('flash-overlay');
+            overlay.style.backgroundColor = pokemon.status === 'PSN' ? 'rgba(128,0,128,0.3)' : 'rgba(255,0,0,0.3)';
+            overlay.classList.add('anim-flash');
+
+            showDialog(`${pokemon.name} ${msg}`);
+            await this.delay(1000);
+
+            overlay.classList.remove('anim-flash');
+            overlay.style.backgroundColor = '';
+
+            if (pokemon.hp <= 0) {
+                showDialog(`${pokemon.name} fainted!`);
+                await this.delay(1000);
+                if (pokemon === this.player.team[0]) {
+                    // Handle player fainting
+                    // (Logic exists in enemyTurn, but if died here we need to trigger lose or swap)
+                    // For simplicity, trigger the standard faint check
+                    this.enemyTurn(); // This checks HP at start
+                } else {
+                    this.win(false);
+                }
+            }
         }
     }
 
@@ -771,32 +790,32 @@ class BattleSystem {
         // --- 1. ARENA BOSS HP CHECK (The "5% Rule") ---
         if (this.enemy.isArenaBoss) {
             let hpPercent = this.enemy.hp / this.enemy.maxHp;
-            
+
             // If HP is greater than 5%, Fail immediately
             if (hpPercent > 0.05) {
                 ballAnim.classList.remove('anim-throw');
                 ballAnim.classList.add('hidden');
-                
+
                 showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
                 await this.delay(1500);
-                
+
                 this.enemyTurn(); // Boss attacks back
                 return;
             }
         }
 
         // --- 2. LEGENDARY RESTRICTIONS (Mewtwo/Mew) ---
-        const LEGENDARY_IDS = [144, 145, 146, 150, 151]; 
+        const LEGENDARY_IDS = [144, 145, 146, 150, 151];
         const UNCATCHABLE_IDS = [150, 151]; // Mewtwo/Mew
 
         if (this.enemy.isArenaBoss && UNCATCHABLE_IDS.includes(this.enemy.id)) {
             ballAnim.classList.remove('anim-throw');
             ballAnim.classList.add('hidden');
-            
+
             const pokemonName = this.enemy.id === 150 ? 'Mewtwo' : 'Mew';
             showDialog(`${pokemonName} cannot be caught! It's too powerful!`);
             await this.delay(2000);
-            
+
             this.enemyTurn();
             return;
         }
@@ -810,7 +829,7 @@ class BattleSystem {
 
         // --- NEW CATCH LOGIC ---
         let ballData = ITEMS[ballType];
-        let ballRate = ballData.val; 
+        let ballRate = ballData.val;
 
         // Master Ball Check
         if (ballRate >= 255) {
@@ -1013,7 +1032,7 @@ class BattleSystem {
 
         // --- ANIMATION LOOP ---
         let expRemaining = xpGain;
-        let step = Math.max(1, Math.ceil(xpGain / 30)); 
+        let step = Math.max(1, Math.ceil(xpGain / 30));
 
         while (expRemaining > 0) {
             let addAmt = Math.min(step, expRemaining);
@@ -1240,9 +1259,9 @@ class BattleSystem {
     endBattle() {
         this.isActive = false;
         this.isAttacking = false;
-        hideDialog(); 
+        hideDialog();
         this.ui.classList.add('hidden');
-        
+
         // --- FIX: RESTORE ALL CONTROLS ---
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('action-btns').classList.remove('hidden'); // <--- ADDED THIS
@@ -1267,8 +1286,8 @@ class BattleSystem {
                 .catch((err) => console.log('Main music autoplay blocked'));
         }
 
-        document.getElementById('bottom-hud').classList.remove('hud-battle'); 
-        document.getElementById('level-up-overlay').classList.add('hidden'); 
+        document.getElementById('bottom-hud').classList.remove('hud-battle');
+        document.getElementById('level-up-overlay').classList.add('hidden');
 
         // Clean up boss UI
         const bossHud = document.getElementById('boss-hud');
@@ -1281,19 +1300,19 @@ class BattleSystem {
         // Clear any lingering animations
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
-        
+
         // Clear Enemy Sprite
         const enemySprite = /** @type {HTMLImageElement} */ (
             document.getElementById('enemy-sprite')
         );
-        enemySprite.classList.remove('anim-shrink'); 
-        enemySprite.classList.remove('boss-sprite'); 
+        enemySprite.classList.remove('anim-shrink');
+        enemySprite.classList.remove('boss-sprite');
         enemySprite.classList.add('hidden');
-        enemySprite.src = ''; 
+        enemySprite.src = '';
 
         document.getElementById('pokeball-anim').classList.add('hidden');
 
-        renderer.draw(); 
-        updateHUD(); 
+        renderer.draw();
+        updateHUD();
     }
 }

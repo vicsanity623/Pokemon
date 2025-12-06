@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v6.6.0.3';
+const VERSION = 'v6.6.0.4';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1045,12 +1045,12 @@ function saveGame() {
         arena: (typeof arenaSystem !== 'undefined') ? arenaSystem.getSaveData() : null,
         rival: (typeof rivalSystem !== 'undefined') ? rivalSystem.getSaveData() : null,
         home: (typeof homeSystem !== 'undefined') ? homeSystem.getSaveData() : null,
-        
+
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
         quest: questSystem.activeQuest
     };
-    
+
     localStorage.setItem('poke_save', JSON.stringify(data));
     console.log('Game Saved');
 }
@@ -1087,7 +1087,7 @@ function loadGame() {
 
         // Update Meta Level UI
         const metaLevel = document.getElementById('meta-level');
-        if(metaLevel) metaLevel.innerText = player.pLevel.toString();
+        if (metaLevel) metaLevel.innerText = player.pLevel.toString();
 
         // 2. Restore World
         if (data.world.seed) {
@@ -1108,7 +1108,7 @@ function loadGame() {
         // 3. Restore Arena System (And ensure Pyramid exists)
         if (data.arena && typeof arenaSystem !== 'undefined') {
             arenaSystem.loadSaveData(data.arena);
-            
+
             // Critical: Ensure the building exists in the world array if the system thinks it spawned
             if (arenaSystem.pyramidLocation && arenaSystem.hasSpawned) {
                 const hasArena = world.buildings.some(b => b.type === 'arena');
@@ -1130,7 +1130,7 @@ function loadGame() {
         // 5. Restore Home System
         if (data.home && typeof homeSystem !== 'undefined') {
             homeSystem.loadSaveData(data.home);
-            
+
             if (homeSystem.houseLocation && homeSystem.hasSpawned) {
                 const hasHome = world.buildings.some(b => b.type === 'home');
                 if (!hasHome) {
