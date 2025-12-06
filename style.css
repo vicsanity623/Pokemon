@@ -2078,10 +2078,10 @@ canvas {
 /* 3. LANDSCAPE MODE SETTINGS */
 @media (orientation: landscape) and (max-height: 500px) {
     .boss-sprite {
-        transform: scale(2.2) !important;
-        /* Push WAY down for landscape */
-        top: 240px !important;
-        right: 20% !important;
+        transform: scale(1.5) !important;
+        /* Adjusted for better visibility */
+        top: 180px !important;
+        right: 25% !important;
     }
 
     #battle-menu,
