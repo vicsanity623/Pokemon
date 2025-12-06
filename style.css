@@ -1941,19 +1941,18 @@ canvas {
     cursor: not-allowed;
 }
 
-/* --- ARENA BOSS VISUALS (Fixed Feet Position) --- */
+/* --- ARENA BOSS VISUALS (FINAL FIX) --- */
 
 /* 1. GLOBAL / DESKTOP SETTINGS */
 .boss-sprite {
-    /* Scale from the FEET upwards, not the center */
-    transform-origin: bottom right !important; 
     transform: scale(3.5) !important;
-
-    /* Position feet relative to the BOTTOM of the screen */
-    top: auto !important;     /* Ignore top */
-    bottom: 150px !important; /* Sits behind the text box */
+    transform-origin: center center !important; /* Scale from middle */
+    
+    /* Pushes boss DOWN. Higher number = Lower on screen */
+    top: 350px !important; 
     
     right: 15% !important;
+    bottom: auto !important; /* Reset bottom */
     
     image-rendering: pixelated;
     filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8));
@@ -1964,7 +1963,7 @@ canvas {
 /* Boss HUD (Health Bar) */
 #boss-hud {
     position: absolute;
-    top: 10px; /* Keep bar at top */
+    top: 10px;
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
@@ -2011,7 +2010,6 @@ canvas {
     z-index: 2;
 }
 
-/* Animations */
 @keyframes pulse-glow {
     0%, 100% { text-shadow: 0 0 10px red; }
     50% { text-shadow: 0 0 20px red; }
@@ -2021,24 +2019,23 @@ canvas {
 @media (max-width: 600px) {
     .boss-sprite {
         transform: scale(2.8) !important;
-        /* Push feet lower for portrait */
-        bottom: 180px !important; 
+        /* Push WAY down for portrait */
+        top: 380px !important; 
         right: 10% !important;
     }
     
     .boss-name { font-size: 16px; }
 }
 
-/* 3. LANDSCAPE MODE SETTINGS (The Screenshot Fix) */
+/* 3. LANDSCAPE MODE SETTINGS */
 @media (orientation: landscape) and (max-height: 500px) {
     .boss-sprite {
         transform: scale(2.2) !important; 
-        /* In landscape, push feet WAY down behind the buttons */
-        bottom: 20px !important; 
+        /* Push WAY down for landscape */
+        top: 240px !important; 
         right: 20% !important;
     }
     
-    /* Ensure Buttons are clickable */
     #battle-menu, #move-selector {
         z-index: 200 !important;
         position: absolute;
