@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v6.8';
+const VERSION = 'v6.9';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -393,18 +393,24 @@ input.keys['b'] = false; // Initialize B key
 
 function togglePlayerBag() {
     const bagMenu = document.getElementById('player-bag-menu');
+    const sidebar = document.getElementById('party-sidebar');
+
     if (bagMenu.classList.contains('hidden')) {
         bagMenu.classList.remove('hidden');
+        if (sidebar) sidebar.classList.add('hidden'); // Hide sidebar
         selectedBagItem = null; // Reset selection on open
         showBagTab('pokemon'); // Default tab
     } else {
         bagMenu.classList.add('hidden');
+        if (sidebar && !battleSystem.isActive) sidebar.classList.remove('hidden'); // Show sidebar if not in battle
         selectedBagItem = null;
     }
 }
 
 function closePlayerBag() {
     document.getElementById('player-bag-menu').classList.add('hidden');
+    const sidebar = document.getElementById('party-sidebar');
+    if (sidebar && !battleSystem.isActive) sidebar.classList.remove('hidden'); // Show sidebar if not in battle
 }
 
 let selectedBagItem = null; // Track what is highlighted
@@ -1214,11 +1220,15 @@ let currentBox = 0;
 
 function toggleMainMenu() {
     const menu = document.getElementById('main-menu-modal');
+    const sidebar = document.getElementById('party-sidebar');
+
     if (menu.classList.contains('hidden')) {
         menu.classList.remove('hidden');
+        if (sidebar) sidebar.classList.add('hidden'); // Hide sidebar
         isPaused = true;
     } else {
         menu.classList.add('hidden');
+        if (sidebar && !battleSystem.isActive) sidebar.classList.remove('hidden'); // Show sidebar if not in battle
         isPaused = false;
     }
 }
