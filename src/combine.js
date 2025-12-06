@@ -29,6 +29,19 @@ class CombineSystem {
             }
         }
 
+        // 2.5 Validation: Prevent adding same instance twice
+        const isDuplicate = this.slots.some(
+            (s) =>
+                s &&
+                s.sourceIndex === sourceIndex &&
+                s.sourceType === sourceType
+        );
+
+        if (isDuplicate) {
+            showDialog('This Pokemon is already added!');
+            return false;
+        }
+
         // 3. Validation: Max Merge Level
         if ((pokemon.mergeCount || 0) >= 3) {
             showDialog('This Pokemon is already at Max Merge Level!');
@@ -165,6 +178,6 @@ class CombineSystem {
     }
 
     cleanName(name) {
-        return name.replace(/ ✨/g, '').trim();
+        return name.replace(/✨/g, '').trim();
     }
 }
