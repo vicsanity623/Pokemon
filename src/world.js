@@ -350,6 +350,7 @@ class Player {
         this.team.forEach((p) => {
             if (!p.isEgg) {
                 p.hp = p.maxHp;
+                p.status = null; // Clear status effects (poison, burn, etc.)
             }
         });
     }
