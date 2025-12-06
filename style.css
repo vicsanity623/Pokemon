@@ -2083,3 +2083,17 @@ canvas {
         position: absolute;
     }
 }
+/* --- UI LAYERING FIX --- */
+#player-stat-box {
+    z-index: 200 !important; /* Higher than Boss Sprite (z-index 1) */
+    position: absolute; /* Ensure z-index works */
+}
+
+#boss-hud {
+    z-index: 200 !important;
+}
+
+/* Ensure the Arena Message Box is also on top */
+#battle-dialog {
+    z-index: 200 !important;
+}
