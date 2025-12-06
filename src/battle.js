@@ -148,6 +148,7 @@ class BattleSystem {
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null) {
         this.isActive = true;
         this.isAttacking = false;
+        this.isTrainer = isTrainer;
         this.ui.classList.remove('hidden');
 
         // --- FIX: HIDE ALL CONTROLS ---
@@ -816,6 +817,10 @@ class BattleSystem {
 
     async throwPokeball(ballType) {
         if (this.isAttacking) return;
+        if (this.isTrainer) {
+            showDialog("You can't steal other people's Pokemon!", 2000);
+            return;
+        }
         this.isAttacking = true;
 
         // Consume Ball

@@ -88,29 +88,16 @@ class CombineSystem {
         const p2 = this.slots[1].data;
         const p3 = this.slots[2].data;
 
-        // 1. Calculate Best Stats (Inheritance)
+        // 1. Calculate Best Base Stats (Inheritance)
         const newStats = {
-            strength: Math.max(
-                p1.stats.strength,
-                p2.stats.strength,
-                p3.stats.strength
-            ),
-            defense: Math.max(
-                p1.stats.defense,
-                p2.stats.defense,
-                p3.stats.defense
-            ),
+            strength: Math.max(p1.stats.strength, p2.stats.strength, p3.stats.strength),
+            defense: Math.max(p1.stats.defense, p2.stats.defense, p3.stats.defense),
             speed: Math.max(p1.stats.speed, p2.stats.speed, p3.stats.speed),
             hp: Math.max(p1.stats.hp, p2.stats.hp, p3.stats.hp),
-            special: Math.max(
-                p1.stats.special,
-                p2.stats.special,
-                p3.stats.special
-            )
+            special: Math.max(p1.stats.special, p2.stats.special, p3.stats.special)
         };
 
-        // 2. Determine Merge Level
-        // Takes the highest merge count of ingredients + 1
+        // 2. Determine Merge Level (Stars)
         const currentMaxMerge = Math.max(
             p1.mergeCount || 0,
             p2.mergeCount || 0,
@@ -118,24 +105,38 @@ class CombineSystem {
         );
         const newMergeCount = currentMaxMerge + 1;
 
-        // 3. Create Name with Stars
+        // 3. LEVEL BOOST CALCULATION
+        // Boost = 3 * (Current Merge Count + 1)
+        // 1st Merge = +3 Levels. 2nd Merge = +6 Levels. 3rd Merge = +9 Levels.
+        const levelBoost = 3 * newMergeCount;
+        const newLevel = p1.level + levelBoost;
+
+        // 4. BOOST STATS TO MATCH NEW LEVEL
+        // We add +2 to each stat for every level gained to reflect growth
+        newStats.strength += levelBoost * 2;
+        newStats.defense += levelBoost * 2;
+        newStats.speed += levelBoost * 2;
+        newStats.special += levelBoost * 2;
+        newStats.hp += levelBoost * 2;
+
+        // 5. Create Name with Stars
         const baseName = this.cleanName(p1.name);
         let starString = '✨'.repeat(newMergeCount);
         const newName = `${baseName} ${starString}`;
 
-        // 4. Create New Pokemon Object
+        // 6. Create New Pokemon Object
         const mergedPokemon = {
-            ...p1, // Copy basic data from first pokemon
+            ...p1, // Copy basic data
             name: newName,
+            level: newLevel, // Set new boosted level
             mergeCount: newMergeCount,
             stats: newStats,
-            // Recalculate Max HP based on new stats
-            maxHp: p1.level * 5 + newStats.hp,
-            hp: p1.level * 5 + newStats.hp // Full heal
+            // Recalculate Max HP (Base + Stat)
+            maxHp: (newLevel * 5) + newStats.hp,
+            hp: (newLevel * 5) + newStats.hp // Full heal
         };
 
-        // 5. DELETE Ingredients from Source
-        // We sort by index descending to avoid shifting issues when deleting from arrays
+        // 7. DELETE Ingredients from Source
         const sources = [...this.slots].sort(
             (a, b) => b.sourceIndex - a.sourceIndex
         );
@@ -144,31 +145,29 @@ class CombineSystem {
             if (slot.sourceType === 'party') {
                 this.player.team.splice(slot.sourceIndex, 1);
             } else if (slot.sourceType === 'box') {
-                // Assuming currentBox global is active
                 this.player.storage[currentBox][slot.sourceIndex] = null;
             }
         });
 
-        // 6. Add Result to Party (or Box if full)
+        // 8. Add Result to Party (or Box if full)
         if (this.player.team.length < 6) {
             this.player.team.push(mergedPokemon);
-            showDialog(`Merge Successful! Obtained ${newName}!`);
+            showDialog(`Merge Successful! ${newName} (Lv.${newLevel}) created!`);
         } else {
-            // Find empty box slot
             let placed = false;
             for (let i = 0; i < 25; i++) {
                 if (this.player.storage[currentBox][i] === null) {
                     this.player.storage[currentBox][i] = mergedPokemon;
                     placed = true;
-                    showDialog(`Merge Successful! Sent ${newName} to Box!`);
+                    showDialog(`Merge Successful! Sent ${newName} (Lv.${newLevel}) to Box!`);
                     break;
                 }
             }
             if (!placed)
-                showDialog('Box and Party full! (Merge failed safely)'); // Edge case
+                showDialog('Box and Party full! Pokemon lost in the void...');
         }
 
-        // 7. Deduct Cost & Reset
+        // 9. Deduct Cost & Reset
         this.player.money -= this.cost;
         this.slots = [null, null, null];
 
