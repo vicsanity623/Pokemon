@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v6.0';
+const VERSION = 'v6.1';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -10,6 +10,7 @@ const clock = new GameClock();
 const mergeSystem = new CombineSystem(player);
 const arenaSystem = new ArenaSystem(player);
 const rivalSystem = new RivalSystem(player);
+const homeSystem = new HomeSystem(player);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -360,6 +361,13 @@ input.press = (key) => {
         );
         if (nearbyNPC) {
             handleNPCInteraction(nearbyNPC);
+            return;
+        }
+
+        // Check for nearby Home
+        if (homeSystem.isNearHome(player.x, player.y)) {
+            homeSystem.interact();
+            return;
         }
     }
 };
@@ -367,6 +375,14 @@ input.press = (key) => {
 function handlePokeCenterInteraction() {
     player.healAllPokemon();
     showDialog('♪ Your Pokemon have been restored to full health! ♪', 3000);
+}
+
+// Go Home function (teleport)
+function goHome() {
+    const success = homeSystem.teleportHome();
+    if (success) {
+        toggleMainMenu(); // Close menu after teleport
+    }
 }
 
 // B Button - Open Player Bag
@@ -916,6 +932,9 @@ window.onload = async () => {
         showDialog('Welcome back!', 2000);
     }
 
+    // Spawn player's house near starting location
+    homeSystem.spawnHouse(world, player.x, player.y);
+
     requestAnimationFrame(gameLoop);
 
     // Initialize Music
@@ -1025,6 +1044,7 @@ function saveGame() {
         },
         arena: arenaSystem.getSaveData(),
         rival: rivalSystem.getSaveData(),
+        home: homeSystem.getSaveData(),
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
         quest: questSystem.activeQuest
@@ -1121,6 +1141,23 @@ function loadGame() {
         // Restore Rival (with fallback for legacy saves)
         if (data.rival) {
             rivalSystem.loadSaveData(data.rival);
+        }
+
+        // Restore Home (with fallback for legacy saves)
+        if (data.home) {
+            homeSystem.loadSaveData(data.home);
+            // Re-add building to world if it exists
+            if (homeSystem.houseLocation && homeSystem.hasSpawned) {
+                // Check if building already exists
+                const hasHome = world.buildings.some(b => b.type === 'home');
+                if (!hasHome) {
+                    world.buildings.push({
+                        type: 'home',
+                        x: homeSystem.houseLocation.x,
+                        y: homeSystem.houseLocation.y
+                    });
+                }
+            }
         }
 
         // Restore Time

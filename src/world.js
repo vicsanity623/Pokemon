@@ -618,6 +618,100 @@ class Renderer {
                     Math.floor(drawX) + TILE_SIZE / 2,
                     Math.floor(drawY) + TILE_SIZE * 1.8
                 );
+            } else if (building.type === 'home') {
+                // Draw Player's Home
+                let drawX =
+                    (building.x - this.player.x) * TILE_SIZE +
+                    this.canvas.width / 2 -
+                    TILE_SIZE / 2;
+                let drawY =
+                    (building.y - this.player.y) * TILE_SIZE +
+                    this.canvas.height / 2 -
+                    TILE_SIZE / 2;
+
+                // Shadow/base
+                this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                this.ctx.fillRect(
+                    Math.floor(drawX) - 5,
+                    Math.floor(drawY) + TILE_SIZE,
+                    TILE_SIZE + 10,
+                    10
+                );
+
+                // House walls (beige)
+                this.ctx.fillStyle = '#f5deb3';
+                this.ctx.fillRect(
+                    Math.floor(drawX),
+                    Math.floor(drawY) + 20,
+                    TILE_SIZE,
+                    TILE_SIZE - 20
+                );
+
+                // Roof (triangular blue)
+                this.ctx.fillStyle = '#3498db';
+                this.ctx.beginPath();
+                this.ctx.moveTo(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY));
+                this.ctx.lineTo(Math.floor(drawX) - 10, Math.floor(drawY) + 30);
+                this.ctx.lineTo(Math.floor(drawX) + TILE_SIZE + 10, Math.floor(drawY) + 30);
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Door (brown)
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fillRect(
+                    Math.floor(drawX) + TILE_SIZE / 2 - 12,
+                    Math.floor(drawY) + 60,
+                    24,
+                    40
+                );
+
+                // Door knob
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    Math.floor(drawX) + TILE_SIZE / 2 + 8,
+                    Math.floor(drawY) + 80,
+                    3,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+
+                // Window
+                this.ctx.fillStyle = '#87CEEB';
+                this.ctx.fillRect(
+                    Math.floor(drawX) + 15,
+                    Math.floor(drawY) + 35,
+                    20,
+                    20
+                );
+
+                // Window cross
+                this.ctx.strokeStyle = '#8B4513';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(Math.floor(drawX) + 25, Math.floor(drawY) + 35);
+                this.ctx.lineTo(Math.floor(drawX) + 25, Math.floor(drawY) + 55);
+                this.ctx.moveTo(Math.floor(drawX) + 15, Math.floor(drawY) + 45);
+                this.ctx.lineTo(Math.floor(drawX) + 35, Math.floor(drawY) + 45);
+                this.ctx.stroke();
+
+                // Text Label
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeText(
+                    'HOME',
+                    Math.floor(drawX) + TILE_SIZE / 2,
+                    Math.floor(drawY) - 10
+                );
+                this.ctx.fillText(
+                    'HOME',
+                    Math.floor(drawX) + TILE_SIZE / 2,
+                    Math.floor(drawY) - 10
+                );
             }
         });
 

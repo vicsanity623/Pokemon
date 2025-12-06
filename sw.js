@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v6.0'; // UPDATE THIS NUMBER EVERY TIME YOU PUSH TO GITHUB
+const GAME_VERSION = 'v6.1'; // UPDATE THIS NUMBER EVERY TIME YOU PUSH TO GITHUB
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
@@ -16,7 +16,8 @@ const ASSETS = [
     './src/loading.js',
     './manifest.json',
     './src/rival.js',
-    './src/arena.js'
+    './src/arena.js',
+    './src/home.js'
 ];
 
 // 1. INSTALL: Cache files and force activation
