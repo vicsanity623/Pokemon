@@ -149,7 +149,10 @@ class BattleSystem {
         this.isActive = true;
         this.isAttacking = false;
         this.ui.classList.remove('hidden');
+        
+        // --- FIX: HIDE ALL CONTROLS ---
         document.getElementById('mobile-controls').classList.add('hidden');
+        document.getElementById('action-btns').classList.add('hidden'); // <--- ADDED THIS
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
 
         // Switch to battle music
@@ -180,31 +183,29 @@ class BattleSystem {
 
         let id;
         let attempts = 0;
-        let level; // Declare level here so it's accessible in both branches
-        let isShiny; // Declare isShiny here
+        let level; 
+        let isShiny; 
 
         // Arena Boss or Wild Pokemon?
         if (isArenaBoss && bossConfig) {
-            // Use Arena Boss Configuration
             id = bossConfig.id;
             level = bossConfig.level;
-            isShiny = Math.random() < 0.5; // 50% chance for boss to be shiny
+            isShiny = Math.random() < 0.5; 
         } else {
             // Smart Pokemon selection for wild battles
             do {
                 id = Math.floor(Math.random() * 151) + 1;
                 attempts++;
 
-                // If player level < 40, avoid evolved and legendary
                 if (this.player.pLevel < 40) {
                     if (LEGENDARY_IDS.includes(id) || EVOLVED_IDS.includes(id)) {
-                        continue; // Try again
+                        continue; 
                     }
                 }
-                break; // Valid Pokemon found
+                break; 
             } while (attempts < 20);
 
-            // Calculate level based on team average (only for wild battles)
+            // Calculate level
             let avgLevel = 1;
             if (this.player.team.length > 0) {
                 let totalLevel = this.player.team.reduce(
@@ -214,27 +215,24 @@ class BattleSystem {
                 avgLevel = Math.floor(totalLevel / this.player.team.length);
             }
 
-            // Wild level = avg ± 2 random variance
             level = Math.max(
                 1,
                 avgLevel + Math.floor(Math.random() * 5) - 2 + bossLevelBonus
             );
 
-            // Shiny Check (1/512 chance - more common than 1/8192 for gameplay)
-            isShiny = Math.random() < 1 / 512;
+            // Shiny Check (1/50 chance as requested previously)
+            isShiny = Math.random() < 1 / 50;
         }
 
-        // Fetch Data (Simplified fetch)
+        // Fetch Data
         try {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
             let data = await res.json();
 
             let type = data.types[0].type.name;
-            // Assign a move for the enemy
             let tier = Math.floor(level / 20);
             let enemyMove = getMove(type, tier);
 
-            // Get sprites - use shiny if applicable
             let normalSprite = data.sprites.front_default;
             let shinySprite = data.sprites.front_shiny;
             let animatedSprite =
@@ -246,17 +244,14 @@ class BattleSystem {
                 'animated'
                 ]['front_shiny'] || shinySprite;
 
-            // Choose sprite based on shiny status
             let battleSprite = isShiny ? shinySprite : normalSprite;
             let catchSprite = isShiny ? animatedShiny : animatedSprite;
 
-            // Generate unique stats for this Pokemon
             const stats = this.generateStats();
-            let maxHp = level * 5 + stats.hp; // HP stat affects total health
+            let maxHp = level * 5 + stats.hp; 
 
             // --- BOSS STAT BOOST ---
             if (isArenaBoss) {
-                // Massive HP Pool (Demon Souls Style)
                 maxHp = maxHp * 10;
                 stats.strength = Math.floor(stats.strength * 2);
                 stats.defense = Math.floor(stats.defense * 1.5);
@@ -274,21 +269,19 @@ class BattleSystem {
                 type: type,
                 move: enemyMove,
                 isShiny: isShiny,
-                id: id, // Store ID for Pokedex tracking
-                stats: stats, // Store all stats
-                isArenaBoss: isArenaBoss, // SAVE FLAG
+                id: id,
+                stats: stats,
+                isArenaBoss: isArenaBoss,
                 stage: bossConfig ? bossConfig.stage : 0
             };
 
             // Render Enemy
             this.updateBattleUI();
 
-            // Track Seen (Normal)
             if (!this.player.seen.includes(id)) {
                 this.player.seen.push(id);
             }
 
-            // Track Seen (Shiny)
             if (isShiny && !this.player.seenShiny.includes(id)) {
                 this.player.seenShiny.push(id);
                 showDialog(`✨ A SHINY ${this.enemy.name} appeared! ✨`, 3000);
@@ -303,32 +296,26 @@ class BattleSystem {
             const battleUi = document.getElementById('battle-ui');
 
             if (isArenaBoss) {
-                // Show Boss HUD
                 if (bossHud) bossHud.classList.remove('hidden');
                 if (enemyStatBox) enemyStatBox.classList.add('hidden');
                 if (battleUi) battleUi.classList.add('boss-mode');
                 enemyImg.classList.add('boss-sprite');
 
-                // Set Boss Name
                 const bossName = document.getElementById('boss-name');
                 if (bossName) {
                     bossName.innerText = `STAGE ${this.enemy.stage}: ${this.enemy.name}`;
                 }
             } else {
-                // Normal Battle
                 if (bossHud) bossHud.classList.add('hidden');
                 if (enemyStatBox) enemyStatBox.classList.remove('hidden');
                 if (battleUi) battleUi.classList.remove('boss-mode');
                 enemyImg.classList.remove('boss-sprite');
             }
 
-            // Set Sprites
             enemyImg.src = this.enemy.sprite;
             enemyImg.classList.remove('hidden');
 
-            // Player Pokemon (First in slot or default)
             if (this.player.team.length === 0) {
-                // Give starter if empty
                 this.player.team.push({
                     name: 'PIKACHU',
                     level: 5,
@@ -343,7 +330,6 @@ class BattleSystem {
 
             let pPoke = this.player.team[0];
 
-            // CHECK IF FIRST POKEMON IS FAINTED
             if (pPoke.hp <= 0) {
                 showDialog(
                     `${pPoke.name} is fainted! Heal or swap Pokemon first!`,
@@ -359,7 +345,6 @@ class BattleSystem {
             playerImg.src = pPoke.backSprite;
             playerImg.classList.remove('hidden');
 
-            // Clear Canvas (Black Background)
             const canvas = /** @type {HTMLCanvasElement} */ (
                 document.getElementById('gameCanvas')
             );
@@ -370,7 +355,7 @@ class BattleSystem {
             this.updateBattleUI();
             document.getElementById('battle-dialog').innerText =
                 `A wild ${this.enemy.name} appeared!`;
-            document.getElementById('bottom-hud').classList.add('hud-battle'); // Move HUD up
+            document.getElementById('bottom-hud').classList.add('hud-battle'); 
         } catch (e) {
             console.error(e);
             this.endBattle();
@@ -1295,12 +1280,13 @@ class BattleSystem {
     endBattle() {
         this.isActive = false;
         this.isAttacking = false;
-        hideDialog();
+        hideDialog(); 
         this.ui.classList.add('hidden');
-        // Don't hide mobile controls - they should stay visible
-        document
-            .getElementById('hamburger-btn')
-            .classList.remove('battle-hidden');
+        
+        // --- FIX: RESTORE ALL CONTROLS ---
+        document.getElementById('mobile-controls').classList.remove('hidden');
+        document.getElementById('action-btns').classList.remove('hidden'); // <--- ADDED THIS
+        document.getElementById('hamburger-btn').classList.remove('battle-hidden');
 
         // Trigger rival exit if in the middle of an encounter
         if (typeof rivalSystem !== 'undefined') {
@@ -1321,8 +1307,8 @@ class BattleSystem {
                 .catch((err) => console.log('Main music autoplay blocked'));
         }
 
-        document.getElementById('bottom-hud').classList.remove('hud-battle');
-        document.getElementById('level-up-overlay').classList.add('hidden');
+        document.getElementById('bottom-hud').classList.remove('hud-battle'); 
+        document.getElementById('level-up-overlay').classList.add('hidden'); 
 
         // Clean up boss UI
         const bossHud = document.getElementById('boss-hud');
@@ -1335,19 +1321,19 @@ class BattleSystem {
         // Clear any lingering animations
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
-
-        // --- FIX 3: CLEAR ENEMY SPRITE TO PREVENT FLASHING ---
+        
+        // Clear Enemy Sprite
         const enemySprite = /** @type {HTMLImageElement} */ (
             document.getElementById('enemy-sprite')
         );
-        enemySprite.classList.remove('anim-shrink');
-        enemySprite.classList.remove('boss-sprite'); // Remove boss class
+        enemySprite.classList.remove('anim-shrink'); 
+        enemySprite.classList.remove('boss-sprite'); 
         enemySprite.classList.add('hidden');
-        enemySprite.src = ''; // This removes the image so it doesn't linger!
+        enemySprite.src = ''; 
 
         document.getElementById('pokeball-anim').classList.add('hidden');
 
-        renderer.draw();
-        updateHUD();
+        renderer.draw(); 
+        updateHUD(); 
     }
 }
