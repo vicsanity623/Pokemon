@@ -2,9 +2,7 @@
  * Arena System - Endless Boss Battle Mode
  * Features:
  * - Spawns pyramid building on Day 2
- * - Fully-evolved Pokemon bosses with massive scaling
- * - Legendary Pokemon unlocked after Stage 10
- * - Persistent save/load of arena progression
+ * - Persistent Bosses (Same boss stays until defeated)
  * - Catch defeated bosses with arena stats
  */
 
@@ -14,6 +12,7 @@ class ArenaSystem {
         this.stage = 1;
         this.pyramidLocation = null; // {x, y}
         this.hasSpawned = false; // Track if pyramid has been placed
+        this.currentBossData = null; // --- NEW: Stores the active boss ID until defeated ---
 
         // Fully Evolved Pokemon IDs for Bosses
         this.bossPool = [
@@ -146,15 +145,31 @@ class ArenaSystem {
      * Start the boss battle
      */
     async startBossBattle() {
-        // 1. Determine Boss ID
-        const bossId = this.getNextBossId();
+        let bossId;
 
-        // 2. Calculate Boss Level & Stats
+        // --- PERSISTENCE CHECK ---
+        // If we already generated a boss for this stage (and haven't beat it), use it.
+        // This ensures if you lose, the same Pokemon is waiting for you.
+        if (this.currentBossData && this.currentBossData.stage === this.stage) {
+            bossId = this.currentBossData.id;
+            console.log(`Resuming battle against Boss ID: ${bossId}`);
+        } else {
+            // GENERATE NEW BOSS
+            bossId = this.getNextBossId();
+            
+            // Save it immediately
+            this.currentBossData = {
+                id: bossId,
+                stage: this.stage
+            };
+            console.log(`New Boss Generated: ${bossId}`);
+        }
+
+        // Calculate Boss Level & Stats
         // Level increases by 5 every stage, starting at 20
         const bossLevel = 20 + this.stage * 5;
 
-        // 3. Trigger Battle with Boss Flag
-        // We pass arena boss configuration
+        // Trigger Battle with Boss Flag
         battleSystem.startBattle(false, 0, true, {
             id: bossId,
             level: bossLevel,
@@ -188,6 +203,10 @@ class ArenaSystem {
 
         // 3. Progress to next stage
         this.stage++;
+
+        // --- CLEAR BOSS DATA ---
+        // We won, so we clear the current boss to allow a new one next stage
+        this.currentBossData = null;
 
         // 4. Heal Player slightly (not full, to maintain challenge)
         this.player.team.forEach((p) => {
@@ -224,7 +243,9 @@ class ArenaSystem {
             pyramidLocation: this.pyramidLocation,
             hasSpawned: this.hasSpawned,
             poolIndex: this.poolIndex,
-            shuffledPool: this.shuffledPool
+            shuffledPool: this.shuffledPool,
+            // SAVE THE ACTIVE BOSS
+            currentBossData: this.currentBossData 
         };
     }
 
@@ -236,8 +257,8 @@ class ArenaSystem {
         this.pyramidLocation = data.pyramidLocation || null;
         this.hasSpawned = data.hasSpawned || false;
         this.poolIndex = data.poolIndex || 0;
-        this.shuffledPool = data.shuffledPool || this.shuffleArray([
-            ...this.bossPool
-        ]);
+        this.shuffledPool = data.shuffledPool || this.shuffleArray([...this.bossPool]);
+        // LOAD THE ACTIVE BOSS
+        this.currentBossData = data.currentBossData || null;
     }
 }
