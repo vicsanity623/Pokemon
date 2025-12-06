@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v7.6';
+const VERSION = 'v7.7';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -11,6 +11,7 @@ const mergeSystem = new CombineSystem(player);
 const arenaSystem = new ArenaSystem(player);
 const rivalSystem = new RivalSystem(player);
 const homeSystem = new HomeSystem(player);
+const storeSystem = new StoreSystem(player);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -281,6 +282,9 @@ function gameLoop(timestamp) {
         // Check Arena Pyramid Spawn (Day 2 or later)
         arenaSystem.checkSpawn(world, clock.gameDays);
 
+        // Check Store Spawn
+        storeSystem.checkSpawn(world, arenaSystem);
+
         // Rival Trainer Encounters (intro + battles)
         const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
@@ -369,6 +373,18 @@ input.press = (key) => {
         if (homeSystem.isNearHome(player.x, player.y)) {
             homeSystem.interact();
             return;
+        }
+
+        // Check for nearby Store
+        if (storeSystem.location) {
+            let dist = Math.sqrt(
+                Math.pow(storeSystem.location.x - player.x, 2) +
+                Math.pow(storeSystem.location.y - player.y, 2)
+            );
+            if (dist < 1.5) {
+                storeSystem.interact();
+                return;
+            }
         }
     }
 };

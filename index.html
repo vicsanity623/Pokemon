@@ -103,6 +103,22 @@
                 <div id="effectiveness-text"></div>
             </div>
 
+            <!-- Store UI -->
+            <div id="store-ui" class="hidden">
+                <div class="store-header">
+                    <span>POKE MART</span>
+                    <button onclick="storeSystem.closeUI()" class="close-btn">X</button>
+                </div>
+                <div class="store-tabs">
+                    <button id="store-buy-tab" onclick="storeSystem.showBuyTab()" class="active">BUY</button>
+                    <button id="store-sell-tab" onclick="storeSystem.showSellTab()">SELL</button>
+                </div>
+                <div id="store-money" class="store-money">Money: $0</div>
+                <div id="store-list" class="store-list">
+                    <!-- Dynamic Items -->
+                </div>
+            </div>
+
             <div id="pokeball-anim" class="hidden"></div>
 
             <div id="quest-tracker">
@@ -314,6 +330,7 @@
     <script src="src/arena.js"></script>
     <script src="src/rival.js"></script>
     <script src="src/home.js"></script>
+    <script src="src/store.js"></script>
     <script src="src/loading.js"></script>
     <script src="src/main.js"></script>
 </body>

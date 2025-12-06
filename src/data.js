@@ -242,16 +242,16 @@ class QuestSystem {
 }
 
 const ITEMS = {
-    Potion: { effect: 'heal', val: 20, type: 'potion' },
-    'Super Potion': { effect: 'heal', val: 50, type: 'potion' },
-    'Hyper Potion': { effect: 'heal', val: 100, type: 'potion' },
-    'Max Potion': { effect: 'heal', val: 9999, type: 'potion' },
-    Pokeball: { effect: 'catch', val: 1.0, type: 'ball' },
-    'Great Ball': { effect: 'catch', val: 1.5, type: 'ball' },
-    'Ultra Ball': { effect: 'catch', val: 2.0, type: 'ball' },
-    'Master Ball': { effect: 'catch', val: 255, type: 'ball' }, // Instant catch
-    'Rare Candy': { effect: 'level', val: 1, type: 'misc' },
-    Herb: { effect: 'sell', val: 0, type: 'misc' }
+    Potion: { effect: 'heal', val: 20, type: 'potion', price: 500 },
+    'Super Potion': { effect: 'heal', val: 50, type: 'potion', price: 700 }, // Scaled slightly
+    'Hyper Potion': { effect: 'heal', val: 100, type: 'potion', price: 1000 },
+    'Max Potion': { effect: 'heal', val: 9999, type: 'potion', price: 2000 },
+    Pokeball: { effect: 'catch', val: 1.0, type: 'ball', price: 100 },
+    'Great Ball': { effect: 'catch', val: 1.5, type: 'ball', price: 250 },
+    'Ultra Ball': { effect: 'catch', val: 2.0, type: 'ball', price: 1000 },
+    'Master Ball': { effect: 'catch', val: 255, type: 'ball', price: 100000 },
+    'Rare Candy': { effect: 'level', val: 1, type: 'misc', price: 4800 },
+    Herb: { effect: 'sell', val: 0, type: 'misc', price: 100 } // Sell for 50
 };
 
 // Evolution data: Pokemon name (uppercase) -> { evolvesInto: name, level: required level }
