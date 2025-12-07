@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.1';
+const VERSION = 'v8.2';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -12,6 +12,7 @@ const arenaSystem = new ArenaSystem(player);
 const rivalSystem = new RivalSystem(player);
 const homeSystem = new HomeSystem(player);
 const storeSystem = new StoreSystem(player);
+const defenseSystem = new DefenseSystem(player, world);
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -288,6 +289,26 @@ function gameLoop(timestamp) {
         // Rival Trainer Encounters (intro + battles)
         const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
+
+        // --- BLOOD MOON RAID LOGIC ---
+        if (clock.gameDays > 0 && clock.gameDays % 3 === 0 && !defenseSystem.active && defenseSystem.raidTimer > 0) {
+            // Start raid if it's day 3, 6, 9... and not already active
+            // We need a flag to prevent it from starting constantly on day 3
+            // Using raidTimer reset in defenseSystem to manage this state usually,
+            // but here we check if we haven't already finished it for this day.
+            // Simplest approach: defenseSystem has internal state.
+            // We'll call startRaid(), which checks if active.
+            // But once it ends, we shouldn't restart it immediately on the same day.
+            // So we might need `lastRaidDay` in defenseSystem.
+            if (defenseSystem.lastRaidDay !== clock.gameDays) {
+                defenseSystem.startRaid();
+                defenseSystem.lastRaidDay = clock.gameDays;
+            }
+        }
+
+        if (defenseSystem.active) {
+            defenseSystem.update(dt);
+        }
 
         // Egg Hatching Logic
         player.team.forEach(p => {
@@ -864,7 +885,7 @@ function handleNPCInteraction(npc) {
                 showDialog("Daycare: Your party is full.", 3000);
             } else {
                 showDialog("Daycare: They get along great! Here is an Egg!", 3000);
-                
+
                 // MARK THEM AS BRED
                 p1.lastBredDay = currentDay;
                 p2.lastBredDay = currentDay;
@@ -874,7 +895,7 @@ function handleNPCInteraction(npc) {
                 if (!p2.stats) p2.stats = generatePokemonStats();
 
                 // --- NEW INHERITANCE LOGIC ---
-                
+
                 // 1. Start with completely Random Stats (The "Re-Roll")
                 let eggStats = generatePokemonStats();
 
@@ -896,7 +917,7 @@ function handleNPCInteraction(npc) {
                 if (Math.random() < 0.0002) { // 0.02%
                     const statKeys = ['strength', 'defense', 'speed', 'hp', 'special'];
                     const mutationKey = statKeys[Math.floor(Math.random() * statKeys.length)];
-                    
+
                     // Apply 3x Multiplier
                     eggStats[mutationKey] = Math.floor(eggStats[mutationKey] * 3);
                     isMutated = true;
@@ -912,14 +933,14 @@ function handleNPCInteraction(npc) {
                     exp: 0,
                     type: p1.type,
                     backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
-                    storedSprite: p1.backSprite, 
+                    storedSprite: p1.backSprite,
                     isEgg: true,
                     eggSteps: 500,
                     stats: eggStats, // Save the calculated stats
                     mutatedStat: isMutated ? 'Mutation' : null
                 });
-                
-                if(isMutated) {
+
+                if (isMutated) {
                     setTimeout(() => showDialog("Something feels different about this egg...", 4000), 3500);
                 }
             }
