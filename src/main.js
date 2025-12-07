@@ -847,19 +847,14 @@ function handleNPCInteraction(npc) {
             return;
         }
 
-        // 3. SAFETY CHECK: Ensure Game Days exists, default to 0 if broken
+        // 3. SAFETY CHECK: Ensure Game Days exists
         let currentDay = (clock && typeof clock.gameDays === 'number') ? clock.gameDays : 0;
-
-        // Default to -100 if never bred
         let lastBredP1 = (typeof p1.lastBredDay === 'number') ? p1.lastBredDay : -100;
         let lastBredP2 = (typeof p2.lastBredDay === 'number') ? p2.lastBredDay : -100;
 
-        console.log(`Breeding Debug: Day ${currentDay} | P1 Last: ${lastBredP1} | P2 Last: ${lastBredP2}`);
-
-        // 4. COOLDOWN CHECK (30 Days)
-        if ((currentDay - lastBredP1 < 30) || (currentDay - lastBredP2 < 30)) {
-            let waitTime = 30 - (currentDay - Math.max(lastBredP1, lastBredP2));
-            showDialog(`Daycare: They are tired. Wait ${Math.floor(waitTime)} days.`, 3000);
+        // 4. COOLDOWN CHECK (1 Day)
+        if ((currentDay - lastBredP1 < 1) || (currentDay - lastBredP2 < 1)) {
+            showDialog(`Daycare: They are tired. Come back tomorrow.`, 3000);
             return;
         }
 
@@ -869,40 +864,64 @@ function handleNPCInteraction(npc) {
                 showDialog("Daycare: Your party is full.", 3000);
             } else {
                 showDialog("Daycare: They get along great! Here is an Egg!", 3000);
-
+                
                 // MARK THEM AS BRED
                 p1.lastBredDay = currentDay;
                 p2.lastBredDay = currentDay;
 
-                // STAT INHERITANCE
+                // Ensure parents have stats
                 if (!p1.stats) p1.stats = generatePokemonStats();
                 if (!p2.stats) p2.stats = generatePokemonStats();
 
-                const inheritedStats = {
-                    strength: Math.max(p1.stats.strength, p2.stats.strength),
-                    defense: Math.max(p1.stats.defense, p2.stats.defense),
-                    speed: Math.max(p1.stats.speed, p2.stats.speed),
-                    hp: Math.max(p1.stats.hp, p2.stats.hp),
-                    special: Math.max(p1.stats.special, p2.stats.special)
+                // --- NEW INHERITANCE LOGIC ---
+                
+                // 1. Start with completely Random Stats (The "Re-Roll")
+                let eggStats = generatePokemonStats();
+
+                // 2. Helper to find the Key of the highest stat
+                const getBestStatKey = (statsObj) => {
+                    return Object.keys(statsObj).reduce((a, b) => statsObj[a] > statsObj[b] ? a : b);
                 };
+
+                // 3. Find Best Stats of Parents
+                const p1BestKey = getBestStatKey(p1.stats);
+                const p2BestKey = getBestStatKey(p2.stats);
+
+                // 4. Inherit specific values
+                eggStats[p1BestKey] = p1.stats[p1BestKey]; // Inherit P1's best
+                eggStats[p2BestKey] = p2.stats[p2BestKey]; // Inherit P2's best
+
+                // 5. MUTATION LOGIC (0.02% Chance for 3x Boost)
+                let isMutated = false;
+                if (Math.random() < 0.0002) { // 0.02%
+                    const statKeys = ['strength', 'defense', 'speed', 'hp', 'special'];
+                    const mutationKey = statKeys[Math.floor(Math.random() * statKeys.length)];
+                    
+                    // Apply 3x Multiplier
+                    eggStats[mutationKey] = Math.floor(eggStats[mutationKey] * 3);
+                    isMutated = true;
+                }
 
                 // ADD EGG
                 player.team.push({
                     name: 'EGG',
-                    species: p1.name,
+                    species: p1.name, // Offspring is mother's species
                     level: 1,
-                    maxHp: 15,
+                    maxHp: 15, // Temporary HP
                     hp: 15,
                     exp: 0,
                     type: p1.type,
-                    // Specific Egg Sprite
                     backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
-                    // Save Parent Sprite for Hatching
-                    storedSprite: p1.backSprite,
+                    storedSprite: p1.backSprite, 
                     isEgg: true,
                     eggSteps: 500,
-                    stats: inheritedStats
+                    stats: eggStats, // Save the calculated stats
+                    mutatedStat: isMutated ? 'Mutation' : null
                 });
+                
+                if(isMutated) {
+                    setTimeout(() => showDialog("Something feels different about this egg...", 4000), 3500);
+                }
             }
         } else {
             showDialog("Daycare: They don't seem to like each other...", 3000);
