@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.0';
+const VERSION = 'v8.1';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
