@@ -318,15 +318,17 @@
     <div id="store-ui" class="hidden">
         <div class="store-header">
             <span>POKE MART</span>
-            <button onclick="storeSystem.closeUI()" class="close-btn">X</button>
+            <!-- Change to onpointerdown -->
+            <button onpointerdown="storeSystem.closeUI()" class="close-btn">X</button>
         </div>
         <div class="store-tabs">
-            <button id="store-buy-tab" onclick="storeSystem.showBuyTab()" class="active">BUY</button>
-            <button id="store-sell-tab" onclick="storeSystem.showSellTab()">SELL</button>
+            <button id="store-buy-tab" onpointerdown="storeSystem.showBuyTab()" class="active">BUY</button>
+            <button id="store-sell-tab" onpointerdown="storeSystem.showSellTab()">SELL</button>
         </div>
         <div id="store-money" class="store-money">Money: $0</div>
         <div id="store-list" class="store-list">
-            <!-- Dynamic Items -->
+            <!-- Inside your JS where you generate the rows, 
+                 make sure the BUY button also uses onpointerdown -->
         </div>
     </div>
 
