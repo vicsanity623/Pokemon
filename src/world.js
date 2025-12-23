@@ -714,6 +714,40 @@ class Renderer {
                     Math.floor(drawY) - 10
                 );
             }
+            // --- ADD THIS BLOCK START ---
+            else if (building.type === 'store') {
+                let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+                let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+        
+                // Draw Building Base (Blue walls for Poke Mart)
+                this.ctx.fillStyle = '#2980b9'; 
+                this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
+        
+                // Draw Roof (Red distinctive Poke Mart roof)
+                this.ctx.fillStyle = '#e74c3c';
+                this.ctx.fillRect(Math.floor(drawX) - 5, Math.floor(drawY), TILE_SIZE + 10, 25);
+        
+                // MART Text Sign
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('MART', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 18);
+        
+                // Window and Door
+                this.ctx.fillStyle = '#87CEEB'; // Light blue window
+                this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 35, 25, 20);
+                
+                this.ctx.fillStyle = '#34495e'; // Dark door
+                this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
+        
+                // Glow effect to make it stand out
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = '#3498db';
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
+                this.ctx.shadowBlur = 0;
+            }
         });
 
         // Draw NPCs
