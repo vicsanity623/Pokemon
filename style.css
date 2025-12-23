@@ -2417,3 +2417,86 @@ body {
     background: linear-gradient(90deg, #e74c3c, #c0392b);
     transition: width 0.3s ease;
 }
+
+/* --- SQUAD BATTLE SYSTEM STYLES --- */
+
+#player-party-container {
+    position: absolute;
+    left: 20px;
+    top: 100px;
+    width: 300px;
+    height: calc(100% - 250px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.party-member-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    transition: transform 0.3s ease;
+}
+
+/* Zig-Zag Formation */
+.party-member-wrapper:nth-child(even) { margin-left: 60px; }
+.party-member-wrapper:nth-child(odd) { margin-left: 0px; }
+
+.party-sprite {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+/* Active Highlight (Green Circle) */
+.party-member-wrapper.active-turn::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 25px;
+    background: rgba(46, 204, 113, 0.4);
+    border: 2px solid #2ecc71;
+    border-radius: 50%;
+    z-index: -1;
+    animation: pulse-active 1.5s infinite;
+}
+
+/* Health Bars above sprites */
+.sprite-hp-bar {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 6px;
+    background: #444;
+    border: 1px solid #000;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.sprite-hp-fill {
+    height: 100%;
+    background: #2ecc71;
+    transition: width 0.3s ease;
+}
+
+.fainted-member {
+    filter: grayscale(1) opacity(0.4);
+}
+
+@keyframes pulse-active {
+    0% { transform: translateX(-50%) scale(1); opacity: 0.4; }
+    50% { transform: translateX(-50%) scale(1.1); opacity: 0.8; }
+    100% { transform: translateX(-50%) scale(1); opacity: 0.4; }
+}
+
+/* Hide the old single player stat box in squad mode if you choose */
+.squad-mode #player-stat-box {
+    display: none;
+}
