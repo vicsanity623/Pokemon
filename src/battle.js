@@ -123,6 +123,11 @@ class BattleSystem {
         this.isTrainer = isTrainer;
         this.ui.classList.remove('hidden');
 
+        // --- RESET ENEMY HUDS ---
+        document.getElementById('boss-hud').classList.add('hidden');
+        document.getElementById('enemy-stat-box').classList.add('hidden');
+        // -----------------------------------------
+
         // --- HIDE PARTY SIDEBAR ---
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.add('hidden');
@@ -640,31 +645,41 @@ class BattleSystem {
 
     endBattle() {
         this.isActive = false;
+        this.isAttacking = false;
         this.ui.classList.add('hidden');
 
-        // --- RESTORE PARTY SIDEBAR ---
+        // --- HIDE HUDS ---
+        document.getElementById('boss-hud').classList.add('hidden');
+        document.getElementById('enemy-stat-box').classList.add('hidden');
+        // ---------------------------------
+
+        // Restore Party Sidebar
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.remove('hidden');
 
-        // Restore UI
+        // Restore UI Controls
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('action-btns').classList.remove('hidden');
         document.getElementById('hamburger-btn').classList.remove('battle-hidden');
         document.getElementById('player-stat-box').classList.remove('hidden');
-        document.getElementById('player-party-container').innerHTML = '';
+        
+        // Clear Squad Sprites
+        const squadContainer = document.getElementById('player-party-container');
+        if (squadContainer) squadContainer.innerHTML = '';
 
         // Restore Music
         const mainMusic = document.getElementById('main-music');
-        if (mainMusic) { 
-            document.getElementById('battle-music').pause(); 
-            mainMusic.play().catch(e => {}); 
-        }
+        const battleMusic = document.getElementById('battle-music');
+        if (battleMusic) battleMusic.pause();
+        if (mainMusic) mainMusic.play().catch(e => {});
 
-        // Clean up sprites
+        // Clean up Enemy Sprite
         const enemySprite = document.getElementById('enemy-sprite');
         enemySprite.classList.remove('anim-shrink', 'boss-sprite');
         enemySprite.classList.add('hidden');
         enemySprite.src = '';
+
+        document.getElementById('bottom-hud').classList.remove('hud-battle');
 
         if (typeof renderer !== 'undefined') renderer.draw();
         updateHUD();
