@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.7';
+const VERSION = 'v8.8';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -301,18 +301,10 @@ function gameLoop(timestamp) {
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
         // --- BLOOD MOON RAID LOGIC ---
-        if (clock.gameDays > 0 && clock.gameDays % 3 === 0 && !defenseSystem.active && defenseSystem.raidTimer > 0) {
-            // Start raid if it's day 3, 6, 9... and not already active
-            // We need a flag to prevent it from starting constantly on day 3
-            // Using raidTimer reset in defenseSystem to manage this state usually,
-            // but here we check if we haven't already finished it for this day.
-            // Simplest approach: defenseSystem has internal state.
-            // We'll call startRaid(), which checks if active.
-            // But once it ends, we shouldn't restart it immediately on the same day.
-            // So we might need `lastRaidDay` in defenseSystem.
+        if (clock.gameDays > 0 && clock.gameDays % 2 === 0 && !defenseSystem.active) {
             if (defenseSystem.lastRaidDay !== clock.gameDays) {
                 defenseSystem.startRaid();
-                defenseSystem.lastRaidDay = clock.gameDays;
+                defenseSystem.lastRaidDay = clock.gameDays; // Mark this day as done immediately
             }
         }
 
@@ -1123,6 +1115,7 @@ function saveGame() {
         rival: (typeof rivalSystem !== 'undefined') ? rivalSystem.getSaveData() : null,
         home: (typeof homeSystem !== 'undefined') ? homeSystem.getSaveData() : null,
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
+        defense: { lastRaidDay: defenseSystem.lastRaidDay },
 
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
@@ -1148,6 +1141,11 @@ function loadGame() {
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
         player.bag = data.player.bag;
+        
+        // Restore Defense System
+        if (data.defense) {
+            defenseSystem.lastRaidDay = data.defense.lastRaidDay;
+        }
 
         // Restore Storage & Pokedex
         player.storage = data.player.storage || Array(100).fill().map(() => Array(25).fill(null));
