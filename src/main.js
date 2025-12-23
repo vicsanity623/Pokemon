@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.4';
+const VERSION = 'v8.5';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1108,6 +1108,7 @@ function saveGame() {
         arena: (typeof arenaSystem !== 'undefined') ? arenaSystem.getSaveData() : null,
         rival: (typeof rivalSystem !== 'undefined') ? rivalSystem.getSaveData() : null,
         home: (typeof homeSystem !== 'undefined') ? homeSystem.getSaveData() : null,
+        store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
 
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
@@ -1166,6 +1167,24 @@ function loadGame() {
 
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
+        }
+        
+        // Restore Store System
+        if (data.store) {
+            storeSystem.hasSpawned = data.store.hasSpawned;
+            storeSystem.location = data.store.location;
+        
+            // Ensure it's in world.buildings if it was spawned
+            if (storeSystem.hasSpawned && storeSystem.location) {
+                const hasStore = world.buildings.some(b => b.type === 'store');
+                if (!hasStore) {
+                    world.buildings.push({
+                        type: 'store',
+                        x: storeSystem.location.x,
+                        y: storeSystem.location.y
+                    });
+                }
+            }
         }
 
         // 3. Restore Arena System (And ensure Pyramid exists)
