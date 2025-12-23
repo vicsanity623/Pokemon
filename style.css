@@ -951,20 +951,21 @@ body {
 
 /* Store UI */
 #store-ui {
-    position: absolute;
+    position: fixed; /* Changed to fixed for better modal behavior */
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 400px;
-    height: 60%;
+    height: 70%; /* Increased from 60% for better view */
     background: #fff;
     border: 4px solid #3498db;
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    z-index: 3000;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    z-index: 15000 !important; /* Extremely high to be above all controls */
+    pointer-events: auto !important; /* Forces interactivity */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.5); /* Dim background */
 }
 
 .store-header {
@@ -975,21 +976,37 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 18px;
+    font-size: 14px; /* Scaled for Press Start font */
+    pointer-events: auto;
+}
+
+.store-header button {
+    background: #e74c3c;
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
 }
 
 .store-tabs {
     display: flex;
     border-bottom: 2px solid #ccc;
+    pointer-events: auto;
 }
 
 .store-tabs button {
     flex: 1;
     border: none;
     background: #f1f1f1;
-    padding: 10px;
+    padding: 15px; /* Bigger touch target */
     font-weight: bold;
     cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    pointer-events: auto;
 }
 
 .store-tabs button.active {
@@ -998,24 +1015,26 @@ body {
 }
 
 .store-money {
-    padding: 10px;
+    padding: 15px;
     text-align: right;
     font-weight: bold;
     color: #27ae60;
     background: #ecf0f1;
+    font-size: 12px;
 }
 
 .store-list {
     flex: 1;
     overflow-y: auto;
     padding: 10px;
+    pointer-events: auto;
 }
 
 .store-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
+    padding: 15px 10px; /* Increased padding */
     border-bottom: 1px solid #eee;
 }
 
@@ -1027,13 +1046,17 @@ body {
     background: #3498db;
     color: white;
     border: none;
-    padding: 5px 15px;
+    padding: 10px 15px; /* Larger buttons for mobile */
     border-radius: 5px;
     cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    pointer-events: auto;
 }
 
 .store-row button:active {
-    transform: scale(0.95);
+    transform: scale(0.9);
+    background: #2980b9;
 }
 
 .coin {
