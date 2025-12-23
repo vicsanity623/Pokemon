@@ -123,18 +123,6 @@ class World {
         // We want clusters of 40+ tiles, so very smooth noise
         let grassVal = this.rng.noise(x * 0.1, y * 0.1);
 
-        // Structures
-        if (
-            Math.abs(Math.floor(x)) % 50 === 0 &&
-            Math.abs(Math.floor(y)) % 50 === 0
-        )
-            return 'center';
-        if (
-            Math.abs(Math.floor(x)) % 53 === 0 &&
-            Math.abs(Math.floor(y)) % 53 === 0
-        )
-            return 'store';
-
         // Biomes based on smooth noise
         if (biomeVal < 0.3) return 'water';
 
