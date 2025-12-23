@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v8.8'; // UPDATE THIS NUMBER EVERY TIME YOU PUSH TO GITHUB
+const GAME_VERSION = 'v8.8';
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
@@ -10,8 +10,6 @@ const ASSETS = [
     './src/world.js',
     './src/battle.js',
     './src/data.js',
-    // CHECK: Make sure combine.js is actually in the src folder. 
-    // If you made it in the root folder, change this to './combine.js'
     './src/combine.js',
     './src/loading.js',
     './manifest.json',
