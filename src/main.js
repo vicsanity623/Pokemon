@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.5';
+const VERSION = 'v8.6';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -113,7 +113,17 @@ function runIntro() {
 let lastTime = 0;
 function gameLoop(timestamp) {
     if (isPaused) {
-        lastTime = timestamp; // Prevent dt spike when resuming
+        lastTime = timestamp;
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    // ADD THIS BLOCK:
+    if (storeSystem && storeSystem.isOpen) {
+        // Just render and update HUD, skip movement logic
+        renderer.draw();
+        updateHUD();
+        lastTime = timestamp;
         requestAnimationFrame(gameLoop);
         return;
     }
