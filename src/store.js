@@ -8,6 +8,7 @@ class StoreSystem {
         this.player = player;
         this.location = null; // {x, y}
         this.hasSpawned = false;
+        this.isOpen = false;
     }
 
     /**
@@ -38,8 +39,6 @@ class StoreSystem {
             x: x,
             y: y
         });
-
-        // showDialog('A Poke Mart opened near the Arena!', 4000);
     }
 
     interact() {
@@ -48,7 +47,12 @@ class StoreSystem {
 
     openUI() {
         this.isOpen = true;
-        document.getElementById('store-ui').classList.remove('hidden');
+        const ui = document.getElementById('store-ui');
+        ui.classList.remove('hidden');
+        
+        // Prevent touches on the Mart from moving the player/map
+        ui.onpointerdown = (e) => e.stopPropagation();
+        
         this.updateMoneyDisplay();
         this.showBuyTab();
     }
@@ -83,7 +87,12 @@ class StoreSystem {
 
             const btn = document.createElement('button');
             btn.innerText = 'BUY';
-            btn.onclick = () => this.buyItem(itemName);
+            
+            // MOBILE FIX: Use onpointerdown and stopPropagation
+            btn.onpointerdown = (e) => {
+                e.stopPropagation();
+                this.buyItem(itemName);
+            };
 
             row.appendChild(info);
             row.appendChild(btn);
@@ -115,7 +124,12 @@ class StoreSystem {
 
             const btn = document.createElement('button');
             btn.innerText = 'SELL';
-            btn.onclick = () => this.sellItem(itemName);
+            
+            // MOBILE FIX: Use onpointerdown and stopPropagation
+            btn.onpointerdown = (e) => {
+                e.stopPropagation();
+                this.sellItem(itemName);
+            };
 
             row.appendChild(info);
             row.appendChild(btn);
@@ -135,8 +149,15 @@ class StoreSystem {
             this.player.money -= itemData.price;
             if (!this.player.bag[itemName]) this.player.bag[itemName] = 0;
             this.player.bag[itemName]++;
-            playSFX('sfx-pickup'); // Cha-ching sound ideally, but pickup works
+            
+            // Play sound
+            playSFX('sfx-pickup'); 
+            
+            // Refresh UI
             this.updateMoneyDisplay();
+            
+            // Optional: feedback
+            console.log(`Purchased ${itemName}`);
         } else {
             showDialog("Not enough money!");
         }
@@ -157,6 +178,9 @@ class StoreSystem {
     }
 
     updateMoneyDisplay() {
-        document.getElementById('store-money').innerText = `Money: $${this.player.money}`;
+        const moneyEl = document.getElementById('store-money');
+        if (moneyEl) {
+            moneyEl.innerText = `Money: $${this.player.money}`;
+        }
     }
 }
