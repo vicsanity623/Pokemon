@@ -112,23 +112,7 @@
                 <div id="damage-text"></div>
                 <div id="effectiveness-text"></div>
             </div>
-
-            <!-- Store UI -->
-            <div id="store-ui" class="hidden">
-                <div class="store-header">
-                    <span>POKE MART</span>
-                    <button onclick="storeSystem.closeUI()" class="close-btn">X</button>
-                </div>
-                <div class="store-tabs">
-                    <button id="store-buy-tab" onclick="storeSystem.showBuyTab()" class="active">BUY</button>
-                    <button id="store-sell-tab" onclick="storeSystem.showSellTab()">SELL</button>
-                </div>
-                <div id="store-money" class="store-money">Money: $0</div>
-                <div id="store-list" class="store-list">
-                    <!-- Dynamic Items -->
-                </div>
-            </div>
-
+            
             <div id="pokeball-anim" class="hidden"></div>
 
             <div id="quest-tracker">
@@ -329,6 +313,21 @@
         <audio id="sfx-attack1" src="attack1.mp3" preload="auto"></audio>
         <audio id="sfx-attack2" src="attack2.mp3" preload="auto"></audio>
         <audio id="sfx-attack3" src="attack3.mp3" preload="auto"></audio>
+    </div>
+    
+    <div id="store-ui" class="hidden">
+        <div class="store-header">
+            <span>POKE MART</span>
+            <button onclick="storeSystem.closeUI()" class="close-btn">X</button>
+        </div>
+        <div class="store-tabs">
+            <button id="store-buy-tab" onclick="storeSystem.showBuyTab()" class="active">BUY</button>
+            <button id="store-sell-tab" onclick="storeSystem.showSellTab()">SELL</button>
+        </div>
+        <div id="store-money" class="store-money">Money: $0</div>
+        <div id="store-list" class="store-list">
+            <!-- Dynamic Items -->
+        </div>
     </div>
 
     <!-- Scripts Load Order is Vital -->
