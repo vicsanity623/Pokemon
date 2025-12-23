@@ -886,32 +886,40 @@ class BattleSystem {
         let ballData = ITEMS[ballType];
         let ballRate = ballData.val;
 
-        // Master Ball Check
+        // 1. Master Ball Check (Instant Success)
         if (ballRate >= 255) {
             await this.delay(500);
             this.catchSuccess();
             return;
         }
 
-        // Calculate Chance
+        // 2. Calculate Catch Chance based on HP percentage
         let hpPercent = this.enemy.hp / this.enemy.maxHp;
-        let hpFactor = (1 - hpPercent) * 2 + 1;
-        let difficulty = Math.max(1, this.enemy.level / 10);
-        let catchChance = ((ballRate * 30) * hpFactor) / difficulty;
+        let catchChance = 0;
 
-        // --- 3. LEGENDARY BIRD PENALTY ---
-        if (this.enemy.isArenaBoss && LEGENDARY_IDS.includes(this.enemy.id)) {
-            catchChance = catchChance / 8; // Harder to catch Articuno/Zapdos/Moltres
+        if (hpPercent < 0.20) {
+            catchChance = 90; // 90% chance if health is below 20%
+        } else {
+            catchChance = 30; // 30% chance if health is 20% or higher
         }
 
-        // Random roll (0 to 100)
-        let roll = Math.random() * 100;
+        // 3. Legendary Penalty 
+        // (Keep this if you still want Articuno/Zapdos/Moltres to be harder than a Rattata)
+        if (this.enemy.isArenaBoss && [144, 145, 146].includes(this.enemy.id)) {
+            catchChance = catchChance / 4; 
+        }
 
-        // 3 Shakes Animation
+        // 4. Random Roll (0 to 100)
+        let roll = Math.random() * 100;
+        let isCaught = roll <= catchChance;
+
+        // 5. 3 Shakes Animation
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-            if (roll > catchChance + (i * 5)) {
-                // Break free
+            
+            // If the roll failed, we break out of the animation early at a random shake
+            // This makes it look like it's "shaking" before breaking free
+            if (!isCaught && i >= Math.floor(Math.random() * 3)) {
                 ballAnim.classList.remove('anim-shake');
                 ballAnim.classList.add('hidden');
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
@@ -922,7 +930,7 @@ class BattleSystem {
             }
         }
 
-        // Caught!
+        // 6. If it survived the loop, it's caught!
         this.catchSuccess();
     }
 
