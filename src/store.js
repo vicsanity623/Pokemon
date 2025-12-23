@@ -47,11 +47,14 @@ class StoreSystem {
     }
 
     openUI() {
+        this.isOpen = true;
         document.getElementById('store-ui').classList.remove('hidden');
+        this.updateMoneyDisplay();
         this.showBuyTab();
     }
 
     closeUI() {
+        this.isOpen = false;
         document.getElementById('store-ui').classList.add('hidden');
     }
 
