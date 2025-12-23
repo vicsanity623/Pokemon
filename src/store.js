@@ -150,14 +150,12 @@ class StoreSystem {
             if (!this.player.bag[itemName]) this.player.bag[itemName] = 0;
             this.player.bag[itemName]++;
             
-            // Play sound
             playSFX('sfx-pickup'); 
-            
-            // Refresh UI
             this.updateMoneyDisplay();
             
-            // Optional: feedback
-            console.log(`Purchased ${itemName}`);
+            // ADD THIS: Updates the bottom bar money immediately
+            if (typeof updateHUD === 'function') updateHUD(); 
+            
         } else {
             showDialog("Not enough money!");
         }
@@ -167,13 +165,17 @@ class StoreSystem {
         if (this.player.bag[itemName] > 0) {
             const itemData = ITEMS[itemName];
             const price = itemData ? Math.floor(itemData.price / 2) : 0;
-
+    
             this.player.bag[itemName]--;
             if (this.player.bag[itemName] === 0) delete this.player.bag[itemName];
-
+    
             this.player.money += price;
             playSFX('sfx-pickup');
-            this.showSellTab(); // Refresh list
+            
+            // ADD THIS:
+            if (typeof updateHUD === 'function') updateHUD();
+            
+            this.showSellTab(); 
         }
     }
 
