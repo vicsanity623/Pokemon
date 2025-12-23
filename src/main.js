@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v8.6';
+const VERSION = 'v8.7';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -359,6 +359,10 @@ function gameLoop(timestamp) {
 // Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
+    
+    // ADD THIS: If a menu is open, don't allow world interactions
+    if (storeSystem.isOpen || isPaused) return; 
+
     if (key === 'Enter') {
         // 'A' button mapped to Enter
         // Check for nearby Poke Center first
