@@ -58,7 +58,12 @@
 
                 <!-- Sprites -->
                 <img id="enemy-sprite" src="" alt="Enemy" />
-                <img id="player-sprite" src="" alt="Player" />
+                
+                <!-- NEW SQUAD CONTAINER: Replaces old player-sprite -->
+                <div id="player-party-container">
+                    <!-- JavaScript will inject 6 Pokemon wrappers here -->
+                </div>
+
                 <div id="battle-menu">
                     <div id="battle-dialog">What will you do?</div>
                     <div class="battle-options">
@@ -327,8 +332,7 @@
         </div>
         <div id="store-money" class="store-money">Money: $0</div>
         <div id="store-list" class="store-list">
-            <!-- Inside your JS where you generate the rows, 
-                 make sure the BUY button also uses onpointerdown -->
+            <!-- Dynamic Items -->
         </div>
     </div>
 
