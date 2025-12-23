@@ -88,7 +88,7 @@ class BattleSystem {
         damageText.style.top = `${y}%`;
         damageText.classList.remove('anim-damage-float');
         void damageText.offsetWidth; // Force reflow
-        attackText.classList.add('anim-damage-float');
+        damageText.classList.add('anim-damage-float');
         await this.delay(1800);
         damageText.classList.remove('anim-damage-float');
     }
@@ -123,11 +123,21 @@ class BattleSystem {
         this.isTrainer = isTrainer;
         this.ui.classList.remove('hidden');
 
+        // --- HIDE PARTY SIDEBAR ---
+        const sidebar = document.getElementById('party-sidebar');
+        if (sidebar) sidebar.classList.add('hidden');
+
         // Hide normal UI and show squad UI
         document.getElementById('mobile-controls').classList.add('hidden');
         document.getElementById('action-btns').classList.add('hidden');
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
         document.getElementById('player-stat-box').classList.add('hidden'); // Hide old single box
+
+        // --- BLACK OUT WORLD IMMEDIATELY ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Switch to battle music
         const battleMusic = document.getElementById('battle-music');
@@ -180,9 +190,6 @@ class BattleSystem {
                 enemyImg.classList.remove('boss-sprite');
                 document.getElementById('enemy-stat-box').classList.remove('hidden');
             }
-
-            const canvas = document.getElementById('gameCanvas');
-            canvas.getContext('2d').fillRect(0, 0, window.innerWidth, window.innerHeight);
 
             this.updateBattleUI();
             showDialog(`A wild ${this.enemy.name} appeared!`);
@@ -255,7 +262,7 @@ class BattleSystem {
     }
 
     async nextTurn() {
-        if (this.enemy.hp <= 0) return; // Wait for win check
+        if (!this.isActive || this.enemy.hp <= 0) return; 
         
         // Check if all player fainted
         if (!this.player.team.some(p => p.hp > 0)) {
@@ -453,9 +460,12 @@ class BattleSystem {
         this.updateBattleUI();
         
         // Shake target wrapper
-        document.getElementById(`party-wrapper-${targetObj.i}`).classList.add('anim-shake');
-        await this.delay(500);
-        document.getElementById(`party-wrapper-${targetObj.i}`).classList.remove('anim-shake');
+        const wrapper = document.getElementById(`party-wrapper-${targetObj.i}`);
+        if (wrapper) {
+            wrapper.classList.add('anim-shake');
+            await this.delay(500);
+            wrapper.classList.remove('anim-shake');
+        }
 
         if (target.hp <= 0) showDialog(`${target.name} fainted!`);
         await this.delay(1000);
@@ -566,6 +576,13 @@ class BattleSystem {
         showDialog("You are fighting as a squad! No switching needed.");
     }
 
+    // --- FIXED RUN BUTTON ---
+    runBtn() {
+        if (this.isAttacking) return;
+        showDialog('Got away safely!');
+        setTimeout(() => this.endBattle(), 1000);
+    }
+
     async win(caught) {
         let xpGain = Math.floor(this.enemy.level * 20 / this.player.team.filter(p => p.hp > 0).length);
         this.player.money += 50 + (this.enemy.level * 25);
@@ -590,8 +607,6 @@ class BattleSystem {
         await this.showLevelUpScreen(p, inc, 5);
         await this.checkEvolution(p);
     }
-
-    // Checking evolution and showLevelUpScreen remain the same... (pasted below for completeness)
 
     async checkEvolution(p) {
         const evoData = EVOLUTIONS[p.name.split(' ')[0]];
@@ -626,14 +641,32 @@ class BattleSystem {
     endBattle() {
         this.isActive = false;
         this.ui.classList.add('hidden');
+
+        // --- RESTORE PARTY SIDEBAR ---
+        const sidebar = document.getElementById('party-sidebar');
+        if (sidebar) sidebar.classList.remove('hidden');
+
+        // Restore UI
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('action-btns').classList.remove('hidden');
         document.getElementById('hamburger-btn').classList.remove('battle-hidden');
         document.getElementById('player-stat-box').classList.remove('hidden');
         document.getElementById('player-party-container').innerHTML = '';
+
+        // Restore Music
         const mainMusic = document.getElementById('main-music');
-        if (mainMusic) { document.getElementById('battle-music').pause(); mainMusic.play(); }
-        renderer.draw();
+        if (mainMusic) { 
+            document.getElementById('battle-music').pause(); 
+            mainMusic.play().catch(e => {}); 
+        }
+
+        // Clean up sprites
+        const enemySprite = document.getElementById('enemy-sprite');
+        enemySprite.classList.remove('anim-shrink', 'boss-sprite');
+        enemySprite.classList.add('hidden');
+        enemySprite.src = '';
+
+        if (typeof renderer !== 'undefined') renderer.draw();
         updateHUD();
     }
 }
