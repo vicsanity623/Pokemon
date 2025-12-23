@@ -963,7 +963,7 @@ body {
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    z-index: 15000 !important; /* Extremely high to be above all controls */
+    z-index: 20000 !important; /* Extremely high to be above all controls */
     pointer-events: auto !important; /* Forces interactivity */
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.5); /* Dim background */
 }
