@@ -435,27 +435,54 @@ class BattleSystem {
             await this.delay(1000);
             this.win(false);
         } else {
-            await this.handleStatusDamage(p);
+            // --- ADD THIS: Check if the player who just moved is poisoned/burned ---
+            await this.handleStatusDamage(p, false); 
+            
             this.queueIndex++;
             this.nextTurn();
         }
     }
 
-    async handleStatusDamage(pokemon) {
+    async handleStatusDamage(pokemon, isEnemy = false) {
         if (!pokemon.status) return;
-        let damage = pokemon.status === 'PSN' ? Math.floor(pokemon.maxHp / 8) : pokemon.status === 'BRN' ? Math.floor(pokemon.maxHp / 16) : 0;
+
+        let damage = 0;
+        let msg = "";
+
+        // Poison: 1/8th Max HP | Burn: 1/16th Max HP
+        if (pokemon.status === 'PSN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 8));
+            msg = "is hurt by poison!";
+        } else if (pokemon.status === 'BRN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 16));
+            msg = "is hurt by its burn!";
+        }
+
         if (damage > 0) {
             pokemon.hp = Math.max(0, pokemon.hp - damage);
             this.updateBattleUI();
-            showDialog(`${pokemon.name} is hurt by its status!`);
+
+            // --- FLOATING TEXT FOR STATUS DAMAGE ---
+            // Enemy is top-right (70, 25), Squad is bottom-left (25, 60)
+            let x = isEnemy ? 70 : 25;
+            let y = isEnemy ? 25 : 60;
+            this.showDamageNumber(damage, x, y);
+
+            showDialog(`${pokemon.name} ${msg}`);
             await this.delay(1000);
+
+            if (pokemon.hp <= 0) {
+                showDialog(`${pokemon.name} fainted!`);
+                await this.delay(1000);
+                if (!isEnemy) document.getElementById(`party-wrapper-${this.player.team.indexOf(pokemon)}`).classList.add('fainted-member');
+            }
         }
     }
 
     async enemyTurn() {
-        if (this.enemy.hp <= 0) return;
+        if (this.enemy.hp <= 0 || !this.isActive) return;
         
-        // Choose random target
+        // Choose random target from alive members
         const targets = this.player.team.map((p, i) => ({p, i})).filter(o => o.p.hp > 0);
         if (targets.length === 0) return;
         const targetObj = targets[Math.floor(Math.random() * targets.length)];
@@ -470,13 +497,21 @@ class BattleSystem {
         await this.delay(300);
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        let baseDmg = Math.floor(10 * (this.enemy.level / target.level) * (this.enemy.stats.strength / 50));
-        let dmg = Math.max(1, Math.floor(baseDmg * (100 / (100 + (target.stats ? target.stats.defense : 50)))));
+        // --- BUFFED DAMAGE FORMULA ---
+        // We use (Enemy Level * 2) as base to ensure they always hurt
+        let attackerStr = this.enemy.stats ? this.enemy.stats.strength : 50;
+        let defenderDef = target.stats ? target.stats.defense : 50;
+        
+        let baseDmg = Math.floor((this.enemy.level * 3) * (attackerStr / 50));
+        let dmg = Math.max(5, Math.floor(baseDmg * (100 / (100 + defenderDef))));
 
         target.hp = Math.max(0, target.hp - dmg);
         this.updateBattleUI();
         
-        // Shake target wrapper
+        // SHOW FLOATING DAMAGE FOR PLAYER
+        this.showDamageNumber(dmg, 25, 60);
+        
+        // Shake target
         const wrapper = document.getElementById(`party-wrapper-${targetObj.i}`);
         if (wrapper) {
             wrapper.classList.add('anim-shake');
@@ -487,8 +522,15 @@ class BattleSystem {
         if (target.hp <= 0) showDialog(`${target.name} fainted!`);
         await this.delay(1000);
         
-        this.queueIndex++;
-        this.nextTurn();
+        // CHECK ENEMY STATUS DAMAGE AT END OF TURN
+        await this.handleStatusDamage(this.enemy, true);
+        
+        if (this.enemy.hp <= 0) {
+            this.win(false);
+        } else {
+            this.queueIndex++;
+            this.nextTurn();
+        }
     }
 
     bagBtn() {
