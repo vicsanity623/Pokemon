@@ -219,9 +219,21 @@ class BattleSystem {
     }
 
     calculateEnemyLevel(bonus, config) {
-        if (config) return config.level;
-        let avg = this.player.team.reduce((sum, p) => sum + (p.level || 1), 0) / this.player.team.length;
-        return Math.max(1, Math.floor(avg) + Math.floor(Math.random() * 5) - 2 + bonus);
+        // If it's a boss with a specific config, use that level
+        if (config && config.level) return config.level;
+
+        // Use the PLAYER'S survivor level (pLevel), not the Pokemon's level
+        const playerLevel = this.player.pLevel || 1;
+
+        // Create a range of +/- 2 levels from the player's level
+        // Math.random() * 5 gives 0-4. Subtracting 2 gives -2, -1, 0, 1, 2.
+        let randomOffset = Math.floor(Math.random() * 5) - 2;
+
+        // Final level = Player Level + Random Offset + any specific bonus
+        let finalLevel = playerLevel + randomOffset + bonus;
+
+        // Ensure the level is never below 1
+        return Math.max(1, finalLevel);
     }
 
     // FF Style Squad Rendering
