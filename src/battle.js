@@ -431,8 +431,8 @@ class BattleSystem {
         await this.delay(1000);
 
         if (this.enemy.hp <= 0) {
-            showDialog(`${this.enemy.name} fainted!`);
-            await this.delay(1000);
+            showDialog(`${this.enemy.name} fainted!`, 2000); // Closes after 2 seconds
+            await this.delay(2000); // Wait for the text to be readable
             this.win(false);
         } else {
             // --- ADD THIS: Check if the player who just moved is poisoned/burned ---
