@@ -583,8 +583,9 @@ class BattleSystem {
         ballAnim.classList.add('anim-throw');
         await this.delay(1000);
 
+        // --- ARENA BOSS PROTECTION ---
         if (this.enemy.isArenaBoss && (this.enemy.hp / this.enemy.maxHp) > 0.05) {
-            showDialog("The Boss deflected it!");
+            showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
             ballAnim.classList.add('hidden');
             await this.delay(1000);
             this.queueIndex++;
@@ -597,13 +598,31 @@ class BattleSystem {
         ballAnim.classList.remove('anim-throw');
         ballAnim.classList.add('anim-shake');
 
-        let catchChance = ((ITEMS[ballType].val * 30) * ((1 - (this.enemy.hp/this.enemy.maxHp)) * 2 + 1)) / (this.enemy.level / 10);
+        // --- NEW SIMPLE CATCH LOGIC ---
+        let hpPercent = this.enemy.hp / this.enemy.maxHp;
+        let catchChance = 0;
+
+        // 1. Master Ball Check (Instant Success)
+        if (ITEMS[ballType].val >= 255) {
+            catchChance = 100;
+        } 
+        // 2. Low Health Reward (Under 20% HP)
+        else if (hpPercent < 0.20) {
+            catchChance = 90; // 90% chance
+        } 
+        // 3. Normal Catch Rate
+        else {
+            catchChance = 10; // 10% chance
+        }
+
         let roll = Math.random() * 100;
         let success = roll <= catchChance;
 
+        // 3 Shakes Animation
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-            if (!success && i >= Math.floor(Math.random()*3)) {
+            // If the roll failed, break free at a random shake
+            if (!success && i >= Math.floor(Math.random() * 3)) {
                 ballAnim.classList.add('hidden');
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
                 showDialog("Darn! It broke free!");
@@ -613,22 +632,9 @@ class BattleSystem {
                 return;
             }
         }
-        this.catchSuccess();
-    }
-
-    async catchSuccess() {
-        document.getElementById('pokeball-anim').classList.add('hidden');
-        showDialog(`Gotcha! ${this.enemy.name} was caught!`);
-        await this.delay(1000);
-        this.player.addPokemon({ ...this.enemy, hp: this.enemy.maxHp, exp: 0, backSprite: this.enemy.isShiny ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png` : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png` });
         
-        const st = this.enemy.stats;
-        document.getElementById('catch-stats').innerHTML = `
-            <img src="${this.enemy.animatedSprite}" style="width: 96px;">
-            <h3>${this.enemy.name}</h3>
-            <div style="color: #2ecc71;">SR: ${st.strength + st.defense + st.speed + st.hp + st.special}</div>
-        `;
-        document.getElementById('new-catch-overlay').classList.remove('hidden');
+        // If we made it through the loop, success!
+        this.catchSuccess();
     }
 
     pokemonBtn() {
