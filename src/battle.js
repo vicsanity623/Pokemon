@@ -122,6 +122,16 @@ class BattleSystem {
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
+
+        // --- ADDED SAFETY CHECK ---
+        const canFight = this.player.team.some(p => p.hp > 0);
+        if (!canFight) {
+            showDialog("You have no conscious Pokemon left to fight!", 3000);
+            this.endBattle();
+            return;
+        }
+        // ---------------------------
+
         this.ui.classList.remove('hidden');
 
         // --- RESET UI HUDS ---
@@ -712,10 +722,20 @@ class BattleSystem {
 
     endBattle() {
         this.isActive = false;
-        this.isAttacking = false;
+        this.isAttacking = false; // Reset attack lock
         this.ui.classList.add('hidden');
         
+        // Clear turn data
+        this.turnQueue = [];
+        this.actingPokemon = null;
+
         if (typeof hideDialog === 'function') hideDialog();
+        
+        // --- ADDED: Tell the Rival System to move away ---
+        if (typeof rivalSystem !== 'undefined') {
+            rivalSystem.isChasing = false; // Stop them from pinning you down
+            rivalSystem.onBattleEnd(); 
+        }
         
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
