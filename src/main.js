@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.1.4';
+const VERSION = 'v0.1.5';
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -231,11 +231,17 @@ function gameLoop(timestamp) {
 
                 // Encounter Check (Randomly based on distance moved)
                 // Chance per tile moved approx - increased for more encounters
-                if (
-                    targetTile === 'grass_tall' &&
-                    Math.random() < 0.08 * moveSpeed
-                ) {
-                    battleSystem.startBattle();
+                if (targetTile === 'grass_tall' && Math.random() < 0.08 * moveSpeed) {
+                    // ONLY start a battle if at least one Pokemon has HP
+                    const canFight = player.team.some(p => p.hp > 0);
+                    if (canFight) {
+                        battleSystem.startBattle();
+                    } else {
+                        // Optional: Show a message reminding them to heal
+                        if (Math.floor(player.steps) % 50 === 0) {
+                            showDialog("Your team is exhausted! Find a Poke Center!", 2000);
+                        }
+                    }
                 }
             }
         } else {
