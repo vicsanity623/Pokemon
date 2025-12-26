@@ -242,16 +242,24 @@ class BattleSystem {
             wrapper.className = 'party-member-wrapper';
             wrapper.id = `party-wrapper-${index}`;
             
+            // HP Bar
             const hpBar = document.createElement('div');
             hpBar.className = 'sprite-hp-bar';
             hpBar.innerHTML = `<div class="sprite-hp-fill" id="squad-hp-${index}" style="width: ${(p.hp/p.maxHp)*100}%"></div>`;
+            
+            // NEW: XP Bar
+            const expBar = document.createElement('div');
+            expBar.className = 'sprite-exp-bar';
+            const expPct = (p.exp / (p.level * 100)) * 100;
+            expBar.innerHTML = `<div class="sprite-exp-fill" id="squad-exp-${index}" style="width: ${expPct}%"></div>`;
             
             const img = document.createElement('img');
             img.src = p.backSprite || p.sprite;
             img.className = 'party-sprite';
             if (p.hp <= 0) wrapper.classList.add('fainted-member');
-
+    
             wrapper.appendChild(hpBar);
+            wrapper.appendChild(expBar); // Added XP bar to wrapper
             wrapper.appendChild(img);
             container.appendChild(wrapper);
         });
@@ -313,13 +321,21 @@ class BattleSystem {
             document.getElementById('enemy-level').innerText = `Lv.${this.enemy.level}`;
             document.getElementById('enemy-hp-fill').style.width = `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
         }
-
+    
         this.player.team.forEach((p, i) => {
             const bar = document.getElementById(`squad-hp-${i}`);
+            const expBar = document.getElementById(`squad-exp-${i}`); // Get XP bar element
+    
             if (bar) {
                 const pct = Math.max(0, (p.hp / p.maxHp) * 100);
                 bar.style.width = `${pct}%`;
                 if (p.hp <= 0) document.getElementById(`party-wrapper-${i}`).classList.add('fainted-member');
+            }
+    
+            // NEW: Update XP Bar fill
+            if (expBar) {
+                const expPct = Math.min(100, (p.exp / (p.level * 100)) * 100);
+                expBar.style.width = `${expPct}%`;
             }
         });
     }
