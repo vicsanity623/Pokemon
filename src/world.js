@@ -355,24 +355,31 @@ class Player {
     }
 
     addPokemon(pokeData) {
+        // Safety check for legacy saves
+        if (!this.storage || !Array.isArray(this.storage)) {
+            this.storage = Array(100).fill().map(() => Array(25).fill(null));
+        }
+
         if (this.team.length < 6) {
             this.team.push(pokeData);
         } else {
-            // Find first empty slot in storage
             let placed = false;
             for (let b = 0; b < 100; b++) {
+                if (!Array.isArray(this.storage[b])) this.storage[b] = Array(25).fill(null);
                 for (let s = 0; s < 25; s++) {
                     if (this.storage[b][s] === null) {
                         this.storage[b][s] = pokeData;
-                        showDialog(`Team full! Sent to PC Box ${b + 1}.`);
+                        showDialog(`Team full! Sent to PC Box ${b + 1}.`, 3000); // 3s Timer
                         placed = true;
                         break;
                     }
                 }
                 if (placed) break;
             }
-            if (!placed) showDialog('PC is full! Released Pokemon.');
+            if (!placed) showDialog('PC is full! Released Pokemon.', 3000); // 3s Timer
         }
+        // Force the sidebar/HUD to refresh so the UI doesn't break
+        if (typeof updateHUD === 'function') updateHUD();
     }
 }
 
