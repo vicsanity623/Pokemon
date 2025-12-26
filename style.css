@@ -2425,7 +2425,7 @@ body {
     position: absolute;
     left: 20px;
     top: 100px;
-    width: 300px;
+    width: 400px; /* Increased width to accommodate 200px sprites */
     height: calc(100% - 250px);
     display: flex;
     flex-direction: column;
@@ -2436,13 +2436,13 @@ body {
 
 .party-member-wrapper {
     position: relative;
-    width: 100px;
-    height: 100px;
+    width: 200px; /* Doubled from 100px */
+    height: 200px; /* Doubled from 100px */
     transition: transform 0.3s ease;
 }
 
-/* Zig-Zag Formation */
-.party-member-wrapper:nth-child(even) { margin-left: 60px; }
+/* Zig-Zag Formation - Adjusted for 200px size */
+.party-member-wrapper:nth-child(even) { margin-left: 100px; }
 .party-member-wrapper:nth-child(odd) { margin-left: 0px; }
 
 .party-sprite {
@@ -2451,15 +2451,15 @@ body {
     image-rendering: pixelated;
 }
 
-/* Active Highlight (Green Circle) */
+/* Active Highlight (Green Circle) - Scaled up */
 .party-member-wrapper.active-turn::after {
     content: '';
     position: absolute;
-    bottom: -5px;
+    bottom: -10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 70px;
-    height: 25px;
+    width: 140px; /* Scaled up */
+    height: 50px; /* Scaled up */
     background: rgba(46, 204, 113, 0.4);
     border: 2px solid #2ecc71;
     border-radius: 50%;
@@ -2467,24 +2467,47 @@ body {
     animation: pulse-active 1.5s infinite;
 }
 
-/* Health Bars above sprites */
+/* Health Bars above sprites - Positioned higher to make room for XP */
 .sprite-hp-bar {
     position: absolute;
-    top: -15px;
+    top: -25px; 
     left: 50%;
     transform: translateX(-50%);
-    width: 60px;
-    height: 6px;
+    width: 120px; /* Doubled width */
+    height: 10px; /* Slightly taller */
     background: #444;
     border: 1px solid #000;
-    border-radius: 3px;
+    border-radius: 5px;
     overflow: hidden;
+    z-index: 5;
 }
 
 .sprite-hp-fill {
     height: 100%;
     background: #2ecc71;
     transition: width 0.3s ease;
+}
+
+/* NEW: XP Bars positioned directly under HP bars */
+.sprite-exp-bar {
+    position: absolute;
+    top: -14px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 4px;
+    background: #222;
+    border: 1px solid #000;
+    border-radius: 2px;
+    overflow: hidden;
+    z-index: 5;
+}
+
+.sprite-exp-fill {
+    height: 100%;
+    background: #3498db; /* Blue for XP */
+    width: 0%;
+    transition: width 0.5s ease;
 }
 
 .fainted-member {
