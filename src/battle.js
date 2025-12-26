@@ -579,25 +579,40 @@ class BattleSystem {
     }
 
     async catchSuccess() {
+        // 1. Instantly stop all battle logic
+        this.isAttacking = true; 
         document.getElementById('pokeball-anim').classList.add('hidden');
+        
         showDialog(`Gotcha! ${this.enemy.name} was caught!`, 2000);
         await this.delay(1000);
-        
-        this.player.addPokemon({ 
+
+        // 2. Prepare the data properly. 
+        // IMPORTANT: We must add the backSprite here, or the Squad Renderer will crash!
+        const caughtPokemon = { 
             ...this.enemy, 
             hp: this.enemy.maxHp, 
             exp: 0,
             backSprite: this.enemy.isShiny 
                 ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png` 
-                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png` 
-        });
+                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
+        };
 
+        // 3. Add to player and calculate SR for the display
+        this.player.addPokemon(caughtPokemon);
         const st = this.enemy.stats;
-        document.getElementById('catch-stats').innerHTML = `
-            <img src="${this.enemy.animatedSprite}" style="width: 96px;">
-            <h3>${this.enemy.name}</h3>
-            <div style="color: #2ecc71;">SR: ${st.strength + st.defense + st.speed + st.hp + st.special}</div>
-        `;
+        const sr = st.strength + st.defense + st.speed + st.hp + st.special;
+
+        // 4. Update the UI and show the screen
+        const statsEl = document.getElementById('catch-stats');
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <img src="${this.enemy.animatedSprite || this.enemy.sprite}" style="width: 96px; image-rendering: pixelated; margin-bottom: 10px;">
+                <h3>${this.enemy.name}</h3>
+                <div style="color: #2ecc71; font-weight: bold; font-size: 16px;">SR: ${sr}</div>
+                <div style="font-size: 10px; color: #888; margin-top: 5px;">Level ${this.enemy.level} | ${this.enemy.type.toUpperCase()}</div>
+            `;
+        }
+        
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
 
