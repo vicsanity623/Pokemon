@@ -345,7 +345,7 @@ class BattleSystem {
     }
     closeCatchScreen() {
         document.getElementById('new-catch-overlay').classList.add('hidden');
-        this.win(true);
+        this.endBattle(); // Changed from this.win(true) to endBattle() for a cleaner exit
     }
 
     async handleStatusDamage(pokemon, isEnemy = false) {
