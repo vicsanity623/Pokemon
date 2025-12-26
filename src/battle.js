@@ -4,11 +4,12 @@ class BattleSystem {
         this.isActive = false;
         this.isAttacking = false; // Prevent spam
         this.enemy = null;
+        this.isTrainer = false;
         this.ui = document.getElementById('battle-ui');
         
-        this.turnQueue = []; // Order of attackers
+        this.turnQueue = []; // Order of attackers based on speed
         this.queueIndex = 0; // Current attacker in the queue
-        this.actingPokemon = null; // The specific squad member taking a turn
+        this.actingPokemon = null; // The specific squad member currently choosing a move
 
         // Create Flash Overlay if not exists
         if (!document.getElementById('flash-overlay')) {
@@ -17,7 +18,7 @@ class BattleSystem {
             document.body.appendChild(f);
         }
 
-        // Create Squad Container if not exists
+        // Create Squad Container for FF-style layout if not exists
         if (!document.getElementById('player-party-container')) {
             let s = document.createElement('div');
             s.id = 'player-party-container';
@@ -29,19 +30,19 @@ class BattleSystem {
     getAttackSound(moveName) {
         const move = moveName.toUpperCase();
 
-        // Heavy/Physical attacks - attack1.mp3 (punch, kick, slam)
+        // Heavy/Physical attacks - attack1.mp3
         const heavyMoves = [
             'TACKLE', 'BODY SLAM', 'MEGA PUNCH', 'MEGA KICK', 'EARTHQUAKE',
             'ROCK SLIDE', 'HYPER BEAM', 'GIGA IMPACT', 'THRASH', 'DOUBLE-EDGE'
         ];
 
-        // Energy/Special attacks - attack2.mp3 (beam, psychic, energy)
+        // Energy/Special attacks - attack2.mp3
         const energyMoves = [
             'THUNDERBOLT', 'FLAMETHROWER', 'ICE BEAM', 'PSYCHIC', 'SHADOW BALL',
             'SOLAR BEAM', 'HYDRO PUMP', 'FIRE BLAST', 'BLIZZARD', 'THUNDER'
         ];
 
-        // Quick/Light attacks - attack3.mp3 (scratch, bite, peck)
+        // Quick/Light attacks - attack3.mp3
         const quickMoves = [
             'SCRATCH', 'QUICK ATTACK', 'BITE', 'FURY SWIPES', 'PECK',
             'WING ATTACK', 'POISON STING', 'VINE WHIP', 'RAZOR LEAF', 'SLASH'
@@ -51,7 +52,7 @@ class BattleSystem {
         if (energyMoves.includes(move)) return 'sfx-attack2';
         if (quickMoves.includes(move)) return 'sfx-attack3';
 
-        return 'sfx-attack1'; // Default to heavy sound
+        return 'sfx-attack1'; // Default
     }
 
     // Generate random stats for Pokemon (12-100 range)
@@ -123,28 +124,27 @@ class BattleSystem {
         this.isTrainer = isTrainer;
         this.ui.classList.remove('hidden');
 
-        // --- RESET ENEMY HUDS ---
+        // --- RESET UI HUDS ---
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
-        // -----------------------------------------
 
         // --- HIDE PARTY SIDEBAR ---
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.add('hidden');
 
-        // Hide normal UI and show squad UI
+        // --- HIDE WORLD UI ---
         document.getElementById('mobile-controls').classList.add('hidden');
         document.getElementById('action-btns').classList.add('hidden');
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
-        document.getElementById('player-stat-box').classList.add('hidden'); // Hide old single box
+        document.getElementById('player-stat-box').classList.add('hidden');
 
-        // --- BLACK OUT WORLD IMMEDIATELY ---
+        // --- BLACK OUT CANVAS ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Switch to battle music
+        // Music
         const battleMusic = document.getElementById('battle-music');
         if (battleMusic) {
             document.getElementById('main-music').pause();
@@ -179,11 +179,9 @@ class BattleSystem {
                 isShiny: isShiny, id: id, stats: stats, isArenaBoss: isArenaBoss, stage: bossConfig ? bossConfig.stage : 0
             };
 
-            // Setup Squad and Turn Queue
             this.renderSquad();
             this.setupTurnQueue();
 
-            // Setup Enemy Visuals
             const enemyImg = document.getElementById('enemy-sprite');
             enemyImg.src = this.enemy.sprite;
             enemyImg.classList.remove('hidden');
@@ -219,24 +217,12 @@ class BattleSystem {
     }
 
     calculateEnemyLevel(bonus, config) {
-        // If it's a boss with a specific config, use that level
         if (config && config.level) return config.level;
-
-        // Use the PLAYER'S survivor level (pLevel), not the Pokemon's level
         const playerLevel = this.player.pLevel || 1;
-
-        // Create a range of +/- 2 levels from the player's level
-        // Math.random() * 5 gives 0-4. Subtracting 2 gives -2, -1, 0, 1, 2.
-        let randomOffset = Math.floor(Math.random() * 5) - 2;
-
-        // Final level = Player Level + Random Offset + any specific bonus
-        let finalLevel = playerLevel + randomOffset + bonus;
-
-        // Ensure the level is never below 1
-        return Math.max(1, finalLevel);
+        let randomOffset = Math.floor(Math.random() * 5) - 2; // -2, -1, 0, 1, 2
+        return Math.max(1, playerLevel + randomOffset + bonus);
     }
 
-    // FF Style Squad Rendering
     renderSquad() {
         const container = document.getElementById('player-party-container');
         container.innerHTML = '';
@@ -246,7 +232,6 @@ class BattleSystem {
             wrapper.className = 'party-member-wrapper';
             wrapper.id = `party-wrapper-${index}`;
             
-            // Health bar above head
             const hpBar = document.createElement('div');
             hpBar.className = 'sprite-hp-bar';
             hpBar.innerHTML = `<div class="sprite-hp-fill" id="squad-hp-${index}" style="width: ${(p.hp/p.maxHp)*100}%"></div>`;
@@ -264,16 +249,12 @@ class BattleSystem {
 
     setupTurnQueue() {
         this.turnQueue = [];
-        // Add living player pokemon
         this.player.team.forEach((p, index) => {
             if (p.hp > 0) {
                 this.turnQueue.push({ type: 'player', index: index, speed: p.stats ? p.stats.speed : 50 });
             }
         });
-        // Add enemy
         this.turnQueue.push({ type: 'enemy', index: -1, speed: this.enemy.stats.speed });
-        
-        // Sort by speed descending
         this.turnQueue.sort((a, b) => b.speed - a.speed);
         this.queueIndex = 0;
     }
@@ -281,27 +262,23 @@ class BattleSystem {
     async nextTurn() {
         if (!this.isActive || this.enemy.hp <= 0) return; 
         
-        // Check if all player fainted
         if (!this.player.team.some(p => p.hp > 0)) {
             this.lose();
             return;
         }
 
-        // Loop queue if finished
         if (this.queueIndex >= this.turnQueue.length) {
-            this.setupTurnQueue(); // Recalculate for fainted/buffs
+            this.setupTurnQueue();
         }
 
         const current = this.turnQueue[this.queueIndex];
         
-        // Skip fainted in queue
         if (current.type === 'player' && this.player.team[current.index].hp <= 0) {
             this.queueIndex++;
             this.nextTurn();
             return;
         }
 
-        // Remove highlights
         document.querySelectorAll('.party-member-wrapper').forEach(w => w.classList.remove('active-turn'));
 
         if (current.type === 'player') {
@@ -315,7 +292,6 @@ class BattleSystem {
     }
 
     updateBattleUI() {
-        // Update Enemy Stats
         let eStatusHtml = this.enemy.status ? `<span class="status-badge status-${this.enemy.status}">${this.enemy.status}</span>` : '';
         if (this.enemy.isArenaBoss) {
             let pct = (this.enemy.hp / this.enemy.maxHp) * 100;
@@ -328,7 +304,6 @@ class BattleSystem {
             document.getElementById('enemy-hp-fill').style.width = `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
         }
 
-        // Update all Squad HP bars
         this.player.team.forEach((p, i) => {
             const bar = document.getElementById(`squad-hp-${i}`);
             if (bar) {
@@ -373,22 +348,53 @@ class BattleSystem {
         this.win(true);
     }
 
+    async handleStatusDamage(pokemon, isEnemy = false) {
+        if (!pokemon.status) return;
+
+        let damage = 0;
+        let msg = "";
+
+        if (pokemon.status === 'PSN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 8));
+            msg = "is hurt by poison!";
+        } else if (pokemon.status === 'BRN') {
+            damage = Math.max(1, Math.floor(pokemon.maxHp / 16));
+            msg = "is hurt by its burn!";
+        }
+
+        if (damage > 0) {
+            pokemon.hp = Math.max(0, pokemon.hp - damage);
+            this.updateBattleUI();
+
+            let x = isEnemy ? 70 : 25;
+            let y = isEnemy ? 25 : 60;
+            this.showDamageNumber(damage, x, y);
+
+            showDialog(`${pokemon.name} ${msg}`);
+            await this.delay(1000);
+
+            if (pokemon.hp <= 0) {
+                showDialog(`${pokemon.name} fainted!`);
+                await this.delay(1000);
+                if (!isEnemy) document.getElementById(`party-wrapper-${this.player.team.indexOf(pokemon)}`).classList.add('fainted-member');
+            }
+        }
+    }
+
     async useMove(slot) {
-        if (typeof slot !== 'number' || slot < 0) { this.closeMoves(); return; }
         if (this.isAttacking) return;
         this.isAttacking = true;
         this.closeMoves();
 
         let p = this.actingPokemon;
 
-        // Check status
+        // Check status conditions
         if (p.status === 'SLP' || p.status === 'FRZ' || (p.status === 'PAR' && Math.random() < 0.25)) {
-            let msg = p.status === 'SLP' ? 'is fast asleep.' : p.status === 'FRZ' ? 'is frozen solid!' : "is paralyzed! It can't move!";
-            showDialog(`${p.name} ${msg}`);
+            showDialog(`${p.name} is unable to move!`);
             await this.delay(1000);
-            if (p.status === 'SLP' && Math.random() < 0.33) { p.status = null; showDialog(`${p.name} woke up!`); await this.delay(1000); }
-            else if (p.status === 'FRZ' && Math.random() < 0.2) { p.status = null; showDialog(`${p.name} thawed out!`); await this.delay(1000); }
-            else { this.queueIndex++; this.nextTurn(); return; }
+            this.queueIndex++; 
+            this.nextTurn(); 
+            return;
         }
 
         let move = p.moves[slot] || p.moves[0];
@@ -405,10 +411,10 @@ class BattleSystem {
 
         const attackerStr = p.stats ? p.stats.strength : 50;
         const defenderDef = this.enemy.stats ? this.enemy.stats.defense : 50;
+        const effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
         const isCrit = Math.random() * 100 < Math.min(15, ((p.stats ? p.stats.special : 50) / 1000) * 15);
-        
+
         let baseDmg = Math.floor(move.power * (p.level / this.enemy.level) * (attackerStr / 50));
-        let effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
         let dmg = Math.max(1, Math.floor(baseDmg * effectiveness * (isCrit ? 2 : 1) * (0.85 + Math.random() * 0.3) * (100 / (100 + defenderDef))));
 
         this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
@@ -431,58 +437,19 @@ class BattleSystem {
         await this.delay(1000);
 
         if (this.enemy.hp <= 0) {
-            showDialog(`${this.enemy.name} fainted!`, 2000); // Closes after 2 seconds
-            await this.delay(2000); // Wait for the text to be readable
+            showDialog(`${this.enemy.name} fainted!`, 2000);
+            await this.delay(2000);
             this.win(false);
         } else {
-            // --- ADD THIS: Check if the player who just moved is poisoned/burned ---
-            await this.handleStatusDamage(p, false); 
-            
+            await this.handleStatusDamage(p, false);
             this.queueIndex++;
             this.nextTurn();
-        }
-    }
-
-    async handleStatusDamage(pokemon, isEnemy = false) {
-        if (!pokemon.status) return;
-
-        let damage = 0;
-        let msg = "";
-
-        // Poison: 1/8th Max HP | Burn: 1/16th Max HP
-        if (pokemon.status === 'PSN') {
-            damage = Math.max(1, Math.floor(pokemon.maxHp / 8));
-            msg = "is hurt by poison!";
-        } else if (pokemon.status === 'BRN') {
-            damage = Math.max(1, Math.floor(pokemon.maxHp / 16));
-            msg = "is hurt by its burn!";
-        }
-
-        if (damage > 0) {
-            pokemon.hp = Math.max(0, pokemon.hp - damage);
-            this.updateBattleUI();
-
-            // --- FLOATING TEXT FOR STATUS DAMAGE ---
-            // Enemy is top-right (70, 25), Squad is bottom-left (25, 60)
-            let x = isEnemy ? 70 : 25;
-            let y = isEnemy ? 25 : 60;
-            this.showDamageNumber(damage, x, y);
-
-            showDialog(`${pokemon.name} ${msg}`);
-            await this.delay(1000);
-
-            if (pokemon.hp <= 0) {
-                showDialog(`${pokemon.name} fainted!`);
-                await this.delay(1000);
-                if (!isEnemy) document.getElementById(`party-wrapper-${this.player.team.indexOf(pokemon)}`).classList.add('fainted-member');
-            }
         }
     }
 
     async enemyTurn() {
         if (this.enemy.hp <= 0 || !this.isActive) return;
         
-        // Choose random target from alive members
         const targets = this.player.team.map((p, i) => ({p, i})).filter(o => o.p.hp > 0);
         if (targets.length === 0) return;
         const targetObj = targets[Math.floor(Math.random() * targets.length)];
@@ -497,21 +464,16 @@ class BattleSystem {
         await this.delay(300);
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
-        // --- BUFFED DAMAGE FORMULA ---
-        // We use (Enemy Level * 2) as base to ensure they always hurt
-        let attackerStr = this.enemy.stats ? this.enemy.stats.strength : 50;
+        // Buffed Damage Formula
+        let attackerStr = this.enemy.stats.strength;
         let defenderDef = target.stats ? target.stats.defense : 50;
-        
         let baseDmg = Math.floor((this.enemy.level * 3) * (attackerStr / 50));
         let dmg = Math.max(5, Math.floor(baseDmg * (100 / (100 + defenderDef))));
 
         target.hp = Math.max(0, target.hp - dmg);
         this.updateBattleUI();
-        
-        // SHOW FLOATING DAMAGE FOR PLAYER
         this.showDamageNumber(dmg, 25, 60);
         
-        // Shake target
         const wrapper = document.getElementById(`party-wrapper-${targetObj.i}`);
         if (wrapper) {
             wrapper.classList.add('anim-shake');
@@ -522,7 +484,6 @@ class BattleSystem {
         if (target.hp <= 0) showDialog(`${target.name} fainted!`);
         await this.delay(1000);
         
-        // CHECK ENEMY STATUS DAMAGE AT END OF TURN
         await this.handleStatusDamage(this.enemy, true);
         
         if (this.enemy.hp <= 0) {
@@ -579,11 +540,10 @@ class BattleSystem {
 
         showDialog(`Go! ${ballType}!`);
         const ballAnim = document.getElementById('pokeball-anim');
-        ballAnim.classList.remove('hidden');
+        ballAnim.classList.remove('hidden', 'anim-shake');
         ballAnim.classList.add('anim-throw');
         await this.delay(1000);
 
-        // --- ARENA BOSS PROTECTION ---
         if (this.enemy.isArenaBoss && (this.enemy.hp / this.enemy.maxHp) > 0.05) {
             showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
             ballAnim.classList.add('hidden');
@@ -598,30 +558,13 @@ class BattleSystem {
         ballAnim.classList.remove('anim-throw');
         ballAnim.classList.add('anim-shake');
 
-        // --- NEW SIMPLE CATCH LOGIC ---
-        let hpPercent = this.enemy.hp / this.enemy.maxHp;
-        let catchChance = 0;
-
-        // 1. Master Ball Check (Instant Success)
-        if (ITEMS[ballType].val >= 255) {
-            catchChance = 100;
-        } 
-        // 2. Low Health Reward (Under 20% HP)
-        else if (hpPercent < 0.20) {
-            catchChance = 90; // 90% chance
-        } 
-        // 3. Normal Catch Rate
-        else {
-            catchChance = 10; // 10% chance
-        }
-
+        let hpPct = this.enemy.hp / this.enemy.maxHp;
+        let catchChance = (ITEMS[ballType].val >= 255) ? 100 : (hpPct < 0.20 ? 90 : 10);
         let roll = Math.random() * 100;
         let success = roll <= catchChance;
 
-        // 3 Shakes Animation
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
-            // If the roll failed, break free at a random shake
             if (!success && i >= Math.floor(Math.random() * 3)) {
                 ballAnim.classList.add('hidden');
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
@@ -632,19 +575,39 @@ class BattleSystem {
                 return;
             }
         }
-        
-        // If we made it through the loop, success!
         this.catchSuccess();
+    }
+
+    async catchSuccess() {
+        document.getElementById('pokeball-anim').classList.add('hidden');
+        showDialog(`Gotcha! ${this.enemy.name} was caught!`, 2000);
+        await this.delay(1000);
+        
+        this.player.addPokemon({ 
+            ...this.enemy, 
+            hp: this.enemy.maxHp, 
+            exp: 0,
+            backSprite: this.enemy.isShiny 
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png` 
+                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png` 
+        });
+
+        const st = this.enemy.stats;
+        document.getElementById('catch-stats').innerHTML = `
+            <img src="${this.enemy.animatedSprite}" style="width: 96px;">
+            <h3>${this.enemy.name}</h3>
+            <div style="color: #2ecc71;">SR: ${st.strength + st.defense + st.speed + st.hp + st.special}</div>
+        `;
+        document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
 
     pokemonBtn() {
         showDialog("You are fighting as a squad! No switching needed.");
     }
 
-    // --- FIXED RUN BUTTON ---
     runBtn() {
         if (this.isAttacking) return;
-        showDialog('Got away safely!');
+        showDialog('Got away safely!', 2000);
         setTimeout(() => this.endBattle(), 1000);
     }
 
@@ -666,9 +629,22 @@ class BattleSystem {
     async levelUp(p) {
         p.exp -= p.level * 100;
         p.level++;
-        const inc = { strength: Math.floor(Math.random()*3)+1, defense: Math.floor(Math.random()*3)+1, speed: Math.floor(Math.random()*3)+1, hp: Math.floor(Math.random()*3)+1, special: Math.floor(Math.random()*3)+1 };
-        p.stats.strength += inc.strength; p.stats.defense += inc.defense; p.stats.speed += inc.speed; p.stats.hp += inc.hp; p.stats.special += inc.special;
-        p.maxHp = p.level * 5 + p.stats.hp; p.hp = p.maxHp;
+        const inc = { 
+            strength: Math.floor(Math.random()*3)+1, 
+            defense: Math.floor(Math.random()*3)+1, 
+            speed: Math.floor(Math.random()*3)+1, 
+            hp: Math.floor(Math.random()*3)+1, 
+            special: Math.floor(Math.random()*3)+1 
+        };
+        p.stats.strength += inc.strength; 
+        p.stats.defense += inc.defense; 
+        p.stats.speed += inc.speed; 
+        p.stats.hp += inc.hp; 
+        p.stats.special += inc.special;
+        
+        p.maxHp = p.level * 5 + p.stats.hp; 
+        p.hp = p.maxHp;
+        
         await this.showLevelUpScreen(p, inc, 5);
         await this.checkEvolution(p);
     }
@@ -678,23 +654,39 @@ class BattleSystem {
         if (evoData && p.level >= evoData.level) {
             showDialog(`What? ${p.name} is evolving!`);
             const overlay = document.getElementById('level-up-overlay');
-            for (let i = 0; i < 3; i++) { overlay.style.backgroundColor = 'white'; await this.delay(200); overlay.style.backgroundColor = 'black'; await this.delay(200); }
+            for (let i = 0; i < 3; i++) { 
+                overlay.style.backgroundColor = 'white'; 
+                await this.delay(200); 
+                overlay.style.backgroundColor = 'black'; 
+                await this.delay(200); 
+            }
             try {
                 const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evoData.id}`);
                 const data = await res.json();
-                p.name = evoData.evolvesInto; p.id = evoData.id; p.backSprite = data.sprites.back_default; p.type = data.types[0].type.name;
+                p.name = evoData.evolvesInto; 
+                p.id = evoData.id; 
+                p.backSprite = data.sprites.back_default; 
+                p.type = data.types[0].type.name;
                 showDialog(`Congratulations! Evolved into ${p.name}!`, 4000);
                 await this.delay(4000);
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e); 
+            }
         }
     }
 
     async showLevelUpScreen(p, inc, hpInc) {
         const overlay = document.getElementById('level-up-overlay');
         overlay.classList.remove('hidden');
-        document.getElementById('levelup-content').innerHTML = `<strong>${p.name} Lv.${p.level}!</strong><br>STR: +${inc.strength} DEF: +${inc.defense} SPD: +${inc.speed}`;
+        document.getElementById('levelup-content').innerHTML = `
+            <strong>${p.name} Lv.${p.level}!</strong><br>
+            STR: +${inc.strength} DEF: +${inc.defense} SPD: +${inc.speed}
+        `;
         return new Promise(resolve => {
-            document.getElementById('levelup-continue-btn').onclick = () => { overlay.classList.add('hidden'); resolve(); };
+            document.getElementById('levelup-continue-btn').onclick = () => { 
+                overlay.classList.add('hidden'); 
+                resolve(); 
+            };
         });
     }
 
@@ -707,33 +699,28 @@ class BattleSystem {
         this.isActive = false;
         this.isAttacking = false;
         this.ui.classList.add('hidden');
-
-        // --- HIDE HUDS ---
+        
+        if (typeof hideDialog === 'function') hideDialog();
+        
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
-        // ---------------------------------
-
-        // Restore Party Sidebar
+        
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.remove('hidden');
 
-        // Restore UI Controls
         document.getElementById('mobile-controls').classList.remove('hidden');
         document.getElementById('action-btns').classList.remove('hidden');
         document.getElementById('hamburger-btn').classList.remove('battle-hidden');
         document.getElementById('player-stat-box').classList.remove('hidden');
         
-        // Clear Squad Sprites
         const squadContainer = document.getElementById('player-party-container');
         if (squadContainer) squadContainer.innerHTML = '';
 
-        // Restore Music
         const mainMusic = document.getElementById('main-music');
         const battleMusic = document.getElementById('battle-music');
         if (battleMusic) battleMusic.pause();
         if (mainMusic) mainMusic.play().catch(e => {});
 
-        // Clean up Enemy Sprite
         const enemySprite = document.getElementById('enemy-sprite');
         enemySprite.classList.remove('anim-shrink', 'boss-sprite');
         enemySprite.classList.add('hidden');
