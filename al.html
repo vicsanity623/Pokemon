@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Algorithm Crawler RPG</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            background: #0a0a0a;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            pointer-events: none;
+            text-shadow: 2px 2px 2px #000;
+        }
+        .v-joystick {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+        #stick {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            top: 30px;
+            left: 30px;
+        }
+        #action-btn {
+            position: absolute;
+            bottom: 60px;
+            right: 50px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui">
+        <div>Algorithm Health: <span id="hp">100</span>%</div>
+        <div>Watch Time Collected: <span id="score">0</span>s</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Mobile Controls -->
+    <div class="v-joystick" id="joystickZone">
+        <div id="stick"></div>
+    </div>
+    <div id="action-btn">BOOST</div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const hpEl = document.getElementById('hp');
+    const scoreEl = document.getElementById('score');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Game State
+    let player = { x: canvas.width/2, y: canvas.height/2, r: 15, hp: 100, score: 0, color: '#00ffcc' };
+    let enemies = [];
+    let bullets = [];
+    let particles = [];
+    let joystick = { active: false, startX: 0, startY: 0, currX: 0, currY: 0, dirX: 0, dirY: 0 };
+    
+    // Joystick Logic
+    const stick = document.getElementById('stick');
+    const zone = document.getElementById('joystickZone');
+    
+    zone.addEventListener('touchstart', e => {
+        joystick.active = true;
+        const touch = e.touches[0];
+        const rect = zone.getBoundingClientRect();
+        joystick.startX = rect.left + rect.width/2;
+        joystick.startY = rect.top + rect.height/2;
+    });
+
+    window.addEventListener('touchmove', e => {
+        if (!joystick.active) return;
+        const touch = e.touches[0];
+        const dist = Math.hypot(touch.clientX - joystick.startX, touch.clientY - joystick.startY);
+        const maxDist = 40;
+        const angle = Math.atan2(touch.clientY - joystick.startY, touch.clientX - joystick.startX);
+        
+        const moveDist = Math.min(dist, maxDist);
+        joystick.currX = Math.cos(angle) * moveDist;
+        joystick.currY = Math.sin(angle) * moveDist;
+        
+        stick.style.transform = `translate(${joystick.currX}px, ${joystick.currY}px)`;
+        
+        joystick.dirX = Math.cos(angle) * (moveDist/maxDist);
+        joystick.dirY = Math.sin(angle) * (moveDist/maxDist);
+    });
+
+    window.addEventListener('touchend', () => {
+        joystick.active = false;
+        joystick.dirX = 0;
+        joystick.dirY = 0;
+        stick.style.transform = `translate(0px, 0px)`;
+    });
+
+    // Attack Logic
+    document.getElementById('action-btn').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        fire();
+    });
+
+    function fire() {
+        // Fire in 4 directions if no movement, else move direction
+        const speed = 7;
+        const angle = Math.atan2(joystick.dirY, joystick.dirX);
+        bullets.push({ 
+            x: player.x, 
+            y: player.y, 
+            vx: joystick.dirX === 0 ? speed : Math.cos(angle) * speed, 
+            vy: joystick.dirY === 0 ? -speed : Math.sin(angle) * speed 
+        });
+    }
+
+    // Entities
+    function spawnEnemy() {
+        if (enemies.length < 10) {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            if(side === 0) { x = Math.random()*canvas.width; y = -20; }
+            if(side === 1) { x = canvas.width+20; y = Math.random()*canvas.height; }
+            if(side === 2) { x = Math.random()*canvas.width; y = canvas.height+20; }
+            if(side === 3) { x = -20; y = Math.random()*canvas.height; }
+            enemies.push({ x, y, r: 12, speed: 1.5 + (player.score/100) });
+        }
+    }
+
+    function update() {
+        // Move Player
+        player.x += joystick.dirX * 4;
+        player.y += joystick.dirY * 4;
+        
+        // Bounds
+        player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+        player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+
+        // Update Bullets
+        bullets.forEach((b, bi) => {
+            b.x += b.vx;
+            b.y += b.vy;
+            if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(bi, 1);
+        });
+
+        // Update Enemies
+        enemies.forEach((en, ei) => {
+            const angle = Math.atan2(player.y - en.y, player.x - en.x);
+            en.x += Math.cos(angle) * en.speed;
+            en.y += Math.sin(angle) * en.speed;
+
+            // Collision with player
+            const dist = Math.hypot(player.x - en.x, player.y - en.y);
+            if (dist < player.r + en.r) {
+                player.hp -= 0.5;
+                hpEl.innerText = Math.floor(player.hp);
+                enemies.splice(ei, 1);
+            }
+
+            // Collision with bullets
+            bullets.forEach((b, bi) => {
+                const bDist = Math.hypot(b.x - en.x, b.y - en.y);
+                if (bDist < en.r + 5) {
+                    enemies.splice(ei, 1);
+                    bullets.splice(bi, 1);
+                    player.score += 10;
+                    scoreEl.innerText = player.score;
+                }
+            });
+        });
+
+        if (player.hp <= 0) {
+            alert("The Algorithm Crashed! Score: " + player.score);
+            player.hp = 100;
+            player.score = 0;
+            enemies = [];
+            scoreEl.innerText = 0;
+            hpEl.innerText = 100;
+        }
+    }
+
+    function draw() {
+        ctx.fillStyle = 'rgba(10, 10, 10, 0.3)'; // Trail effect
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Player
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+        ctx.fillStyle = player.color;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = player.color;
+        ctx.fill();
+        ctx.closePath();
+
+        // Draw Enemies (Irrelevant Content)
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff4444';
+        enemies.forEach(en => {
+            ctx.beginPath();
+            ctx.arc(en.x, en.y, en.r, 0, Math.PI*2);
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+            ctx.closePath();
+        });
+
+        // Draw Bullets (Data Signal)
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#fff';
+        bullets.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 4, 0, Math.PI*2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.closePath();
+        });
+        ctx.shadowBlur = 0;
+    }
+
+    function loop() {
+        update();
+        draw();
+        if(Math.random() < 0.02) spawnEnemy();
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+
+    // Handle Resize
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+</script>
+</body>
+</html>
