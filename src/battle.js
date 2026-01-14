@@ -238,6 +238,15 @@ class BattleSystem {
                 isShiny: isShiny, id: id, stats: stats, isArenaBoss: isArenaBoss, stage: bossConfig ? bossConfig.stage : 0
             };
 
+            // --- POKEDEX UPDATE (SEEN) ---
+            if (!this.player.seen.includes(id)) {
+                this.player.seen.push(id);
+            }
+            if (isShiny && !this.player.seenShiny.includes(id)) {
+                this.player.seenShiny.push(id);
+            }
+            // -----------------------------
+
             this.renderSquad();
             this.setupTurnQueue();
 
@@ -682,6 +691,17 @@ class BattleSystem {
         // ---------------------------------
         
         showDialog(`Gotcha! ${this.enemy.name} was caught!`, 2000);
+
+        // --- POKEDEX UPDATE (CAUGHT/OWNED LOGIC) ---
+        // Inserted here so it runs before the delay
+        if (!this.player.seen.includes(this.enemy.id)) {
+            this.player.seen.push(this.enemy.id);
+        }
+        if (this.enemy.isShiny && !this.player.seenShiny.includes(this.enemy.id)) {
+            this.player.seenShiny.push(this.enemy.id);
+        }
+        // -------------------------------------------
+
         await this.delay(1000);
 
         // 2. Prepare the data properly. 
