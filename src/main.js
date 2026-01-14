@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.3.1'; // Bumped Version
+const VERSION = 'v0.3.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -13,6 +13,7 @@ const rivalSystem = new RivalSystem(player);
 const homeSystem = new HomeSystem(player);
 const storeSystem = new StoreSystem(player);
 const defenseSystem = new DefenseSystem(player, world);
+let isPartyOpen = true; // Default to open
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -1915,63 +1916,83 @@ function cancelPCSelection() {
     renderPC();
 }
 // --- PARTY SIDEBAR LOGIC ---
+// --- Updated Party Sidebar Logic ---
+// 1. Add this variable at the top of your main.js file if not already present
+// let isPartyOpen = true; 
+
 function updatePartySidebar() {
-    const sidebar = document.getElementById('party-sidebar');
-    if (!sidebar) return;
-
-    // Check for blocking UI overlays
-    const bagMenu = document.getElementById('player-bag-menu');
-    const pokedexModal = document.getElementById('pokedex-modal');
-    const pcModal = document.getElementById('pc-modal');
-    const mainMenu = document.getElementById('main-menu-modal');
-
-    const isBlocked =
-        (bagMenu && !bagMenu.classList.contains('hidden')) ||
-        (pokedexModal && !pokedexModal.classList.contains('hidden')) ||
-        (pcModal && !pcModal.classList.contains('hidden')) ||
-        (mainMenu && !mainMenu.classList.contains('hidden'));
-
-    // Hide sidebar if in battle, party is empty, or UI is blocked
-    if (battleSystem.isActive || player.team.length === 0 || isBlocked) {
-        sidebar.classList.add('hidden');
+    const sb = document.getElementById('party-sidebar');
+    
+    // Safety check: hide sidebar during battle or if element missing
+    if (!sb || battleSystem.isActive) {
+        if(sb) sb.classList.add('hidden');
         return;
     }
+    
+    sb.classList.remove('hidden');
+    sb.innerHTML = '';
 
-    sidebar.classList.remove('hidden');
-    sidebar.innerHTML = '';
+    // 1. Create Toggle Button (Hamburger/Arrow)
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = 'party-toggle-btn';
+    toggleBtn.innerHTML = isPartyOpen ? '▼ TEAM' : '▶ TEAM';
+    toggleBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent walking
+        isPartyOpen = !isPartyOpen;
+        updatePartySidebar(); // Re-render immediately
+    };
+    sb.appendChild(toggleBtn);
+
+    // If closed, stop here (don't render list)
+    if (!isPartyOpen) return;
+
+    // 2. Create Container for Pokemon List
+    const listContainer = document.createElement('div');
+    listContainer.id = 'party-list-container';
 
     player.team.forEach((p, index) => {
         const item = document.createElement('div');
         item.className = 'party-sidebar-item';
         if (index === 0) item.classList.add('active-lead');
 
-        // Calculate HP color
+        // Stats Logic
         const hpPct = (p.hp / p.maxHp) * 100;
         let hpClass = '';
         if (hpPct < 20) hpClass = 'low';
         else if (hpPct < 50) hpClass = 'mid';
 
-        // Use sprite or fallback icon
+        // XP Logic
+        const xpNeeded = p.level * 100;
+        const xpPct = Math.min(100, (p.exp / xpNeeded) * 100);
+
+        // Icon
         let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
 
         item.innerHTML = `
             <img src="${iconUrl}" class="sidebar-icon">
             <div class="sidebar-info">
-                <div class="sidebar-name">${p.name}</div>
-                <div class="sidebar-stats">Lv.${p.level}</div>
-                <div class="sidebar-hp-bar">
-                    <div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div>
+                <div class="sidebar-header">
+                    <span class="sidebar-name">${p.name}</span>
+                    <span class="sidebar-lvl">Lv.${p.level}</span>
+                </div>
+                
+                <div class="sidebar-bar-container">
+                    <!-- HP Bar -->
+                    <div class="sidebar-hp-bar">
+                        <div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div>
+                    </div>
+                    <!-- XP Bar (Blue) -->
+                    <div class="sidebar-xp-bar">
+                        <div class="sidebar-xp-fill" style="width: ${xpPct}%"></div>
+                    </div>
                 </div>
             </div>
         `;
 
         // Click to swap to lead
         const handleSwap = (e) => {
-            e.stopPropagation(); // Prevent map clicks
-            // Prevent double firing if both events trigger
-            if (e.type === 'touchstart') {
-                e.preventDefault(); // Prevents mouse event emulation
-            }
+            e.stopPropagation();
+            if (e.type === 'touchstart') e.preventDefault();
 
             if (index === 0) {
                 showDialog(`${p.name} is already the lead!`, 1000);
@@ -1984,13 +2005,15 @@ function updatePartySidebar() {
             player.team[index] = temp;
 
             showDialog(`Switched to ${player.team[0].name}!`, 1500);
-            updatePartySidebar(); // Re-render immediately
-            updateHUD(); // Update other HUD elements
+            updatePartySidebar(); 
+            updateHUD(); 
         };
 
         item.onclick = handleSwap;
         item.ontouchstart = handleSwap;
 
-        sidebar.appendChild(item);
+        listContainer.appendChild(item);
     });
+
+    sb.appendChild(listContainer);
 }
