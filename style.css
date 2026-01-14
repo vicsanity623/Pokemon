@@ -699,20 +699,26 @@ canvas {
     top: 30%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 80px;
+    
+    /* Responsive Font Size */
+    font-size: clamp(24px, 8vw, 50px);
+    
     font-family: 'Press Start 2P', cursive;
     color: #FFD700;
     text-shadow:
-        4px 4px 0 #000,
-        -4px -4px 0 #000,
-        4px -4px 0 #000,
-        -4px 4px 0 #000,
-        0 0 20px #FFF,
-        0 0 40px #FF0;
+        3px 3px 0 #000,
+        -3px -3px 0 #000,
+        3px -3px 0 #000,
+        -3px 3px 0 #000,
+        0 0 15px #FFF,
+        0 0 30px #FF0;
     z-index: 300;
     pointer-events: none;
     opacity: 0;
-    letter-spacing: 8px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
 }
 
 #damage-text {
