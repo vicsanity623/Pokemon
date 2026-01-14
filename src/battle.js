@@ -487,6 +487,17 @@ class BattleSystem {
         }
 
         let move = p.moves[slot] || p.moves[0];
+        
+        // --- NEW: Player Attack Animation ---
+        const attackerIndex = this.player.team.indexOf(p);
+        const attackerEl = document.getElementById(`party-wrapper-${attackerIndex}`);
+        if (attackerEl) {
+            attackerEl.classList.remove('anim-lunge', 'active-turn'); // Reset
+            void attackerEl.offsetWidth; // Force reflow
+            attackerEl.classList.add('anim-lunge');
+        }
+        // ------------------------------------
+
         showDialog(`${p.name} used ${move.name}!`);
         await this.delay(500);
         this.showAttackText(move.name);
@@ -544,6 +555,15 @@ class BattleSystem {
         const targetObj = targets[Math.floor(Math.random() * targets.length)];
         const target = targetObj.p;
 
+        // --- NEW: Enemy Attack Animation ---
+        const enemyEl = document.getElementById('enemy-sprite');
+        if (enemyEl) {
+            enemyEl.classList.remove('anim-enemy-attack');
+            void enemyEl.offsetWidth;
+            enemyEl.classList.add('anim-enemy-attack');
+        }
+        // -----------------------------------
+
         showDialog(`${this.enemy.name} used ${this.enemy.move.name}!`);
         await this.delay(500);
         this.showAttackText(this.enemy.move.name);
@@ -563,12 +583,16 @@ class BattleSystem {
         this.updateBattleUI();
         this.showDamageNumber(dmg, 25, 60);
         
+        // --- NEW: Target Hit Animation ---
         const wrapper = document.getElementById(`party-wrapper-${targetObj.i}`);
         if (wrapper) {
-            wrapper.classList.add('anim-shake');
+            wrapper.classList.remove('anim-hit', 'active-turn');
+            void wrapper.offsetWidth;
+            wrapper.classList.add('anim-hit');
             await this.delay(500);
-            wrapper.classList.remove('anim-shake');
+            wrapper.classList.remove('anim-hit');
         }
+        // ---------------------------------
 
         if (target.hp <= 0) showDialog(`${target.name} fainted!`);
         await this.delay(1000);
