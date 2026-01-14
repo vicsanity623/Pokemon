@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.2.3'; // Bumped Version
+const VERSION = 'v0.2.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -118,7 +118,6 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // ADD THIS BLOCK:
     if (storeSystem && storeSystem.isOpen) {
         // Just render and update HUD, skip movement logic
         renderer.draw();
@@ -128,7 +127,7 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // --- FIX: Force Render Battle Screen Logic ---
+    // Force Render Battle Screen Logic
     if (battleSystem.isActive) {
         // Clear screen to black to prevent transparency issues
         const ctx = canvas.getContext('2d');
@@ -139,7 +138,6 @@ function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
         return;
     }
-    // ---------------------------------------------
 
     if (!battleSystem.isActive) {
         // Smooth Movement Logic
@@ -242,7 +240,7 @@ function gameLoop(timestamp) {
                 if (Math.floor(player.steps) % 10 === 0)
                     questSystem.update('walk');
 
-                // --- FIX: Encounter Logic with Biomes ---
+                // Encounter Logic with Biomes
                 const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
 
                 if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
@@ -378,7 +376,7 @@ function gameLoop(timestamp) {
 input.press = (key) => {
     input.keys[key] = true;
     
-    // ADD THIS: If a menu is open, don't allow world interactions
+    // If a menu is open, don't allow world interactions
     if (storeSystem.isOpen || isPaused) return; 
 
     if (key === 'Enter') {
@@ -457,17 +455,62 @@ function goHome() {
 
 // B Button - Open Player Bag
 input.keys['b'] = false; // Initialize B key
-// B Button - Open Player Bag
-input.keys['b'] = false; // Initialize B key
-// Removed duplicate listener. 'b' key is handled by global input system now.
+
+// --- SORTING STATE ---
+let currentSortMode = 'default'; // default, name, strong, weak, recent
+
+function toggleSortMode(context) {
+    const modes = ['default', 'name', 'strong', 'weak', 'recent'];
+    let idx = modes.indexOf(currentSortMode);
+    currentSortMode = modes[(idx + 1) % modes.length];
+    
+    showDialog(`Sorting by: ${currentSortMode.toUpperCase()}`, 1000);
+    
+    if (context === 'pc') renderPC();
+    else if (context === 'bag') showBagTab('pokemon'); // Only sorting pokemon tab for now
+}
+
+// Helper to sort a list of Pokemon
+function getSortedPokemonList(list) {
+    // Filter out nulls first
+    let pokemons = list.filter(p => p !== null);
+    let empties = list.filter(p => p === null);
+
+    if (currentSortMode === 'name') {
+        pokemons.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (currentSortMode === 'strong') {
+        pokemons.sort((a, b) => {
+            let srA = a.stats.strength + a.stats.defense + a.stats.speed + a.stats.hp + a.stats.special;
+            let srB = b.stats.strength + b.stats.defense + b.stats.speed + b.stats.hp + b.stats.special;
+            return srB - srA; // Descending
+        });
+    } else if (currentSortMode === 'weak') {
+        pokemons.sort((a, b) => {
+            let srA = a.stats.strength + a.stats.defense + a.stats.speed + a.stats.hp + a.stats.special;
+            let srB = b.stats.strength + b.stats.defense + b.stats.speed + b.stats.hp + b.stats.special;
+            return srA - srB; // Ascending
+        });
+    } else if (currentSortMode === 'recent') {
+        // Assuming higher index/later addition is recent. If no timestamp, default is basically recent.
+        // We can just reverse default for "Oldest" vs "Newest"
+        pokemons.reverse();
+    }
+
+    // Combine back with empty slots at the end
+    // Note: This changes the box structure in memory!
+    // Fill the rest with nulls up to the original length (usually 25 for box)
+    let sortedList = [...pokemons, ...empties];
+    while (sortedList.length < list.length) sortedList.push(null);
+    
+    return sortedList;
+}
 
 function togglePlayerBag() {
-    // --- FIX: Prevent opening Overworld Bag during Battle ---
+    // Prevent opening Overworld Bag during Battle
     if (battleSystem.isActive) {
         showDialog("Use the Battle Menu to access items!", 1500);
         return;
     }
-    // ------------------------------------------------------
 
     const bagMenu = document.getElementById('player-bag-menu');
     const sidebar = document.getElementById('party-sidebar');
@@ -492,20 +535,46 @@ function closePlayerBag() {
 
 let selectedBagItem = null; // Track what is highlighted
 
+// --- UPDATED SHOW BAG TAB ---
 function showBagTab(tab) {
-    // Update tab buttons
     document.getElementById('tab-pokemon').classList.toggle('active', tab === 'pokemon');
     document.getElementById('tab-items').classList.toggle('active', tab === 'items');
 
     const content = document.getElementById('bag-content');
     content.innerHTML = '';
 
-    // --- POKEMON TAB (unchanged, just kept context) ---
+    // Add Sort Button to Header if missing
+    let sortBtn = document.getElementById('bag-sort-btn');
+    if (!sortBtn) {
+        sortBtn = document.createElement('button');
+        sortBtn.id = 'bag-sort-btn';
+        sortBtn.innerText = 'SORT';
+        sortBtn.className = 'back-btn';
+        sortBtn.style.padding = '5px'; 
+        sortBtn.style.fontSize = '10px';
+        sortBtn.style.width = '100%';
+        sortBtn.style.marginBottom = '10px';
+        sortBtn.style.backgroundColor = '#34495e';
+        sortBtn.onclick = () => { toggleSortMode('bag'); };
+        
+        // Insert before content container
+        document.getElementById('player-bag-menu').insertBefore(sortBtn, content);
+    }
+    sortBtn.innerText = `SORT: ${currentSortMode.toUpperCase()}`;
+
     if (tab === 'pokemon') {
-        selectedBagItem = null; // Reset item selection when switching tabs
+        selectedBagItem = null; 
         if (player.team.length === 0) {
             content.innerHTML = '<p style="text-align:center; color: #999;">No Pokemon</p>';
             return;
+        }
+
+        // We sort a COPY of the team for display, but we need to keep original indices for swapping!
+        // This is tricky. If we sort the bag view, the indices passed to swapPokemon will be wrong.
+        // Solution: Only sort Player Team visually if we map indices back, OR strictly sort the actual team array.
+        // Let's sort the actual team array for consistency.
+        if (currentSortMode !== 'default') {
+            player.team = getSortedPokemonList(player.team).filter(p => p !== null);
         }
 
         player.team.forEach((p, index) => {
@@ -515,8 +584,6 @@ function showBagTab(tab) {
 
             let isFainted = p.hp <= 0 || (p.hp === undefined && !p.isEgg);
             let status = p.isEgg ? 'EGG' : isFainted ? 'FAINTED' : `HP: ${p.hp}/${p.maxHp}`;
-
-            // Stats logic
             const stats = p.stats || { strength: 0, defense: 0, speed: 0, hp: 0, special: 0 };
             const scoreRating = stats.strength + stats.defense + stats.speed + stats.hp + stats.special;
 
@@ -524,47 +591,39 @@ function showBagTab(tab) {
                 <div class="pokemon-info">
                     <div><strong>${p.name}</strong> Lv.${p.level}</div>
                     <div style="font-size: 10px; color: ${isFainted ? '#e74c3c' : '#2ecc71'};">${status}</div>
-                    ${!p.isEgg ? `
-                        <div style="font-size: 11px; color: #2ecc71; margin-top: 2px; font-weight: bold;">
-                            SR: ${scoreRating}
-                        </div>
-                    ` : ''}
+                    ${!p.isEgg ? `<div style="font-size: 11px; color: #2ecc71;">SR: ${scoreRating}</div>` : ''}
                 </div>
                 <div class="pokemon-actions">
                     ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
                     ${index < player.team.length - 1 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
                 </div>
             `;
-
             div.onclick = () => { if (!p.isEgg) showPokemonStats(p); };
             content.appendChild(div);
         });
 
-    }
-    // --- ITEMS TAB (NEW SELECTION LOGIC) ---
-    else if (tab === 'items') {
+    } else if (tab === 'items') {
         let hasItems = false;
+        
+        // Convert bag object to array for sorting
+        let bagArray = Object.entries(player.bag);
+        
+        // Sort Bag Array
+        if (currentSortMode === 'name') {
+            bagArray.sort((a, b) => a[0].localeCompare(b[0]));
+        } else if (currentSortMode === 'strong' || currentSortMode === 'weak') {
+            // Sort by Quantity
+            bagArray.sort((a, b) => currentSortMode === 'strong' ? b[1] - a[1] : a[1] - b[1]);
+        }
 
-        // 1. List Items
-        for (let [item, count] of Object.entries(player.bag)) {
+        for (let [item, count] of bagArray) {
             if (count > 0) {
                 hasItems = true;
                 let div = document.createElement('div');
                 div.className = 'menu-item';
-
-                // Highlight if selected
-                if (selectedBagItem === item) {
-                    div.classList.add('selected');
-                }
-
+                if (selectedBagItem === item) div.classList.add('selected');
                 div.innerHTML = `${item} x${count}`;
-
-                // On Click: Select it, don't use it yet
-                div.onclick = () => {
-                    selectedBagItem = item;
-                    showBagTab('items'); // Re-render to show highlight
-                };
-
+                div.onclick = () => { selectedBagItem = item; showBagTab('items'); };
                 content.appendChild(div);
             }
         }
@@ -574,32 +633,22 @@ function showBagTab(tab) {
             selectedBagItem = null;
         }
 
-        // 2. Add Action Buttons (Fixed at bottom of scroll area or appended)
         const actionDiv = document.createElement('div');
         actionDiv.className = 'bag-actions';
-
-        // Use Button
         const useBtn = document.createElement('button');
         useBtn.className = 'bag-btn btn-use';
         useBtn.innerText = 'USE';
-        useBtn.disabled = !selectedBagItem; // Disable if nothing selected
-        useBtn.onclick = () => {
-            if (selectedBagItem) useBagItem(selectedBagItem);
-        };
-
-        // Toss Button
+        useBtn.disabled = !selectedBagItem;
+        useBtn.onclick = () => { if (selectedBagItem) useBagItem(selectedBagItem); };
+        
         const tossBtn = document.createElement('button');
         tossBtn.className = 'bag-btn btn-toss';
         tossBtn.innerText = 'TOSS';
         tossBtn.disabled = !selectedBagItem;
-        tossBtn.onclick = () => {
-            if (selectedBagItem) tossBagItem(selectedBagItem);
-        };
-
+        tossBtn.onclick = () => { if (selectedBagItem) tossBagItem(selectedBagItem); };
+        
         actionDiv.appendChild(useBtn);
         actionDiv.appendChild(tossBtn);
-
-        // Append actions to content (or you can append to the parent container if you want it sticky)
         content.appendChild(actionDiv);
     }
 }
@@ -821,13 +870,12 @@ function useBagItem(itemName) {
         return;
     }
 
-    // --- FIX: Check if item data exists to prevent crash ---
+    // Check if item data exists to prevent crash
     const itemData = (typeof ITEMS !== 'undefined') ? ITEMS[itemName] : null;
     if (!itemData) {
         showDialog("Unknown Item Data!", 1000);
         return;
     }
-    // ------------------------------------------------------
 
     if (battleSystem.isActive) {
         // Battle Mode Usage
@@ -1649,7 +1697,7 @@ function sacrificePokemon() {
     updateHUD();
 }
 
-// --- UPDATED RENDER PC (Visuals + Sacrifice Button) ---
+// --- UPDATED RENDER PC ---
 function renderPC() {
     // 1. Render Party
     const partyList = document.getElementById('pc-party-list');
@@ -1658,7 +1706,6 @@ function renderPC() {
     player.team.forEach((p, index) => {
         let div = document.createElement('div');
         div.className = 'pc-slot';
-        // NEW: Add Info Divs for Level and Name
         div.innerHTML = `
             <img src="${p.backSprite}">
             <div class="pc-info">
@@ -1670,11 +1717,7 @@ function renderPC() {
             selectedSlot = { type: 'party', index: index };
             renderPC();
         };
-        if (
-            selectedSlot &&
-            selectedSlot.type === 'party' &&
-            selectedSlot.index === index
-        ) {
+        if (selectedSlot && selectedSlot.type === 'party' && selectedSlot.index === index) {
             div.classList.add('selected');
         }
         partyList.appendChild(div);
@@ -1683,13 +1726,30 @@ function renderPC() {
     // 2. Render Box
     const boxGrid = document.getElementById('pc-box-grid');
     boxGrid.innerHTML = '';
-    document.getElementById('box-label').innerText = `BOX ${currentBox + 1}`;
+    
+    // Sort Button Header
+    const header = document.querySelector('.box-header');
+    if (header && !document.getElementById('pc-sort-btn')) {
+        let btn = document.createElement('button');
+        btn.id = 'pc-sort-btn';
+        btn.innerText = 'SORT';
+        btn.style.fontSize = '8px';
+        btn.style.marginLeft = '10px';
+        btn.onclick = () => {
+            toggleSortMode('pc');
+            // Apply sort to current box immediately
+            player.storage[currentBox] = getSortedPokemonList(player.storage[currentBox]);
+            renderPC();
+        };
+        header.appendChild(btn);
+    }
+    
+    document.getElementById('box-label').innerText = `BOX ${currentBox + 1} [${currentSortMode.toUpperCase()}]`;
 
     player.storage[currentBox].forEach((p, index) => {
         let div = document.createElement('div');
         div.className = 'pc-slot';
         if (p) {
-            // NEW: Add Info Divs for Level and Name
             div.innerHTML = `
                 <img src="${p.backSprite}">
                 <div class="pc-info">
@@ -1706,11 +1766,7 @@ function renderPC() {
             }
         };
 
-        if (
-            selectedSlot &&
-            selectedSlot.type === 'box' &&
-            selectedSlot.index === index
-        ) {
+        if (selectedSlot && selectedSlot.type === 'box' && selectedSlot.index === index) {
             div.classList.add('selected');
         }
         boxGrid.appendChild(div);
@@ -1938,6 +1994,3 @@ function updatePartySidebar() {
         sidebar.appendChild(item);
     });
 }
-
-// Ensure updateHUD calls this
-// (Moved call inside updateHUD function definition to avoid lint error)
