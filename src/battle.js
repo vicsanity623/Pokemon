@@ -622,6 +622,9 @@ class BattleSystem {
         
         // --- FIX: Visual Safety Check ---
         if (ballAnim) {
+            ballAnim.style.zIndex = '99999'; // Force it to the very front
+            ballAnim.style.display = 'block'; // Override any 'hidden' class issues
+            
             ballAnim.classList.remove('hidden', 'anim-shake');
             ballAnim.classList.add('anim-throw');
             await this.delay(1000);
