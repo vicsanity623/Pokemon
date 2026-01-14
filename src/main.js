@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.3.2'; // Bumped Version
+const VERSION = 'v0.3.3'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1915,15 +1915,11 @@ function cancelPCSelection() {
     selectedSlot = null;
     renderPC();
 }
-// --- PARTY SIDEBAR LOGIC ---
-// --- Updated Party Sidebar Logic ---
-// 1. Add this variable at the top of your main.js file if not already present
-// let isPartyOpen = true; 
 
 function updatePartySidebar() {
     const sb = document.getElementById('party-sidebar');
     
-    // Safety check: hide sidebar during battle or if element missing
+    // Safety check: hide sidebar during battle
     if (!sb || battleSystem.isActive) {
         if(sb) sb.classList.add('hidden');
         return;
@@ -1932,21 +1928,34 @@ function updatePartySidebar() {
     sb.classList.remove('hidden');
     sb.innerHTML = '';
 
-    // 1. Create Toggle Button (Hamburger/Arrow)
+    // 1. Create Toggle Button
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'party-toggle-btn';
     toggleBtn.innerHTML = isPartyOpen ? '▼ TEAM' : '▶ TEAM';
-    toggleBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent walking
+    
+    // Define toggle logic separately
+    const handleToggle = (e) => {
+        // Stop the event from reaching the map
+        e.preventDefault(); 
+        e.stopPropagation();
+        
+        // Toggle state
         isPartyOpen = !isPartyOpen;
-        updatePartySidebar(); // Re-render immediately
+        
+        // Re-render
+        updatePartySidebar();
     };
+
+    // Attach both events for responsiveness
+    toggleBtn.onclick = handleToggle;
+    toggleBtn.ontouchstart = handleToggle; 
+
     sb.appendChild(toggleBtn);
 
-    // If closed, stop here (don't render list)
+    // If closed, stop here
     if (!isPartyOpen) return;
 
-    // 2. Create Container for Pokemon List
+    // 2. Create Container for Pokemon
     const listContainer = document.createElement('div');
     listContainer.id = 'party-list-container';
 
@@ -1961,11 +1970,8 @@ function updatePartySidebar() {
         if (hpPct < 20) hpClass = 'low';
         else if (hpPct < 50) hpClass = 'mid';
 
-        // XP Logic
         const xpNeeded = p.level * 100;
         const xpPct = Math.min(100, (p.exp / xpNeeded) * 100);
-
-        // Icon
         let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
 
         item.innerHTML = `
@@ -1975,31 +1981,22 @@ function updatePartySidebar() {
                     <span class="sidebar-name">${p.name}</span>
                     <span class="sidebar-lvl">Lv.${p.level}</span>
                 </div>
-                
                 <div class="sidebar-bar-container">
-                    <!-- HP Bar -->
-                    <div class="sidebar-hp-bar">
-                        <div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div>
-                    </div>
-                    <!-- XP Bar (Blue) -->
-                    <div class="sidebar-xp-bar">
-                        <div class="sidebar-xp-fill" style="width: ${xpPct}%"></div>
-                    </div>
+                    <div class="sidebar-hp-bar"><div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div></div>
+                    <div class="sidebar-xp-bar"><div class="sidebar-xp-fill" style="width: ${xpPct}%"></div></div>
                 </div>
             </div>
         `;
 
-        // Click to swap to lead
         const handleSwap = (e) => {
+            e.preventDefault(); 
             e.stopPropagation();
-            if (e.type === 'touchstart') e.preventDefault();
 
             if (index === 0) {
                 showDialog(`${p.name} is already the lead!`, 1000);
                 return;
             }
 
-            // Swap logic
             const temp = player.team[0];
             player.team[0] = player.team[index];
             player.team[index] = temp;
