@@ -1,4 +1,3 @@
-// --- FALLBACK ITEM DATA (Safety net if data.js is missing) ---
 const BATTLE_ITEMS = {
     'Pokeball': { type: 'ball', val: 10 },
     'Great Ball': { type: 'ball', val: 20 },
