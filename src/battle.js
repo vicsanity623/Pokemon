@@ -532,6 +532,13 @@ class BattleSystem {
         this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
         this.updateBattleUI();
 
+        const enemyEl = document.getElementById('enemy-sprite');
+        if (enemyEl) {
+            enemyEl.classList.remove('anim-hit');
+            void enemyEl.offsetWidth; // Force reflow
+            enemyEl.classList.add('anim-hit');
+        }
+
         if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name.toUpperCase()]) {
             const effect = MOVE_EFFECTS[move.name.toUpperCase()];
             if (!this.enemy.status && Math.random() < effect.chance) {
