@@ -149,24 +149,29 @@ class BattleSystem {
         effectText.classList.remove('anim-effectiveness');
     }
 
-    // --- MODIFIED: Added biome parameter ---
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
-        this.ui.style.backgroundColor = 'transparent';
-        this.bg.start()
+        // 1. Set Active Flag
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
 
-        // --- ADDED SAFETY CHECK ---
+        // 2. Safety Check
         const canFight = this.player.team.some(p => p.hp > 0);
         if (!canFight) {
             showDialog("You have no conscious Pokemon left to fight!", 3000);
             this.endBattle();
             return;
         }
-        // ---------------------------
 
-        this.ui.classList.remove('hidden');
+        // 3. REVEAL UI FIRST (Crucial for Anime BG to calculate size)
+        this.ui.classList.remove('hidden'); 
+        
+        // 4. START BACKGROUND (Now that UI has dimensions)
+        this.ui.style.backgroundColor = 'transparent';
+        if (this.bg) {
+            this.bg.resize(); // Force resize calculation just to be safe
+            this.bg.start(); 
+        }
 
         // --- RESET UI HUDS ---
         document.getElementById('boss-hud').classList.add('hidden');
@@ -196,24 +201,23 @@ class BattleSystem {
             battleMusic.play().catch((err) => console.log('Music blocked'));
         }
 
-        // --- MODIFIED: ID Selection Logic with Biomes ---
+        // --- ID Selection Logic with Biomes ---
         let id;
         if (isArenaBoss && bossConfig) {
             id = bossConfig.id;
         } else {
             // Biome logic
             if (biome === 'snow') {
-                const pool = [86, 87, 124, 131, 144, 220, 221]; // Seel, Dewgong, Jynx, Lapras, Articuno, Swinub, Piloswine
+                const pool = [86, 87, 124, 131, 144, 220, 221]; 
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else if (biome === 'desert') {
-                const pool = [27, 28, 74, 75, 95, 77, 4, 5]; // Sandshrew, Sandslash, Geodude, Graveler, Onix, Ponyta, Charmander, Charmeleon
+                const pool = [27, 28, 74, 75, 95, 77, 4, 5]; 
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else {
                 // Default Grass
                 id = this.getRandomWildId();
             }
         }
-        // ------------------------------------------------
 
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
         const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < 0.02;
@@ -248,7 +252,6 @@ class BattleSystem {
             if (isShiny && !this.player.seenShiny.includes(id)) {
                 this.player.seenShiny.push(id);
             }
-            // -----------------------------
 
             this.renderSquad();
             this.setupTurnQueue();
