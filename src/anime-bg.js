@@ -1,15 +1,3 @@
-Here is a standalone, high-performance **`anime-bg.js`** file.
-
-This script uses the HTML5 Canvas API to generate a high-speed, vertical parallax effect. It creates a "Dragon Ball" style sky gradient and overlays it with varying layers of "speed lines" to create depth and intense upward velocity.
-
-### How to use it
-1.  Save the code below as `anime-bg.js`.
-2.  In your `battle.js`, import or include this file.
-3.  Instantiate it by passing the ID of the `<div>` or container where you want the background to appear.
-
-### The File: `anime-bg.js`
-
-```javascript
 /**
  * AnimeBattleBackground - Generates a dynamic, high-speed anime action background.
  * Renders a stylized sky with multi-layered vertical speed lines using HTML5 Canvas.
