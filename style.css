@@ -468,6 +468,11 @@ canvas {
     }
 }
 
+.anim-throw {
+    animation: throw-ball 1s ease-in-out forwards;
+    display: block !important; /* Ensure it overrides hidden */
+}
+
 .anim-shake {
     animation: shake 0.5s;
 }
