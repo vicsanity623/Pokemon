@@ -194,8 +194,6 @@ class BattleSystem {
     }
 
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
-        this.ui.style.backgroundColor = 'transparent';
-        if (this.bg) { this.bg.resize(); this.bg.start(); }
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
@@ -217,6 +215,13 @@ class BattleSystem {
         }
 
         this.ui.classList.remove('hidden');
+        
+        this.ui.style.backgroundColor = 'transparent';
+        if (this.bg) { 
+            this.bg.resize(); 
+            this.bg.start(); 
+        }
+
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
         
