@@ -118,7 +118,8 @@ class BattleSystem {
         effectText.classList.remove('anim-effectiveness');
     }
 
-    async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null) {
+    // --- MODIFIED START BATTLE METHOD ---
+    async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
@@ -162,7 +163,26 @@ class BattleSystem {
             battleMusic.play().catch((err) => console.log('Music blocked'));
         }
 
-        const id = (isArenaBoss && bossConfig) ? bossConfig.id : this.getRandomWildId();
+        // --- DETERMINE ID BASED ON BIOME (If not Arena Boss) ---
+        let id;
+        if (isArenaBoss && bossConfig) {
+            id = bossConfig.id;
+        } else {
+            // Biome Logic
+            if (biome === 'snow') {
+                // Ice/Water Types (Example: Seel, Lapras, Articuno, Jynx, Swinub)
+                const pool = [86, 87, 124, 131, 144, 220, 221]; 
+                id = pool[Math.floor(Math.random() * pool.length)];
+            } else if (biome === 'desert') {
+                // Ground/Rock/Fire (Example: Sandshrew, Geodude, Onix, Ponyta, Charmander)
+                const pool = [27, 28, 74, 75, 95, 77, 4, 5];
+                id = pool[Math.floor(Math.random() * pool.length)];
+            } else {
+                // Default Grass Logic
+                id = this.getRandomWildId();
+            }
+        }
+        
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
         const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < 0.02;
 
