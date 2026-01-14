@@ -499,19 +499,23 @@ class BattleSystem {
         this.closeMoves();
 
         let p = this.actingPokemon;
+
+        // Check status conditions
         if (p.status === 'SLP' || p.status === 'FRZ' || (p.status === 'PAR' && Math.random() < 0.25)) {
             showDialog(`${p.name} is unable to move!`);
             await this.delay(1000);
-            this.queueIndex++; this.nextTurn(); return;
+            this.queueIndex++; 
+            this.nextTurn(); 
+            return;
         }
 
         let move = p.moves[slot] || p.moves[0];
         
-        // Player Attack Animation
+        // --- 1. Player Attack Animation (Lunge) ---
         const attackerIndex = this.player.team.indexOf(p);
         const attackerEl = document.getElementById(`party-wrapper-${attackerIndex}`);
         if (attackerEl) {
-            attackerEl.classList.remove('anim-lunge', 'active-turn');
+            attackerEl.classList.remove('anim-lunge', 'active-turn'); 
             void attackerEl.offsetWidth; 
             attackerEl.classList.add('anim-lunge');
         }
@@ -521,29 +525,36 @@ class BattleSystem {
         this.showAttackText(move.name);
         playSFX(this.getAttackSound(move.name));
 
+        // Screen Shake / Flash
         document.getElementById('gameCanvas').classList.add('anim-shake');
         document.getElementById('flash-overlay').classList.add('anim-flash');
         await this.delay(500);
         document.getElementById('gameCanvas').classList.remove('anim-shake');
         document.getElementById('flash-overlay').classList.remove('anim-flash');
 
+        // Damage Calc
         const attackerStr = p.stats ? p.stats.strength : 50;
         const defenderDef = this.enemy.stats ? this.enemy.stats.defense : 50;
         const effectiveness = getTypeEffectiveness(move.type, this.enemy.type);
         const isCrit = Math.random() * 100 < Math.min(15, ((p.stats ? p.stats.special : 50) / 1000) * 15);
+
         let baseDmg = Math.floor(move.power * (p.level / this.enemy.level) * (attackerStr / 50));
         let dmg = Math.max(1, Math.floor(baseDmg * effectiveness * (isCrit ? 2 : 1) * (0.85 + Math.random() * 0.3) * (100 / (100 + defenderDef))));
 
         this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
         this.updateBattleUI();
 
+        // --- 2. Enemy Hit Animation (Red Flash) ---
+        // This is the part that was likely missing!
         const enemyEl = document.getElementById('enemy-sprite');
         if (enemyEl) {
             enemyEl.classList.remove('anim-hit');
             void enemyEl.offsetWidth; // Force reflow
             enemyEl.classList.add('anim-hit');
         }
+        // ------------------------------------------
 
+        // Apply Move Effects
         if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name.toUpperCase()]) {
             const effect = MOVE_EFFECTS[move.name.toUpperCase()];
             if (!this.enemy.status && Math.random() < effect.chance) {
@@ -555,6 +566,7 @@ class BattleSystem {
 
         if (isCrit) this.showAttackText("CRITICAL HIT!");
         else this.showEffectivenessText(effectiveness);
+
         this.showDamageNumber(dmg, 70, 25);
         await this.delay(1000);
 
@@ -666,9 +678,12 @@ class BattleSystem {
 
         showDialog(`Go! ${ballType}!`);
         const ballAnim = document.getElementById('pokeball-anim');
+        
         if (ballAnim) {
+            // Ensure ball is visible and on top
             ballAnim.style.zIndex = '99999';
             ballAnim.style.display = 'block';
+            
             ballAnim.classList.remove('hidden', 'anim-shake');
             ballAnim.classList.add('anim-throw');
             await this.delay(1000);
@@ -682,7 +697,11 @@ class BattleSystem {
                 return;
             }
 
+            // --- 3. Enemy Shrink Animation ---
+            // This pulls the enemy into the ball
             document.getElementById('enemy-sprite').classList.add('anim-shrink');
+            // --------------------------------
+
             await this.delay(500);
             ballAnim.classList.remove('anim-throw');
             ballAnim.classList.add('anim-shake');
@@ -700,7 +719,11 @@ class BattleSystem {
             await this.delay(800);
             if (!success && i >= Math.floor(Math.random() * 3)) {
                 if (ballAnim) ballAnim.classList.add('hidden');
+                
+                // --- 4. Restore Enemy Size if Failed ---
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
+                // --------------------------------------
+                
                 showDialog("Darn! It broke free!");
                 await this.delay(1000);
                 this.queueIndex++;
