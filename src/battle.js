@@ -18,6 +18,7 @@ class BattleSystem {
         this.isAttacking = false; // Prevent spam
         this.enemy = null;
         this.isTrainer = false;
+        this.bg = new AnimeBattleBackground('battle-ui');
         this.ui = document.getElementById('battle-ui');
         
         this.turnQueue = []; // Order of attackers based on speed
@@ -150,6 +151,7 @@ class BattleSystem {
 
     // --- MODIFIED: Added biome parameter ---
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
+        this.bg.start()
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
@@ -831,6 +833,7 @@ class BattleSystem {
     }
 
     endBattle() {
+        this.bg.stop()
         this.isActive = false;
         this.isAttacking = false; // Reset attack lock
         this.ui.classList.add('hidden');
