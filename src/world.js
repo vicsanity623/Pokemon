@@ -115,41 +115,53 @@ class World {
     }
 
     getTile(x, y) {
-        // Biome Noise (Low Frequency)
-        // Scale coordinates down for larger features
-        let biomeVal = this.rng.noise(x * 0.05, y * 0.05);
+        // 1. Temperature: North (Negative Y) is colder
+        // We scale Y so that -100 tiles is the start of the "Snow Zone"
+        let tempNoise = this.rng.noise(x * 0.02, y * 0.02); // Slow changing noise
+        let temperature = (y / 200) + (tempNoise * 0.5); // Y controls base temp
 
-        // Grass Noise (Very Low Frequency for Large Clusters)
-        // We want clusters of 40+ tiles, so very smooth noise
-        let grassVal = this.rng.noise(x * 0.1, y * 0.1);
+        // 2. Moisture: Random patches of wet/dry
+        let moisture = this.rng.noise(x * 0.05, y * 0.05);
 
-        // Biomes based on smooth noise
-        if (biomeVal < 0.3) return 'water';
+        // 3. Elevation/Detail: For water shapes
+        let detail = this.rng.noise(x * 0.1, y * 0.1);
 
-        // Grass logic: Large clusters
-        if (grassVal > 0.6) return 'grass_tall';
+        // --- BIOME LOGIC ---
 
-        if (biomeVal > 0.8) return 'flowers'; // Rare flower fields
+        // OCEAN / LAKES (Low elevation)
+        if (detail < 0.25) return 'water';
 
+        // POLAR BIOME (Cold)
+        if (temperature < -0.5) {
+            if (detail < 0.3) return 'ice'; // Frozen lakes
+            return 'snow';
+        }
+
+        // DESERT BIOME (Hot and Dry)
+        // Let's put desert in the East (Positive X)
+        if (x > 80 && moisture < 0.4) {
+             return 'sand';
+        }
+
+        // GRASSLANDS (Default)
+        if (detail > 0.65) return 'grass_tall'; // Patches of tall grass
+        if (moisture > 0.7 && detail > 0.5) return 'flowers'; // Rare flower patches
+        
         return 'grass';
     }
 
     getColor(type) {
         switch (type) {
-            case 'water':
-                return '#3498db';
-            case 'grass_tall':
-                return '#27ae60';
-            case 'grass':
-                return '#2ecc71';
-            case 'flowers':
-                return '#e74c3c';
-            case 'center':
-                return '#c0392b';
-            case 'store':
-                return '#2980b9'; // Blue roof
-            default:
-                return '#000';
+            case 'water': return '#4FA4F4'; // Lighter blue
+            case 'ice': return '#A5E3F9';   // Icy blue
+            case 'grass_tall': return '#388E3C'; // Darker Green
+            case 'grass': return '#66BB6A';      // Soft Green
+            case 'flowers': return '#E57373';    // Reddish
+            case 'sand': return '#FDD835';       // Yellow/Sand
+            case 'snow': return '#ECEFF1';       // Off-white
+            case 'center': return '#c0392b';
+            case 'store': return '#2980b9';
+            default: return '#222';
         }
     }
 
@@ -480,24 +492,64 @@ class Renderer {
                     this.canvas.height / 2 -
                     TILE_SIZE / 2;
 
+                // --- MODIFIED TILE RENDERING START ---
+
+                // 1. Draw Base Tile with Overlap (Fixes Grid Lines)
                 this.ctx.fillStyle = this.world.getColor(tile);
                 this.ctx.fillRect(
-                    Math.floor(drawX),
-                    Math.floor(drawY),
-                    TILE_SIZE + 1,
-                    TILE_SIZE + 1
-                ); // +1 to fix gaps
+                    Math.floor(drawX) - 1,
+                    Math.floor(drawY) - 1,
+                    TILE_SIZE + 2,
+                    TILE_SIZE + 2
+                );
 
-                // Texture detail
-                if (tile === 'grass_tall') {
-                    this.ctx.fillStyle = 'rgba(0,0,0,0.1)';
-                    this.ctx.fillRect(
-                        Math.floor(drawX) + 5,
-                        Math.floor(drawY) + 5,
-                        TILE_SIZE - 10,
-                        TILE_SIZE - 10
-                    );
+                // 2. Procedural Texture (The "Juice")
+                // Generate a consistent random seed based on coordinates
+                const seed = Math.abs((worldX * 73856093) ^ (worldY * 19349663));
+
+                if (tile === 'grass' || tile === 'grass_tall') {
+                    // Draw grass blades
+                    this.ctx.fillStyle = (tile === 'grass_tall') ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.05)';
+                    // Draw 3 blades per tile
+                    for (let i = 0; i < 3; i++) {
+                        let ox = (seed + i * 10) % TILE_SIZE;
+                        let oy = (seed + i * 20) % TILE_SIZE;
+                        this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 4, 4);
+                    }
+                    // Extra shade for tall grass to differentiate it
+                    if (tile === 'grass_tall') {
+                        this.ctx.fillRect(
+                            Math.floor(drawX) + 5,
+                            Math.floor(drawY) + 5,
+                            TILE_SIZE - 10,
+                            TILE_SIZE - 10
+                        );
+                    }
+                } else if (tile === 'water') {
+                    // Draw animated waves
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    let waveOffset = (Date.now() / 500) % TILE_SIZE; // Animated!
+                    let ox = (seed) % TILE_SIZE;
+                    let oy = (seed * 2) % TILE_SIZE;
+                    // Draw a little wave line
+                    this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 10, 2);
+                } else if (tile === 'sand') {
+                    // Draw sandy dots
+                    this.ctx.fillStyle = '#FBC02D'; // Darker sand accent
+                    for (let i = 0; i < 5; i++) {
+                        let ox = (seed + i * 13) % TILE_SIZE;
+                        let oy = (seed * i * 7) % TILE_SIZE;
+                        this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 3, 3);
+                    }
+                } else if (tile === 'snow') {
+                    // Draw white fluff/texture
+                    this.ctx.fillStyle = '#FFFFFF';
+                    let ox = (seed) % TILE_SIZE;
+                    let oy = (seed * 3) % TILE_SIZE;
+                    this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, TILE_SIZE / 2, TILE_SIZE / 4);
                 }
+
+                // --- MODIFIED TILE RENDERING END ---
 
                 // Draw Item
                 let item = this.world.getItem(worldX, worldY);
@@ -713,28 +765,28 @@ class Renderer {
             else if (building.type === 'store') {
                 let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
                 let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
-        
+
                 // Draw Building Base (Blue walls for Poke Mart)
-                this.ctx.fillStyle = '#2980b9'; 
+                this.ctx.fillStyle = '#2980b9';
                 this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
-        
+
                 // Draw Roof (Red distinctive Poke Mart roof)
                 this.ctx.fillStyle = '#e74c3c';
                 this.ctx.fillRect(Math.floor(drawX) - 5, Math.floor(drawY), TILE_SIZE + 10, 25);
-        
+
                 // MART Text Sign
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = 'bold 12px Arial';
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText('MART', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 18);
-        
+
                 // Window and Door
                 this.ctx.fillStyle = '#87CEEB'; // Light blue window
                 this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 35, 25, 20);
-                
+
                 this.ctx.fillStyle = '#34495e'; // Dark door
                 this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
-        
+
                 // Glow effect to make it stand out
                 this.ctx.shadowBlur = 10;
                 this.ctx.shadowColor = '#3498db';
