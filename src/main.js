@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.2.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -128,6 +128,19 @@ function gameLoop(timestamp) {
         return;
     }
 
+    // --- FIX: Force Render Battle Screen Logic ---
+    if (battleSystem.isActive) {
+        // Clear screen to black to prevent transparency issues
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        lastTime = timestamp;
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    // ---------------------------------------------
+
     if (!battleSystem.isActive) {
         // Smooth Movement Logic
         let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
@@ -229,24 +242,26 @@ function gameLoop(timestamp) {
                 if (Math.floor(player.steps) % 10 === 0)
                     questSystem.update('walk');
 
-                // List of tiles that trigger battles
+                // --- FIX: Encounter Logic with Biomes ---
                 const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
 
-                // Encounter Check
                 if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
-                    
+                    // ONLY start a battle if at least one Pokemon has HP
                     const canFight = player.team.some(p => p.hp > 0);
                     if (canFight) {
-                        // 1. Determine Biome Type based on Tile
+                        // Determine Biome Type based on Tile
                         let biomeType = 'grass';
                         if (targetTile === 'snow_tall') biomeType = 'snow';
                         if (targetTile === 'sand_tall') biomeType = 'desert';
 
-                        // 2. Pass this biome to the battle system
-                        // (You might need to update BattleSystem to accept this argument, 
-                        //  OR we can set a global variable temporarily)
-                        battleSystem.startBattle(biomeType); 
-                    } 
+                        // Pass this biome to the battle system
+                        battleSystem.startBattle(false, 0, false, null, biomeType);
+                    } else {
+                        // Optional: Show a message reminding them to heal
+                        if (Math.floor(player.steps) % 50 === 0) {
+                            showDialog("Your team is exhausted! Find a Poke Center!", 2000);
+                        }
+                    }
                 }
             }
         } else {
@@ -447,6 +462,13 @@ input.keys['b'] = false; // Initialize B key
 // Removed duplicate listener. 'b' key is handled by global input system now.
 
 function togglePlayerBag() {
+    // --- FIX: Prevent opening Overworld Bag during Battle ---
+    if (battleSystem.isActive) {
+        showDialog("Use the Battle Menu to access items!", 1500);
+        return;
+    }
+    // ------------------------------------------------------
+
     const bagMenu = document.getElementById('player-bag-menu');
     const sidebar = document.getElementById('party-sidebar');
 
@@ -799,8 +821,13 @@ function useBagItem(itemName) {
         return;
     }
 
-    const itemData = ITEMS[itemName];
-    if (!itemData) return;
+    // --- FIX: Check if item data exists to prevent crash ---
+    const itemData = (typeof ITEMS !== 'undefined') ? ITEMS[itemName] : null;
+    if (!itemData) {
+        showDialog("Unknown Item Data!", 1000);
+        return;
+    }
+    // ------------------------------------------------------
 
     if (battleSystem.isActive) {
         // Battle Mode Usage
@@ -1869,16 +1896,6 @@ function updatePartySidebar() {
         else if (hpPct < 50) hpClass = 'mid';
 
         // Use sprite or fallback icon
-        // Use a generic pokeball icon for the sidebar to match the user's request "pokeball on the left"
-        // Or better, use the Pokemon's small icon if available, but user said "POKEBALLS icons".
-        // Let's use the pokemon's sprite but small, as "pokeball icon" might mean "pokemon icon".
-        // Actually, user said "actual POKEBALLS icons... with the pokeball on the left".
-        // But then said "tap on these pokeball icon to switch".
-        // It's common to show the Pokemon face. Let's show the Pokemon face (sprite) as it's more useful.
-        // If they strictly want a Pokeball, I can change it, but seeing the Pokemon is better UX.
-        // Wait, "POKEBALLS icons that are ordered... with the pokeball on the left".
-        // I will use a Pokeball icon for now to be safe, or maybe the party icon.
-        // Let's use the Pokemon sprite because it's a "Party View".
         let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
 
         item.innerHTML = `
