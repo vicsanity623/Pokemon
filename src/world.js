@@ -115,50 +115,52 @@ class World {
     }
 
     getTile(x, y) {
-        // 1. Temperature: North (Negative Y) is colder
-        // We scale Y so that -100 tiles is the start of the "Snow Zone"
-        let tempNoise = this.rng.noise(x * 0.02, y * 0.02); // Slow changing noise
-        let temperature = (y / 200) + (tempNoise * 0.5); // Y controls base temp
-
-        // 2. Moisture: Random patches of wet/dry
+        // 1. Temperature & Biome Noise
+        let tempNoise = this.rng.noise(x * 0.02, y * 0.02);
+        let temperature = (y / 200) + (tempNoise * 0.5); // Negative Y = North (Cold)
         let moisture = this.rng.noise(x * 0.05, y * 0.05);
-
-        // 3. Elevation/Detail: For water shapes
         let detail = this.rng.noise(x * 0.1, y * 0.1);
 
-        // --- BIOME LOGIC ---
-
-        // OCEAN / LAKES (Low elevation)
+        // WATER
         if (detail < 0.25) return 'water';
 
-        // POLAR BIOME (Cold)
-        if (temperature < -0.5) {
-            if (detail < 0.3) return 'ice'; // Frozen lakes
+        // --- POLAR BIOME (North / Negative Y) ---
+        if (temperature < -0.4) {
+            if (detail < 0.3) return 'ice';
+            if (detail > 0.65) return 'snow_tall'; // <--- NEW: Snow Grass
             return 'snow';
         }
 
-        // DESERT BIOME (Hot and Dry)
-        // Let's put desert in the East (Positive X)
-        if (x > 80 && moisture < 0.4) {
+        // --- DESERT BIOME (East / Positive X) ---
+        // Changed to 50 so it's easier to find
+        if (x > 50 && moisture < 0.4) {
+             if (detail > 0.65) return 'sand_tall'; // <--- NEW: Sand Dunes
              return 'sand';
         }
 
-        // GRASSLANDS (Default)
-        if (detail > 0.65) return 'grass_tall'; // Patches of tall grass
-        if (moisture > 0.7 && detail > 0.5) return 'flowers'; // Rare flower patches
+        // --- STANDARD BIOME (South/West) ---
+        if (detail > 0.65) return 'grass_tall';
+        if (moisture > 0.7 && detail > 0.5) return 'flowers';
         
         return 'grass';
     }
 
     getColor(type) {
         switch (type) {
-            case 'water': return '#4FA4F4'; // Lighter blue
-            case 'ice': return '#A5E3F9';   // Icy blue
-            case 'grass_tall': return '#388E3C'; // Darker Green
-            case 'grass': return '#66BB6A';      // Soft Green
-            case 'flowers': return '#E57373';    // Reddish
-            case 'sand': return '#FDD835';       // Yellow/Sand
-            case 'snow': return '#ECEFF1';       // Off-white
+            case 'water': return '#4FA4F4';
+            case 'ice': return '#A5E3F9';
+            case 'grass_tall': return '#388E3C';
+            case 'grass': return '#66BB6A';
+            case 'flowers': return '#E57373';
+            
+            // Desert Colors
+            case 'sand': return '#FDD835';
+            case 'sand_tall': return '#FBC02D'; // Darker sand (Encounter)
+            
+            // Snow Colors
+            case 'snow': return '#ECEFF1';
+            case 'snow_tall': return '#CFD8DC'; // Darker snow (Encounter)
+            
             case 'center': return '#c0392b';
             case 'store': return '#2980b9';
             default: return '#222';
