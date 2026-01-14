@@ -233,7 +233,7 @@ class GameClock {
         let now = Date.now();
         let diff = now - this.startTime + this.elapsedTime;
         // 1 Game Day = 1 Real Minute for playability
-        const DAY_LENGTH = 3600000;
+        const DAY_LENGTH = 6 * 60 * 60 * 1000;
 
         if (diff > (this.gameDays + 1) * DAY_LENGTH) {
             this.gameDays++;
