@@ -56,6 +56,20 @@ class BattleSystem {
             document.body.appendChild(img);
         }
     }
+    
+    triggerAnimation(elementId, animationClass) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        // 1. Remove class to reset
+        el.classList.remove(animationClass);
+        
+        // 2. Force Browser Reflow (Magic line that resets animation state)
+        void el.offsetWidth; 
+        
+        // 3. Add class back to start animation
+        el.classList.add(animationClass);
+    }
 
     getAttackSound(moveName) {
         const move = moveName.toUpperCase();
@@ -544,15 +558,8 @@ class BattleSystem {
         this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
         this.updateBattleUI();
 
-        // --- 2. Enemy Hit Animation (Red Flash) ---
-        // This is the part that was likely missing!
-        const enemyEl = document.getElementById('enemy-sprite');
-        if (enemyEl) {
-            enemyEl.classList.remove('anim-hit');
-            void enemyEl.offsetWidth; // Force reflow
-            enemyEl.classList.add('anim-hit');
-        }
-        // ------------------------------------------
+        // FIX: Use robust helper for consistent flashing
+        this.triggerAnimation('enemy-sprite', 'anim-hit');
 
         // Apply Move Effects
         if (typeof MOVE_EFFECTS !== 'undefined' && MOVE_EFFECTS[move.name.toUpperCase()]) {
@@ -672,6 +679,14 @@ class BattleSystem {
     }
 
     async throwPokeball(ballType) {
+        const enemySprite = document.getElementById('enemy-sprite');
+            enemySprite.classList.remove('anim-shrink');
+            void enemySprite.offsetWidth; // Force reset
+            
+            // Add shrink class
+            enemySprite.classList.add('anim-shrink');
+
+            await this.delay(500);
         if (this.isTrainer) { showDialog("Can't steal!"); return; }
         this.isAttacking = true;
         this.player.bag[ballType]--;
@@ -818,6 +833,12 @@ class BattleSystem {
     lose() { showDialog('The squad whited out...'); setTimeout(() => this.endBattle(), 2000); }
 
     endBattle() {
+        const enemySprite = document.getElementById('enemy-sprite');
+        if (enemySprite) {
+             enemySprite.classList.remove('anim-shrink', 'boss-sprite', 'anim-hit'); // Clear all potential anims
+             enemySprite.classList.add('hidden');
+             enemySprite.src = '';
+        }
         this.bg.stop()
         this.isActive = false; this.isAttacking = false; this.ui.classList.add('hidden');
         this.turnQueue = []; this.actingPokemon = null;
