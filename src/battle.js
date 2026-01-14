@@ -24,6 +24,20 @@ class BattleSystem {
             s.id = 'player-party-container';
             this.ui.appendChild(s);
         }
+
+        // --- FIX: Create Pokeball Animation Element if not exists ---
+        if (!document.getElementById('pokeball-anim')) {
+            let p = document.createElement('img');
+            p.id = 'pokeball-anim';
+            p.className = 'hidden';
+            p.src = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+            // Basic styles to ensure visibility if CSS is missing
+            p.style.position = 'absolute';
+            p.style.zIndex = '9999';
+            p.style.width = '40px';
+            document.body.appendChild(p);
+        }
+        // ------------------------------------------------------------
     }
 
     // Map moves to attack sounds
@@ -118,38 +132,36 @@ class BattleSystem {
         effectText.classList.remove('anim-effectiveness');
     }
 
-    // --- MODIFIED START BATTLE METHOD ---
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
 
-        // --- ADDED SAFETY CHECK ---
+        // Safety Check
         const canFight = this.player.team.some(p => p.hp > 0);
         if (!canFight) {
             showDialog("You have no conscious Pokemon left to fight!", 3000);
             this.endBattle();
             return;
         }
-        // ---------------------------
 
         this.ui.classList.remove('hidden');
 
-        // --- RESET UI HUDS ---
+        // Reset UI
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
 
-        // --- HIDE PARTY SIDEBAR ---
+        // Hide Sidebars
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.add('hidden');
 
-        // --- HIDE WORLD UI ---
+        // Hide World UI
         document.getElementById('mobile-controls').classList.add('hidden');
         document.getElementById('action-btns').classList.add('hidden');
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
         document.getElementById('player-stat-box').classList.add('hidden');
 
-        // --- BLACK OUT CANVAS ---
+        // Black out canvas
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000'; 
@@ -163,22 +175,18 @@ class BattleSystem {
             battleMusic.play().catch((err) => console.log('Music blocked'));
         }
 
-        // --- DETERMINE ID BASED ON BIOME (If not Arena Boss) ---
+        // Determine ID based on Biome
         let id;
         if (isArenaBoss && bossConfig) {
             id = bossConfig.id;
         } else {
-            // Biome Logic
             if (biome === 'snow') {
-                // Ice/Water Types (Example: Seel, Lapras, Articuno, Jynx, Swinub)
                 const pool = [86, 87, 124, 131, 144, 220, 221]; 
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else if (biome === 'desert') {
-                // Ground/Rock/Fire (Example: Sandshrew, Geodude, Onix, Ponyta, Charmander)
                 const pool = [27, 28, 74, 75, 95, 77, 4, 5];
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else {
-                // Default Grass Logic
                 id = this.getRandomWildId();
             }
         }
@@ -249,7 +257,7 @@ class BattleSystem {
     calculateEnemyLevel(bonus, config) {
         if (config && config.level) return config.level;
         const playerLevel = this.player.pLevel || 1;
-        let randomOffset = Math.floor(Math.random() * 5) - 2; // -2, -1, 0, 1, 2
+        let randomOffset = Math.floor(Math.random() * 5) - 2;
         return Math.max(1, playerLevel + randomOffset + bonus);
     }
 
@@ -262,12 +270,10 @@ class BattleSystem {
             wrapper.className = 'party-member-wrapper';
             wrapper.id = `party-wrapper-${index}`;
             
-            // HP Bar
             const hpBar = document.createElement('div');
             hpBar.className = 'sprite-hp-bar';
             hpBar.innerHTML = `<div class="sprite-hp-fill" id="squad-hp-${index}" style="width: ${(p.hp/p.maxHp)*100}%"></div>`;
             
-            // NEW: XP Bar
             const expBar = document.createElement('div');
             expBar.className = 'sprite-exp-bar';
             const expPct = (p.exp / (p.level * 100)) * 100;
@@ -279,7 +285,7 @@ class BattleSystem {
             if (p.hp <= 0) wrapper.classList.add('fainted-member');
     
             wrapper.appendChild(hpBar);
-            wrapper.appendChild(expBar); // Added XP bar to wrapper
+            wrapper.appendChild(expBar);
             wrapper.appendChild(img);
             container.appendChild(wrapper);
         });
@@ -344,15 +350,14 @@ class BattleSystem {
     
         this.player.team.forEach((p, i) => {
             const bar = document.getElementById(`squad-hp-${i}`);
-            const expBar = document.getElementById(`squad-exp-${i}`); // Get XP bar element
+            const expBar = document.getElementById(`squad-exp-${i}`);
     
             if (bar) {
                 const pct = Math.max(0, (p.hp / p.maxHp) * 100);
                 bar.style.width = `${pct}%`;
                 if (p.hp <= 0) document.getElementById(`party-wrapper-${i}`).classList.add('fainted-member');
             }
-    
-            // NEW: Update XP Bar fill
+            
             if (expBar) {
                 const expPct = Math.min(100, (p.exp / (p.level * 100)) * 100);
                 expBar.style.width = `${expPct}%`;
@@ -391,7 +396,7 @@ class BattleSystem {
     }
     closeCatchScreen() {
         document.getElementById('new-catch-overlay').classList.add('hidden');
-        this.endBattle(); // Changed from this.win(true) to endBattle() for a cleaner exit
+        this.endBattle(); 
     }
 
     async handleStatusDamage(pokemon, isEnemy = false) {
@@ -585,24 +590,31 @@ class BattleSystem {
         this.player.bag[ballType]--;
 
         showDialog(`Go! ${ballType}!`);
+        
+        // Safety Check: Get the element (created in constructor now)
         const ballAnim = document.getElementById('pokeball-anim');
-        ballAnim.classList.remove('hidden', 'anim-shake');
-        ballAnim.classList.add('anim-throw');
-        await this.delay(1000);
-
-        if (this.enemy.isArenaBoss && (this.enemy.hp / this.enemy.maxHp) > 0.05) {
-            showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
-            ballAnim.classList.add('hidden');
+        if (ballAnim) {
+            ballAnim.classList.remove('hidden', 'anim-shake');
+            ballAnim.classList.add('anim-throw');
             await this.delay(1000);
-            this.queueIndex++;
-            this.nextTurn();
-            return;
-        }
 
-        document.getElementById('enemy-sprite').classList.add('anim-shrink');
-        await this.delay(500);
-        ballAnim.classList.remove('anim-throw');
-        ballAnim.classList.add('anim-shake');
+            if (this.enemy.isArenaBoss && (this.enemy.hp / this.enemy.maxHp) > 0.05) {
+                showDialog("The Boss deflected it! Weakness required (< 5% HP)!");
+                ballAnim.classList.add('hidden');
+                await this.delay(1000);
+                this.queueIndex++;
+                this.nextTurn();
+                return;
+            }
+
+            document.getElementById('enemy-sprite').classList.add('anim-shrink');
+            await this.delay(500);
+            ballAnim.classList.remove('anim-throw');
+            ballAnim.classList.add('anim-shake');
+        } else {
+            // Fallback if visual fails for some reason
+            await this.delay(1000);
+        }
 
         let hpPct = this.enemy.hp / this.enemy.maxHp;
         let catchChance = (ITEMS[ballType].val >= 255) ? 100 : (hpPct < 0.20 ? 90 : 10);
@@ -612,7 +624,7 @@ class BattleSystem {
         for (let i = 0; i < 3; i++) {
             await this.delay(800);
             if (!success && i >= Math.floor(Math.random() * 3)) {
-                ballAnim.classList.add('hidden');
+                if (ballAnim) ballAnim.classList.add('hidden');
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
                 showDialog("Darn! It broke free!");
                 await this.delay(1000);
@@ -627,13 +639,13 @@ class BattleSystem {
     async catchSuccess() {
         // 1. Instantly stop all battle logic
         this.isAttacking = true; 
-        document.getElementById('pokeball-anim').classList.add('hidden');
+        const ballAnim = document.getElementById('pokeball-anim');
+        if (ballAnim) ballAnim.classList.add('hidden');
         
         showDialog(`Gotcha! ${this.enemy.name} was caught!`, 2000);
         await this.delay(1000);
 
         // 2. Prepare the data properly. 
-        // IMPORTANT: We must add the backSprite here, or the Squad Renderer will crash!
         const caughtPokemon = { 
             ...this.enemy, 
             hp: this.enemy.maxHp, 
@@ -643,12 +655,12 @@ class BattleSystem {
                 : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
         };
 
-        // 3. Add to player and calculate SR for the display
+        // 3. Add to player
         this.player.addPokemon(caughtPokemon);
         const st = this.enemy.stats;
         const sr = st.strength + st.defense + st.speed + st.hp + st.special;
 
-        // 4. Update the UI and show the screen
+        // 4. Update UI
         const statsEl = document.getElementById('catch-stats');
         if (statsEl) {
             statsEl.innerHTML = `
@@ -767,9 +779,9 @@ class BattleSystem {
 
         if (typeof hideDialog === 'function') hideDialog();
         
-        // --- ADDED: Tell the Rival System to move away ---
+        // Tell the Rival System to move away
         if (typeof rivalSystem !== 'undefined') {
-            rivalSystem.isChasing = false; // Stop them from pinning you down
+            rivalSystem.isChasing = false; 
             rivalSystem.onBattleEnd(); 
         }
         
