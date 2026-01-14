@@ -229,19 +229,24 @@ function gameLoop(timestamp) {
                 if (Math.floor(player.steps) % 10 === 0)
                     questSystem.update('walk');
 
-                // Encounter Check (Randomly based on distance moved)
-                // Chance per tile moved approx - increased for more encounters
-                if (targetTile === 'grass_tall' && Math.random() < 0.08 * moveSpeed) {
-                    // ONLY start a battle if at least one Pokemon has HP
+                // List of tiles that trigger battles
+                const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
+
+                // Encounter Check
+                if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
+                    
                     const canFight = player.team.some(p => p.hp > 0);
                     if (canFight) {
-                        battleSystem.startBattle();
-                    } else {
-                        // Optional: Show a message reminding them to heal
-                        if (Math.floor(player.steps) % 50 === 0) {
-                            showDialog("Your team is exhausted! Find a Poke Center!", 2000);
-                        }
-                    }
+                        // 1. Determine Biome Type based on Tile
+                        let biomeType = 'grass';
+                        if (targetTile === 'snow_tall') biomeType = 'snow';
+                        if (targetTile === 'sand_tall') biomeType = 'desert';
+
+                        // 2. Pass this biome to the battle system
+                        // (You might need to update BattleSystem to accept this argument, 
+                        //  OR we can set a global variable temporarily)
+                        battleSystem.startBattle(biomeType); 
+                    } 
                 }
             }
         } else {
