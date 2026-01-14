@@ -858,10 +858,6 @@ class BattleSystem {
         const battleMusic = document.getElementById('battle-music');
         if (battleMusic) battleMusic.pause();
         if (mainMusic) mainMusic.play().catch(e => {});
-        const enemySprite = document.getElementById('enemy-sprite');
-        enemySprite.classList.remove('anim-shrink', 'boss-sprite');
-        enemySprite.classList.add('hidden');
-        enemySprite.src = '';
         document.getElementById('bottom-hud').classList.remove('hud-battle');
         if (typeof renderer !== 'undefined') renderer.draw();
         updateHUD();
