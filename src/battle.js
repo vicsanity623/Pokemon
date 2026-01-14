@@ -151,6 +151,7 @@ class BattleSystem {
 
     // --- MODIFIED: Added biome parameter ---
     async startBattle(isTrainer = false, bossLevelBonus = 0, isArenaBoss = false, bossConfig = null, biome = 'grass') {
+        this.ui.style.backgroundColor = 'transparent';
         this.bg.start()
         this.isActive = true;
         this.isAttacking = false;
