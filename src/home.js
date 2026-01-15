@@ -93,7 +93,9 @@ class HomeSystem {
 
         // Teleport player
         this.player.x = this.houseLocation.x;
-        this.player.y = this.houseLocation.y;
+        
+        // FIX: Add +4 offset to Y to spawn OUTSIDE the house collision
+        this.player.y = this.houseLocation.y + 4; 
 
         // Update cooldown
         this.lastTeleportTime = Date.now();
