@@ -29,43 +29,91 @@ class CombineSystem {
             }
         }
 
-        // 2.5 Validation: Prevent adding same instance twice
-        const isDuplicate = this.slots.some(
-            (s) =>
-                s &&
-                s.sourceIndex === sourceIndex &&
-                s.sourceType === sourceType
-        );
-
-        if (isDuplicate) {
-            showDialog('This Pokemon is already added!');
-            return false;
-        }
-
         // 3. Validation: Max Merge Level
         if ((pokemon.mergeCount || 0) >= 3) {
             showDialog('This Pokemon is already at Max Merge Level!');
             return false;
         }
 
+        // 4. REMOVE FROM SOURCE IMMEDIATELY
+        // We rely on Global 'currentBox' if type is 'box'.
+        // This prevents duplication bugs.
+        if (sourceType === 'party') {
+            this.player.team.splice(sourceIndex, 1);
+        } else if (sourceType === 'box') {
+            // Check if currentBox is defined (Global from main.js)
+            if (typeof currentBox === 'undefined') {
+                console.error("Critical: currentBox is undefined in addToSlot");
+                showDialog("Error: Box data missing.");
+                return false;
+            }
+            this.player.storage[currentBox][sourceIndex] = null;
+        }
+
         // Add to slot
         this.slots[slotIndex] = {
             data: pokemon,
             sourceIndex: sourceIndex,
-            sourceType: sourceType // 'box' or 'party'
+            sourceType: sourceType,
+            sourceBox: (typeof currentBox !== 'undefined') ? currentBox : 0
         };
 
         return true;
     }
 
     removeFromSlot(index) {
-        if (this.slots[index]) {
-            // Logic to return item is handled by simply clearing the slot
-            // because we don't delete the original until the final merge button is pressed
+        const slot = this.slots[index];
+        if (!slot) return false;
+
+        // RETURN LOGIC
+        let placed = false;
+        let returnLocation = "";
+
+        // 1. Try to return to Party first
+        if (this.player.team.length < 6) {
+            this.player.team.push(slot.data);
+            placed = true;
+            returnLocation = "Party";
+        } else {
+            // 2. Try to return to Original Box (if known) or Current Box
+            // We trust the slot.sourceBox if it exists, otherwise fallback
+            let targetBox = (typeof slot.sourceBox !== 'undefined') ? slot.sourceBox :
+                (typeof currentBox !== 'undefined' ? currentBox : 0);
+
+            // Try target box
+            for (let i = 0; i < 25; i++) {
+                if (this.player.storage[targetBox][i] === null) {
+                    this.player.storage[targetBox][i] = slot.data;
+                    placed = true;
+                    returnLocation = `Box ${targetBox + 1}`;
+                    break;
+                }
+            }
+
+            // 3. If target box full, find ANY empty box
+            if (!placed) {
+                for (let b = 0; b < 100; b++) {
+                    for (let i = 0; i < 25; i++) {
+                        if (this.player.storage[b][i] === null) {
+                            this.player.storage[b][i] = slot.data;
+                            placed = true;
+                            returnLocation = `Box ${b + 1}`;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+            }
+        }
+
+        if (placed) {
+            showDialog(`${slot.data.name} returned to ${returnLocation}.`);
             this.slots[index] = null;
             return true;
+        } else {
+            showDialog("No space in Party or PC! Cannot remove.");
+            return false;
         }
-        return false;
     }
 
     canMerge() {
@@ -106,13 +154,10 @@ class CombineSystem {
         const newMergeCount = currentMaxMerge + 1;
 
         // 3. LEVEL BOOST CALCULATION
-        // Boost = 3 * (Current Merge Count + 1)
-        // 1st Merge = +3 Levels. 2nd Merge = +6 Levels. 3rd Merge = +9 Levels.
         const levelBoost = 3 * newMergeCount;
         const newLevel = p1.level + levelBoost;
 
         // 4. BOOST STATS TO MATCH NEW LEVEL
-        // We add +2 to each stat for every level gained to reflect growth
         newStats.strength += levelBoost * 2;
         newStats.defense += levelBoost * 2;
         newStats.speed += levelBoost * 2;
@@ -136,18 +181,9 @@ class CombineSystem {
             hp: (newLevel * 5) + newStats.hp // Full heal
         };
 
-        // 7. DELETE Ingredients from Source
-        const sources = [...this.slots].sort(
-            (a, b) => b.sourceIndex - a.sourceIndex
-        );
-
-        sources.forEach((slot) => {
-            if (slot.sourceType === 'party') {
-                this.player.team.splice(slot.sourceIndex, 1);
-            } else if (slot.sourceType === 'box') {
-                this.player.storage[currentBox][slot.sourceIndex] = null;
-            }
-        });
+        // 7. CLEAR SLOTS
+        // Source Pokemon were already removed from party/PC in addToSlot
+        this.slots = [null, null, null];
 
         // 8. Add Result to Party (or Box if full)
         if (this.player.team.length < 6) {
@@ -155,9 +191,12 @@ class CombineSystem {
             showDialog(`Merge Successful! ${newName} (Lv.${newLevel}) created!`);
         } else {
             let placed = false;
+            // Try current box first (if available)
+            let targetBox = (typeof currentBox !== 'undefined') ? currentBox : 0;
+
             for (let i = 0; i < 25; i++) {
-                if (this.player.storage[currentBox][i] === null) {
-                    this.player.storage[currentBox][i] = mergedPokemon;
+                if (this.player.storage[targetBox][i] === null) {
+                    this.player.storage[targetBox][i] = mergedPokemon;
                     placed = true;
                     showDialog(`Merge Successful! Sent ${newName} (Lv.${newLevel}) to Box!`);
                     break;
@@ -167,16 +206,28 @@ class CombineSystem {
                 showDialog('Box and Party full! Pokemon lost in the void...');
         }
 
-        // 9. Deduct Cost & Reset
+        // 9. Deduct Cost
         this.player.money -= this.cost;
-        this.slots = [null, null, null];
 
         // Update UI
-        updateHUD();
-        renderPC();
+        // Assuming updateHUD and renderPC are global functions from main.js
+        if (typeof updateHUD === 'function') updateHUD();
+        if (typeof renderPC === 'function') renderPC();
     }
 
     cleanName(name) {
         return name.replace(/✨/g, '').trim();
+    }
+
+    getSaveData() {
+        return {
+            slots: this.slots
+        };
+    }
+
+    loadSaveData(data) {
+        if (data && data.slots) {
+            this.slots = data.slots;
+        }
     }
 }

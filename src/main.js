@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v0.5.2'; // Bumped Version
+const VERSION = 'v1.0.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1219,6 +1219,7 @@ function saveGame() {
         arena: (typeof arenaSystem !== 'undefined') ? arenaSystem.getSaveData() : null,
         rival: (typeof rivalSystem !== 'undefined') ? rivalSystem.getSaveData() : null,
         home: (typeof homeSystem !== 'undefined') ? homeSystem.getSaveData() : null,
+        merge: (typeof mergeSystem !== 'undefined') ? mergeSystem.getSaveData() : null,
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
         defense: { lastRaidDay: defenseSystem.lastRaidDay },
 
@@ -1340,6 +1341,11 @@ function loadGame() {
                     });
                 }
             }
+        }
+
+        // 5.5 Restore Merge System (Fix for lost pokemon)
+        if (data.merge && typeof mergeSystem !== 'undefined') {
+            mergeSystem.loadSaveData(data.merge);
         }
 
         // 6. Restore Time
