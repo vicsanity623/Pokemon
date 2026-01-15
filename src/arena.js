@@ -1,264 +1,181 @@
-/**
- * Arena System - Endless Boss Battle Mode
- * Features:
- * - Spawns pyramid building on Day 2
- * - Persistent Bosses (Same boss stays until defeated)
- * - Catch defeated bosses with arena stats
- */
-
 class ArenaSystem {
     constructor(player) {
         this.player = player;
-        this.stage = 1;
-        this.pyramidLocation = null; // {x, y}
-        this.hasSpawned = false; // Track if pyramid has been placed
-        this.currentBossData = null; // --- NEW: Stores the active boss ID until defeated ---
-
-        // Fully Evolved Pokemon IDs for Bosses
-        this.bossPool = [
-            3, 6, 9, 12, 15, 18, 26, 31, 34, 36, 40, 45, 62, 65, 68, 71, 76,
-            80, 82, 85, 87, 89, 91, 94, 97, 99, 101, 103, 105, 106, 107, 108,
-            110, 112, 115, 117, 119, 121, 122, 127, 130, 131, 134, 135, 136,
-            139, 141, 142, 143, 148, 149
-        ];
-
-        // Legendary IDs (Unlock after Stage 10)
-        this.legendaries = [144, 145, 146, 150, 151];
-
-        // Shuffle the pool on initialization
-        this.shuffledPool = this.shuffleArray([...this.bossPool]);
-        this.poolIndex = 0;
+        this.stage = 1; // Global counter (e.g., 152 = Tier 2, Stage 1)
+        this.isActive = false;
     }
 
     /**
-     * Shuffle array using Fisher-Yates algorithm
+     * Determines the current Tier (I, II, III...) based on stage count
      */
-    shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
+    getTier() {
+        return Math.floor((this.stage - 1) / 151) + 1;
     }
 
     /**
-     * Get next boss ID in rotation
+     * Determines the relative stage (1-151) within the current Tier
      */
-    getNextBossId() {
-        let pool = [...this.bossPool];
-
-        // Add legendaries after stage 10
-        if (this.stage > 10) {
-            pool = pool.concat(this.legendaries);
-        }
-
-        // Use pool index to ensure all bosses are used before repeating
-        if (this.poolIndex >= this.shuffledPool.length) {
-            // Reshuffle and restart
-            this.shuffledPool = this.shuffleArray([...pool]);
-            this.poolIndex = 0;
-        }
-
-        const bossId = this.shuffledPool[this.poolIndex];
-        this.poolIndex++;
-        return bossId;
+    getRelativeStage() {
+        return ((this.stage - 1) % 151) + 1;
     }
 
     /**
-     * Called in game loop to check if pyramid should spawn
+     * Converts number to Roman Numeral for "Diablo Style" display
      */
-    checkSpawn(world, gameDays) {
-        // Only spawn once, on Day 2 or later
-        if (gameDays >= 2 && !this.hasSpawned && !this.pyramidLocation) {
-            this.spawnPyramid(world);
-        }
+    getRomanTier() {
+        const tier = this.getTier();
+        const romans = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+        return romans[tier] || `T${tier}`;
     }
 
     /**
-     * Spawn the pyramid building near the player
+     * Returns the Pokedex ID the player should face.
+     * Maps base forms to their Final Evolution.
      */
-    spawnPyramid(world) {
-        // Calculate position within 10-20 tiles from player
-        const distance = 10 + Math.floor(Math.random() * 10); // 10-20 tiles
-        const angle = Math.random() * Math.PI * 2; // Random direction
+    getBossID() {
+        const dexNum = this.getRelativeStage(); // 1 to 151
+        
+        // 1. Handle Legendaries explicitly
+        if (dexNum === 150) return 150; // Mewtwo
+        if (dexNum === 151) return 151; // Mew
 
-        let x = Math.round(this.player.x + Math.cos(angle) * distance);
-        let y = Math.round(this.player.y + Math.sin(angle) * distance);
-
-        // Find valid land (not water)
-        let attempts = 0;
-        while (attempts < 50) {
-            if (world.getTile(x, y) !== 'water') {
-                this.pyramidLocation = { x: x, y: y };
-                this.hasSpawned = true;
-
-                // Add to world buildings
-                world.buildings.push({
-                    type: 'arena',
-                    x: x,
-                    y: y
-                });
-
-                showDialog(
-                    '⚠️ A mysterious Pyramid appeared nearby!',
-                    4000
-                );
-                return;
-            }
-
-            // Try new random location
-            x = Math.round(
-                this.player.x + Math.cos(Math.random() * Math.PI * 2) * distance
-            );
-            y = Math.round(
-                this.player.y + Math.sin(Math.random() * Math.PI * 2) * distance
-            );
-            attempts++;
-        }
-
-        console.warn('Could not find valid spawn location for pyramid');
-    }
-
-    /**
-     * Player enters the arena
-     */
-    enter() {
-        // Check if player has any Pokemon
-        if (this.player.team.length === 0) {
-            showDialog('You need Pokemon to enter the Arena!', 3000);
-            return;
-        }
-
-        // Show confirmation
-        setTimeout(() => {
-            if (
-                confirm(
-                    `Enter Arena Stage ${this.stage}?\n\nFace a powerful boss and earn rewards!`
-                )
-            ) {
-                this.startBossBattle();
-            }
-        }, 100);
-    }
-
-    /**
-     * Start the boss battle
-     */
-    async startBossBattle() {
-        let bossId;
-
-        // --- PERSISTENCE CHECK ---
-        // If we already generated a boss for this stage (and haven't beat it), use it.
-        // This ensures if you lose, the same Pokemon is waiting for you.
-        if (this.currentBossData && this.currentBossData.stage === this.stage) {
-            bossId = this.currentBossData.id;
-            console.log(`Resuming battle against Boss ID: ${bossId}`);
-        } else {
-            // GENERATE NEW BOSS
-            bossId = this.getNextBossId();
-            
-            // Save it immediately
-            this.currentBossData = {
-                id: bossId,
-                stage: this.stage
-            };
-            console.log(`New Boss Generated: ${bossId}`);
-        }
-
-        // Calculate Boss Level & Stats
-        // Level increases by 5 every stage, starting at 20
-        const bossLevel = 20 + this.stage * 5;
-
-        // Trigger Battle with Boss Flag
-        battleSystem.startBattle(false, 0, true, {
-            id: bossId,
-            level: bossLevel,
-            stage: this.stage
-        });
-    }
-
-    /**
-     * Called when player wins a stage
-     */
-    winStage() {
-        // 1. Calculate Rewards
-        const moneyReward = 1000 + this.stage * 500;
-        this.player.money += moneyReward;
-
-        // 2. Item Rewards (random)
-        const items = [
-            'Ultra Ball',
-            'Hyper Potion',
-            'Rare Candy',
-            'Full Restore'
-        ];
-        const wonItem = items[Math.floor(Math.random() * items.length)];
-        if (!this.player.bag[wonItem]) this.player.bag[wonItem] = 0;
-        this.player.bag[wonItem] += 2;
-
-        showDialog(
-            `🏆 VICTORY! Stage ${this.stage} Complete!\n💰 Earned $${moneyReward}\n🎁 Received 2x ${wonItem}`,
-            5000
-        );
-
-        // 3. Progress to next stage
-        this.stage++;
-
-        // --- CLEAR BOSS DATA ---
-        // We won, so we clear the current boss to allow a new one next stage
-        this.currentBossData = null;
-
-        // 4. Heal Player slightly (not full, to maintain challenge)
-        this.player.team.forEach((p) => {
-            if (p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + 50);
-        });
-
-        // Update HUD
-        if (typeof updateHUD === 'function') {
-            updateHUD();
-        }
-
-        // 5. Ask if player wants to continue or leave
-        setTimeout(() => {
-            const continueArena = confirm(
-                `Continue to Stage ${this.stage}?\n\n(Cancel to return to world)`
-            );
-            if (continueArena) {
-                // Wait a moment, then start next battle
-                setTimeout(() => {
-                    this.startBossBattle();
-                }, 500);
-            } else {
-                showDialog('Returning to the world...', 2000);
-            }
-        }, 1000);
-    }
-
-    /**
-     * Serialize arena data for saving
-     */
-    getSaveData() {
-        return {
-            stage: this.stage,
-            pyramidLocation: this.pyramidLocation,
-            hasSpawned: this.hasSpawned,
-            poolIndex: this.poolIndex,
-            shuffledPool: this.shuffledPool,
-            // SAVE THE ACTIVE BOSS
-            currentBossData: this.currentBossData 
+        // 2. Force Evolution Map (Gen 1)
+        // Maps any ID to its final stage ID
+        const FINAL_EVO_MAP = {
+            // Starters
+            1: 3, 2: 3, 3: 3,       // Bulbasaur line -> Venusaur
+            4: 6, 5: 6, 6: 6,       // Charmander line -> Charizard
+            7: 9, 8: 9, 9: 9,       // Squirtle line -> Blastoise
+            // Bugs
+            10: 12, 11: 12, 12: 12, // Caterpie -> Butterfree
+            13: 15, 14: 15, 15: 15, // Weedle -> Beedrill
+            // Birds / Normal
+            16: 18, 17: 18, 18: 18, // Pidgey -> Pidgeot
+            19: 20, 20: 20,         // Rattata -> Raticate
+            21: 22, 22: 22,         // Spearow -> Fearow
+            23: 24, 24: 24,         // Ekans -> Arbok
+            25: 26, 26: 26,         // Pikachu -> Raichu
+            27: 28, 28: 28,         // Sandshrew -> Sandslash
+            29: 31, 30: 31, 31: 31, // Nidoran F -> Nidoqueen
+            32: 34, 33: 34, 34: 34, // Nidoran M -> Nidoking
+            35: 36, 36: 36,         // Clefairy -> Clefable
+            37: 38, 38: 38,         // Vulpix -> Ninetales
+            39: 40, 40: 40,         // Jigglypuff -> Wigglytuff
+            41: 42, 42: 42,         // Zubat -> Golbat
+            43: 45, 44: 45, 45: 45, // Oddish -> Vileplume
+            46: 47, 47: 47,         // Paras -> Parasect
+            48: 49, 49: 49,         // Venonat -> Venomoth
+            50: 51, 51: 51,         // Diglett -> Dugtrio
+            52: 53, 53: 53,         // Meowth -> Persian
+            54: 55, 55: 55,         // Psyduck -> Golduck
+            56: 57, 57: 57,         // Mankey -> Primeape
+            58: 59, 59: 59,         // Growlithe -> Arcanine
+            60: 62, 61: 62, 62: 62, // Poliwag -> Poliwrath
+            63: 65, 64: 65, 65: 65, // Abra -> Alakazam
+            66: 68, 67: 68, 68: 68, // Machop -> Machamp
+            69: 71, 70: 71, 71: 71, // Bellsprout -> Victreebel
+            72: 73, 73: 73,         // Tentacool -> Tentacruel
+            74: 76, 75: 76, 76: 76, // Geodude -> Golem
+            77: 78, 78: 78,         // Ponyta -> Rapidash
+            79: 80, 80: 80,         // Slowpoke -> Slowbro
+            81: 82, 82: 82,         // Magnemite -> Magneton
+            83: 83,                 // Farfetch'd (No Evo)
+            84: 85, 85: 85,         // Doduo -> Dodrio
+            86: 87, 87: 87,         // Seel -> Dewgong
+            88: 89, 89: 89,         // Grimer -> Muk
+            90: 91, 91: 91,         // Shellder -> Cloyster
+            92: 94, 93: 94, 94: 94, // Gastly -> Gengar
+            95: 95,                 // Onix (No Evo in Gen 1)
+            96: 97, 97: 97,         // Drowzee -> Hypno
+            98: 99, 99: 99,         // Krabby -> Kingler
+            100: 101, 101: 101,     // Voltorb -> Electrode
+            102: 103, 103: 103,     // Exeggcute -> Exeggutor
+            104: 105, 105: 105,     // Cubone -> Marowak
+            106: 106,               // Hitmonlee
+            107: 107,               // Hitmonchan
+            108: 108,               // Lickitung
+            109: 110, 110: 110,     // Koffing -> Weezing
+            111: 112, 112: 112,     // Rhyhorn -> Rhydon
+            113: 113,               // Chansey
+            114: 114,               // Tangela
+            115: 115,               // Kangaskhan
+            116: 117, 117: 117,     // Horsea -> Seadra
+            118: 119, 119: 119,     // Goldeen -> Seaking
+            120: 121, 121: 121,     // Staryu -> Starmie
+            122: 122,               // Mr. Mime
+            123: 123,               // Scyther
+            124: 124,               // Jynx
+            125: 125,               // Electabuzz
+            126: 126,               // Magmar
+            127: 127,               // Pinsir
+            128: 128,               // Tauros
+            129: 130, 130: 130,     // Magikarp -> Gyarados
+            131: 131,               // Lapras
+            132: 132,               // Ditto
+            // Eevee Handling (Randomize Eeveelution)
+            133: 134, 134: 134, 135: 135, 136: 136, 
+            137: 137,               // Porygon
+            138: 139, 139: 139,     // Omanyte -> Omastar
+            140: 141, 141: 141,     // Kabuto -> Kabutops
+            142: 142,               // Aerodactyl
+            143: 143,               // Snorlax
+            144: 144, 145: 145, 146: 146, // Birds
+            147: 149, 148: 149, 149: 149  // Dratini -> Dragonite
         };
+
+        return FINAL_EVO_MAP[dexNum] || dexNum;
     }
 
-    /**
-     * Load arena data from save
-     */
-    loadSaveData(data) {
-        this.stage = data.stage || 1;
-        this.pyramidLocation = data.pyramidLocation || null;
-        this.hasSpawned = data.hasSpawned || false;
-        this.poolIndex = data.poolIndex || 0;
-        this.shuffledPool = data.shuffledPool || this.shuffleArray([...this.bossPool]);
-        // LOAD THE ACTIVE BOSS
-        this.currentBossData = data.currentBossData || null;
+    startStage() {
+        this.isActive = true;
+        const tier = this.getTier();
+        const relativeStage = this.getRelativeStage();
+
+        // --- DIFFICULTY SCALING ---
+        // Tier 1 Base Level = 25.
+        // Tier 2 Base Level = 50.
+        // Tier 3 Base Level = 75.
+        const tierBaseLevel = 25 * tier; 
+        
+        // Add levels based on progress (approx +0.3 level per stage)
+        const stageBonus = Math.floor(relativeStage / 3);
+        
+        const finalLevel = tierBaseLevel + stageBonus;
+
+        // Shiny Chance: 5% normally, 100% if it's a Legend or Tier 5+
+        const isLegend = (relativeStage >= 144 && relativeStage <= 146) || relativeStage >= 150;
+        const isShiny = (tier >= 5 || Math.random() < 0.05);
+
+        const config = {
+            id: this.getBossID(),
+            level: finalLevel,
+            isShiny: isShiny,
+            stage: `${this.getRomanTier()} - ${relativeStage}`
+        };
+
+        // If Eevee (133), pick random Eeveelution
+        if (config.id === 134) {
+            const eevees = [134, 135, 136]; // Vaporeon, Jolteon, Flareon
+            config.id = eevees[Math.floor(Math.random() * 3)];
+        }
+
+        console.log(`Starting Arena Tier ${tier} Stage ${relativeStage} vs ID ${config.id}`);
+
+        // Launch Battle
+        battleSystem.startBattle(false, 0, true, config);
+    }
+
+    winStage() {
+        this.stage++;
+        this.isActive = false;
+        
+        // Optional: Save game automatically after every boss?
+        if (typeof saveGame === 'function') saveGame();
+
+        // 50% chance to immediately continue to next stage logic could go here
+        // but typically we wait for player input
     }
 }
+
+// Global Instance
+const arenaSystem = new ArenaSystem(null);
