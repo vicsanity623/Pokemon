@@ -643,7 +643,7 @@ canvas {
     font-family: monospace;
     z-index: 50;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-    transition: bottom 0.3s ease;
+    transition: bottom 1.3s ease;
 }
 
 .hud-battle {
@@ -692,7 +692,7 @@ canvas {
 #hud-xp-fill {
     height: 100%;
     background: linear-gradient(90deg, #3498db, #2980b9);
-    transition: width 0.3s ease;
+    transition: width 1.3s ease;
 }
 
 #npc-prompt {
@@ -2453,7 +2453,7 @@ body {
     z-index: 90;
     /* Below battle UI but above map */
     pointer-events: auto;
-    transition: all 0.3s ease;
+    transition: all 1.3s ease;
 }
 
 /* The Toggle Button */
@@ -2484,7 +2484,7 @@ body {
     flex-direction: column;
     gap: 8px;
     transform-origin: top;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform 1.3s ease, opacity 0.3s ease;
 }
 
 /* Individual Pokemon Item */
@@ -2656,7 +2656,7 @@ body {
     height: 100%;
     width: 100%;
     background: linear-gradient(90deg, #e74c3c, #c0392b);
-    transition: width 0.3s ease;
+    transition: width 1.3s ease;
 }
 
 /* --- SQUAD BATTLE SYSTEM STYLES --- */
@@ -2681,7 +2681,7 @@ body {
     /* Doubled from 100px */
     height: 200px;
     /* Doubled from 100px */
-    transition: transform 0.3s ease;
+    transition: transform 1.3s ease;
 }
 
 /* Zig-Zag Formation - Adjusted for 200px size */
@@ -2738,7 +2738,7 @@ body {
 .sprite-hp-fill {
     height: 100%;
     background: #2ecc71;
-    transition: width 0.3s ease;
+    transition: width 1.3s ease;
 }
 
 /* NEW: XP Bars positioned directly under HP bars */
@@ -2900,4 +2900,46 @@ body {
         font-size: 9px !important;
         padding: 5px !important;
     }
+}
+
+/* --- ANIME XP BAR EFFECTS --- */
+
+/* The "Active" class we will toggle via JS */
+.anime-xp-active {
+    /* Force the transition to take 3 seconds */
+    transition: width 3.0s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    
+    /* Explosive Gradient: Blue -> Cyan -> White -> Transparent */
+    background: linear-gradient(90deg, #2980b9 0%, #3498db 50%, #00ffff 90%, #ffffff 100%) !important;
+    background-size: 200% 100% !important;
+    
+    /* Glowing Aura */
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 30px rgba(52, 152, 219, 0.6) !important;
+    
+    /* Make the texture move rapidly */
+    animation: xp-sizzle 0.2s linear infinite !important;
+    
+    position: relative;
+    z-index: 100;
+}
+
+/* The "Spark" at the tip of the bar */
+.anime-xp-active::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translate(50%, -50%);
+    width: 10px;
+    height: 15px; /* Taller than the bar for flare effect */
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #fff, 0 0 20px #00ffff;
+    z-index: 101;
+}
+
+/* Sizzling animation for the bar texture */
+@keyframes xp-sizzle {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
 }
