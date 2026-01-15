@@ -2902,6 +2902,35 @@ body {
     }
 }
 
+/* --- RIVAL CUTSCENE SPRITE --- */
+#rival-sprite {
+    position: absolute;
+    /* Default size - JS might resize or move this */
+    width: 64px; 
+    height: 64px;
+    
+    /* Center by default, JS usually overrides top/left */
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    z-index: 80; /* Higher than map (canvas), lower than UI (100+) */
+    image-rendering: pixelated;
+    
+    /* Smooth movement if the JS animates him walking */
+    transition: top 0.5s linear, left 0.5s linear; 
+}
+
+/* Optional: Add a "Slide In" animation class if your JS uses it */
+.slide-in-right {
+    animation: slideInRight 1s ease-out forwards;
+}
+
+@keyframes slideInRight {
+    from { transform: translate(200%, -50%); opacity: 0; }
+    to { transform: translate(-50%, -50%); opacity: 1; }
+}
+
 /* --- ANIME XP BAR EFFECTS --- */
 
 /* The "Active" class we will toggle via JS */
