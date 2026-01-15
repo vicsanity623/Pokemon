@@ -2805,3 +2805,99 @@ body {
 .squad-mode #player-stat-box {
     display: none;
 }
+
+/* ========================================= */
+/*      MOBILE LANDSCAPE FIXES               */
+/* ========================================= */
+
+@media (orientation: landscape) and (max-height: 500px) {
+
+    /* 1. Fix Party Lineup Falling Offscreen */
+    #player-party-container {
+        top: 20px !important;
+        left: 10px !important;
+        width: 150px !important;
+        height: 100% !important;
+        justify-content: flex-start !important;
+        /* Stack from top */
+        gap: 5px !important;
+        /* Small gap */
+    }
+
+    .party-member-wrapper {
+        width: 60px !important;
+        /* Drastically reduced */
+        height: 60px !important;
+        margin: 0 !important;
+        /* Remove zig-zag */
+    }
+
+    .party-member-wrapper:nth-child(even),
+    .party-member-wrapper:nth-child(odd) {
+        margin-left: 0 !important;
+        /* Enforce straight line */
+    }
+
+    .sprite-hp-bar {
+        width: 50px !important;
+        top: -15px !important;
+        height: 4px !important;
+    }
+
+    .sprite-exp-bar {
+        width: 50px !important;
+        top: -10px !important;
+        height: 2px !important;
+    }
+
+    .sprite-level-text {
+        font-size: 8px !important;
+        top: -25px !important;
+    }
+
+    .party-member-wrapper.active-turn::after {
+        width: 50px !important;
+        height: 20px !important;
+        bottom: 0 !important;
+    }
+
+    /* 2. Safe Area / Button Lift Fix (iOS Home Bar) */
+    #battle-menu,
+    #move-selector {
+        bottom: 0 !important;
+        /* Reset absolute bottom but add padding */
+        padding-bottom: 25px !important;
+        /* Use padding to clear home bar */
+        height: 120px !important;
+        /* Ensure height fits */
+        border-bottom: 4px solid gold; /* Visual border */
+        box-sizing: border-box; /* Ensure padding doesn't affect total height calculation negatively */
+    }
+
+    /* Lift Action Buttons (A/B) if they exist */
+    #action-btns {
+        bottom: 40px !important;
+        /* Lift well above home bar */
+    }
+
+    /* Lift Mobile D-Pad if it exists */
+    #mobile-controls {
+        bottom: 40px !important;
+    }
+    
+    /* Ensure Bottom HUD is visible */
+    #bottom-hud {
+        bottom: 130px !important; /* Above the lifted menu */
+    }
+
+    /* Adjust battle text area to not be squashed */
+    #battle-text {
+        padding: 10px !important;
+        font-size: 10px !important;
+    }
+
+    .battle-options button, #move-selector button {
+        font-size: 9px !important;
+        padding: 5px !important;
+    }
+}
