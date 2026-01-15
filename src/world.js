@@ -134,14 +134,14 @@ class World {
         // --- DESERT BIOME (East / Positive X) ---
         // Changed to 50 so it's easier to find
         if (x > 50 && moisture < 0.4) {
-             if (detail > 0.65) return 'sand_tall'; // <--- NEW: Sand Dunes
-             return 'sand';
+            if (detail > 0.65) return 'sand_tall'; // <--- NEW: Sand Dunes
+            return 'sand';
         }
 
         // --- STANDARD BIOME (South/West) ---
         if (detail > 0.65) return 'grass_tall';
         if (moisture > 0.7 && detail > 0.5) return 'flowers';
-        
+
         return 'grass';
     }
 
@@ -152,15 +152,15 @@ class World {
             case 'grass_tall': return '#388E3C';
             case 'grass': return '#66BB6A';
             case 'flowers': return '#E57373';
-            
+
             // Desert Colors
             case 'sand': return '#FDD835';
             case 'sand_tall': return '#FBC02D'; // Darker sand (Encounter)
-            
+
             // Snow Colors
             case 'snow': return '#ECEFF1';
             case 'snow_tall': return '#CFD8DC'; // Darker snow (Encounter)
-            
+
             case 'center': return '#c0392b';
             case 'store': return '#2980b9';
             default: return '#222';
@@ -277,12 +277,32 @@ class World {
             }
         }
     }
+
+    isBlocked(x, y) {
+        // 1. Water Check
+        if (this.getTile(x, y) === 'water') return true;
+
+        // 2. Building Collision
+        for (let b of this.buildings) {
+            if (b.type === 'home') {
+                // House 3x3 Collision (Center +/- 1)
+                if (Math.abs(x - b.x) <= 1 && Math.abs(y - b.y) <= 1) return true;
+            } else {
+                // Standard 1x1 Collision
+                if (Math.round(b.x) === x && Math.round(b.y) === y) return true;
+            }
+        }
+        return false;
+    }
 }
 
 class NPC {
     constructor(x, y, name, type, dialog) {
         this.x = x;
         this.y = y;
+        this.prevX = x;
+        this.prevY = y;
+        this.moveStartTime = 0;
         this.startX = x;
         this.startY = y;
         this.name = name;
@@ -309,7 +329,10 @@ class NPC {
                 Math.abs(this.y + dy - this.startY) < 5
             ) {
                 // Check collision
-                if (world.getTile(this.x + dx, this.y + dy) !== 'water') {
+                if (!world.isBlocked(this.x + dx, this.y + dy)) {
+                    this.prevX = this.x;
+                    this.prevY = this.y;
+                    this.moveStartTime = Date.now();
                     this.x += dx;
                     this.y += dy;
                 }
@@ -410,6 +433,22 @@ class Renderer {
         this.sprite = new Image();
         this.sprite.src =
             'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/heartgold-soulsilver/25.png';
+
+        // Load House Sprite
+        this.houseImg = new Image();
+        this.houseImg.src = '290pxhouse.png';
+
+        // Load Daycare Sprite
+        this.daycareImg = new Image();
+        this.daycareImg.src = 'daycare.png';
+
+        // Load Villager Sprite
+        this.villagerImg = new Image();
+        this.villagerImg.src = 'villager.png';
+
+        // Load Herbalist Sprite
+        this.herbalistImg = new Image();
+        this.herbalistImg.src = 'herbalist.png';
 
         this.particles = [];
     }
@@ -569,247 +608,245 @@ class Renderer {
             }
         }
 
-        // Draw Poke Centers (Buildings)
-        this.world.buildings.forEach((building) => {
-            if (building.type === 'pokecenter') {
-                let drawX =
-                    (building.x - this.player.x) * TILE_SIZE +
-                    this.canvas.width / 2 -
-                    TILE_SIZE / 2;
-                let drawY =
-                    (building.y - this.player.y) * TILE_SIZE +
-                    this.canvas.height / 2 -
-                    TILE_SIZE / 2;
+        this.ctx.save();
+        // Camera translation removed (using relative coords)
 
-                // Draw building platform/base
-                this.ctx.fillStyle = '#e74c3c';
-                this.ctx.fillRect(
-                    Math.floor(drawX) - 10,
-                    Math.floor(drawY) - 10,
-                    TILE_SIZE + 20,
-                    TILE_SIZE + 20
-                );
+        /**
+         * RENDER LIST SYSTEM
+         * We collect all entities into a list, sort by Y coordinate, and draw in order.
+         * This ensures correct z-indexing (stuff lower on screen covers stuff higher).
+         */
+        let renderList = [];
 
-                // Glow effect
-                this.ctx.shadowBlur = 15;
-                this.ctx.shadowColor = '#3498db';
-
-                // Hospital emoji
-                this.ctx.font = '50px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(
-                    '🏥',
-                    Math.floor(drawX) + TILE_SIZE / 2,
-                    Math.floor(drawY) + TILE_SIZE / 2
-                );
-
-                // Reset shadow
-                this.ctx.shadowBlur = 0;
-            } else if (building.type === 'arena') {
-                // Draw Arena Pyramid
-                let drawX =
-                    (building.x - this.player.x) * TILE_SIZE +
-                    this.canvas.width / 2 -
-                    TILE_SIZE / 2;
-                let drawY =
-                    (building.y - this.player.y) * TILE_SIZE +
-                    this.canvas.height / 2 -
-                    TILE_SIZE / 2;
-
-                // Draw large base
-                this.ctx.fillStyle = '#f1c40f'; // Gold
-                this.ctx.fillRect(
-                    Math.floor(drawX) - TILE_SIZE / 2,
-                    Math.floor(drawY) - TILE_SIZE / 2,
-                    TILE_SIZE * 2,
-                    TILE_SIZE * 2
-                );
-
-                // Draw pyramid shape (triangle outline)
-                this.ctx.strokeStyle = '#f39c12';
-                this.ctx.lineWidth = 3;
-                this.ctx.beginPath();
-                this.ctx.moveTo(
-                    Math.floor(drawX) + TILE_SIZE / 2,
-                    Math.floor(drawY) - TILE_SIZE / 2
-                ); // top
-                this.ctx.lineTo(
-                    Math.floor(drawX) - TILE_SIZE / 2,
-                    Math.floor(drawY) + TILE_SIZE * 1.5
-                ); // bottom left
-                this.ctx.lineTo(
-                    Math.floor(drawX) + TILE_SIZE * 1.5,
-                    Math.floor(drawY) + TILE_SIZE * 1.5
-                ); // bottom right
-                this.ctx.closePath();
-                this.ctx.stroke();
-
-                // Glowing center entrance
-                this.ctx.shadowBlur = 25;
-                this.ctx.shadowColor = 'white';
-                this.ctx.fillStyle = '#fff';
-                this.ctx.fillRect(
-                    Math.floor(drawX) + TILE_SIZE * 0.3,
-                    Math.floor(drawY) + TILE_SIZE,
-                    TILE_SIZE * 0.4,
-                    TILE_SIZE * 0.5
-                );
-
-                // Reset shadow
-                this.ctx.shadowBlur = 0;
-
-                // Text Label
-                this.ctx.fillStyle = '#000';
-                this.ctx.font = 'bold 14px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText(
-                    'ARENA',
-                    Math.floor(drawX) + TILE_SIZE / 2,
-                    Math.floor(drawY) + TILE_SIZE * 1.8
-                );
-            } else if (building.type === 'home') {
-                // Draw Player's Home
-                let drawX =
-                    (building.x - this.player.x) * TILE_SIZE +
-                    this.canvas.width / 2 -
-                    TILE_SIZE / 2;
-                let drawY =
-                    (building.y - this.player.y) * TILE_SIZE +
-                    this.canvas.height / 2 -
-                    TILE_SIZE / 2;
-
-                // Shadow/base
-                this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                this.ctx.fillRect(
-                    Math.floor(drawX) - 5,
-                    Math.floor(drawY) + TILE_SIZE,
-                    TILE_SIZE + 10,
-                    10
-                );
-
-                // House walls (beige)
-                this.ctx.fillStyle = '#f5deb3';
-                this.ctx.fillRect(
-                    Math.floor(drawX),
-                    Math.floor(drawY) + 20,
-                    TILE_SIZE,
-                    TILE_SIZE - 20
-                );
-
-                // Roof (triangular blue)
-                this.ctx.fillStyle = '#3498db';
-                this.ctx.beginPath();
-                this.ctx.moveTo(Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY));
-                this.ctx.lineTo(Math.floor(drawX) - 10, Math.floor(drawY) + 30);
-                this.ctx.lineTo(Math.floor(drawX) + TILE_SIZE + 10, Math.floor(drawY) + 30);
-                this.ctx.closePath();
-                this.ctx.fill();
-
-                // Door (brown)
-                this.ctx.fillStyle = '#8B4513';
-                this.ctx.fillRect(
-                    Math.floor(drawX) + TILE_SIZE / 2 - 12,
-                    Math.floor(drawY) + 60,
-                    24,
-                    40
-                );
-
-                // Door knob
-                this.ctx.fillStyle = '#FFD700';
-                this.ctx.beginPath();
-                this.ctx.arc(
-                    Math.floor(drawX) + TILE_SIZE / 2 + 8,
-                    Math.floor(drawY) + 80,
-                    3,
-                    0,
-                    Math.PI * 2
-                );
-                this.ctx.fill();
-
-                // Window
-                this.ctx.fillStyle = '#87CEEB';
-                this.ctx.fillRect(
-                    Math.floor(drawX) + 15,
-                    Math.floor(drawY) + 35,
-                    20,
-                    20
-                );
-
-                // Window cross
-                this.ctx.strokeStyle = '#8B4513';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                this.ctx.moveTo(Math.floor(drawX) + 25, Math.floor(drawY) + 35);
-                this.ctx.lineTo(Math.floor(drawX) + 25, Math.floor(drawY) + 55);
-                this.ctx.moveTo(Math.floor(drawX) + 15, Math.floor(drawY) + 45);
-                this.ctx.lineTo(Math.floor(drawX) + 35, Math.floor(drawY) + 45);
-                this.ctx.stroke();
-
-                // Text Label
-                this.ctx.fillStyle = '#fff';
-                this.ctx.font = 'bold 14px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.strokeStyle = '#000';
-                this.ctx.lineWidth = 3;
-                this.ctx.strokeText(
-                    'HOME',
-                    Math.floor(drawX) + TILE_SIZE / 2,
-                    Math.floor(drawY) - 10
-                );
-                this.ctx.fillText(
-                    'HOME',
-                    Math.floor(drawX) + TILE_SIZE / 2,
-                    Math.floor(drawY) - 10
-                );
-            }
-            // --- ADD THIS BLOCK START ---
-            else if (building.type === 'store') {
-                let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-                let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
-
-                // Draw Building Base (Blue walls for Poke Mart)
-                this.ctx.fillStyle = '#2980b9';
-                this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
-
-                // Draw Roof (Red distinctive Poke Mart roof)
-                this.ctx.fillStyle = '#e74c3c';
-                this.ctx.fillRect(Math.floor(drawX) - 5, Math.floor(drawY), TILE_SIZE + 10, 25);
-
-                // MART Text Sign
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = 'bold 12px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('MART', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 18);
-
-                // Window and Door
-                this.ctx.fillStyle = '#87CEEB'; // Light blue window
-                this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 35, 25, 20);
-
-                this.ctx.fillStyle = '#34495e'; // Dark door
-                this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
-
-                // Glow effect to make it stand out
-                this.ctx.shadowBlur = 10;
-                this.ctx.shadowColor = '#3498db';
-                this.ctx.strokeStyle = '#fff';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
-                this.ctx.shadowBlur = 0;
-            }
+        // 1. Add Buildings
+        this.world.buildings.forEach(b => {
+            // Calculate rendering sort Y
+            // For the house, it's large, but we sort by the overlapping 'base' Y.
+            renderList.push({ type: 'building', y: b.y, data: b });
         });
 
-        // Draw NPCs
-        this.world.npcs.forEach((npc) => {
+        // 2. Add NPCs
+        this.world.npcs.forEach(npc => {
+            renderList.push({ type: 'npc', y: npc.y, data: npc });
+        });
+
+        // 3. Add Player
+        renderList.push({ type: 'player', y: this.player.y, data: this.player });
+
+        // 4. Add Rival (if exists)
+        // @ts-ignore
+        if (typeof rivalSystem !== 'undefined' && rivalSystem.isChasing) {
+            // @ts-ignore
+            renderList.push({ type: 'rival', y: rivalSystem.y, data: rivalSystem });
+        }
+
+        // 5. Sort by Y
+        renderList.sort((a, b) => a.y - b.y);
+
+        // 6. Draw Sorted Entities
+        renderList.forEach(item => {
+            if (item.type === 'building') this.drawBuilding(item.data);
+            else if (item.type === 'npc') this.drawNPC(item.data);
+            else if (item.type === 'player') this.drawPlayer(item.data);
+            else if (item.type === 'rival') item.data.draw(this.ctx, this.canvas, this.world, this.player);
+        });
+
+        // 7. Draw Weather/Overlays (Foreground)
+        this.drawOverlays();
+
+        this.ctx.restore();
+    }
+
+    drawBuilding(building) {
+        // Draw Poke Center
+        if (building.type === 'pokecenter') {
             let drawX =
-                (npc.x - this.player.x) * TILE_SIZE +
+                (building.x - this.player.x) * TILE_SIZE +
                 this.canvas.width / 2 -
                 TILE_SIZE / 2;
             let drawY =
-                (npc.y - this.player.y) * TILE_SIZE +
+                (building.y - this.player.y) * TILE_SIZE +
                 this.canvas.height / 2 -
                 TILE_SIZE / 2;
 
+            // Draw building platform/base
+            this.ctx.fillStyle = '#e74c3c';
+            this.ctx.fillRect(
+                Math.floor(drawX) - 10,
+                Math.floor(drawY) - 10,
+                TILE_SIZE + 20,
+                TILE_SIZE + 20
+            );
+
+            // Glow effect
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = '#3498db';
+
+            // Hospital emoji
+            this.ctx.font = '50px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(
+                '🏥',
+                Math.floor(drawX) + TILE_SIZE / 2,
+                Math.floor(drawY) + TILE_SIZE / 2
+            );
+
+            // Reset shadow
+            this.ctx.shadowBlur = 0;
+        } else if (building.type === 'arena') {
+            // Draw Arena Pyramid
+            let drawX =
+                (building.x - this.player.x) * TILE_SIZE +
+                this.canvas.width / 2 -
+                TILE_SIZE / 2;
+            let drawY =
+                (building.y - this.player.y) * TILE_SIZE +
+                this.canvas.height / 2 -
+                TILE_SIZE / 2;
+
+            // Draw large base
+            this.ctx.fillStyle = '#f1c40f'; // Gold
+            this.ctx.fillRect(
+                Math.floor(drawX) - TILE_SIZE / 2,
+                Math.floor(drawY) - TILE_SIZE / 2,
+                TILE_SIZE * 2,
+                TILE_SIZE * 2
+            );
+
+            // Draw pyramid shape (triangle outline)
+            this.ctx.strokeStyle = '#f39c12';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(
+                Math.floor(drawX) + TILE_SIZE / 2,
+                Math.floor(drawY) - TILE_SIZE / 2
+            ); // top
+            this.ctx.lineTo(
+                Math.floor(drawX) - TILE_SIZE / 2,
+                Math.floor(drawY) + TILE_SIZE * 1.5
+            ); // bottom left
+            this.ctx.lineTo(
+                Math.floor(drawX) + TILE_SIZE * 1.5,
+                Math.floor(drawY) + TILE_SIZE * 1.5
+            ); // bottom right
+            this.ctx.closePath();
+            this.ctx.stroke();
+
+            // Glowing center entrance
+            this.ctx.shadowBlur = 25;
+            this.ctx.shadowColor = 'white';
+            this.ctx.fillStyle = '#fff';
+            this.ctx.fillRect(
+                Math.floor(drawX) + TILE_SIZE * 0.3,
+                Math.floor(drawY) + TILE_SIZE,
+                TILE_SIZE * 0.4,
+                TILE_SIZE * 0.5
+            );
+
+            // Reset shadow
+            this.ctx.shadowBlur = 0;
+
+            // Text Label
+            this.ctx.fillStyle = '#000';
+            this.ctx.font = 'bold 14px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(
+                'ARENA',
+                Math.floor(drawX) + TILE_SIZE / 2,
+                Math.floor(drawY) + TILE_SIZE * 1.8
+            );
+        } else if (building.type === 'home') {
+            // Draw Player's Home Image
+            let drawX =
+                (building.x - this.player.x) * TILE_SIZE +
+                this.canvas.width / 2 -
+                TILE_SIZE / 2;
+            let drawY =
+                (building.y - this.player.y) * TILE_SIZE +
+                this.canvas.height / 2 -
+                TILE_SIZE / 2;
+
+            // Draw the house image
+            // Much Larger: 4x Tile Size (approx 320px)
+            // Centered: Subtract 1.5 tiles from center
+            this.ctx.drawImage(
+                this.houseImg,
+                Math.floor(drawX) - TILE_SIZE * 1.5,
+                Math.floor(drawY) - TILE_SIZE * 2,
+                TILE_SIZE * 4,
+                TILE_SIZE * 4
+            );
+        }
+        // --- ADD THIS BLOCK START ---
+        else if (building.type === 'store') {
+            let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+            let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+            // Draw Building Base (Blue walls for Poke Mart)
+            this.ctx.fillStyle = '#2980b9';
+            this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
+
+            // Draw Roof (Red distinctive Poke Mart roof)
+            this.ctx.fillStyle = '#e74c3c';
+            this.ctx.fillRect(Math.floor(drawX) - 5, Math.floor(drawY), TILE_SIZE + 10, 25);
+
+            // MART Text Sign
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('MART', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 18);
+
+            // Window and Door
+            this.ctx.fillStyle = '#87CEEB'; // Light blue window
+            this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 35, 25, 20);
+
+            this.ctx.fillStyle = '#34495e'; // Dark door
+            this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
+
+            // Glow effect to make it stand out
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = '#3498db';
+            this.ctx.strokeStyle = '#fff';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
+            this.ctx.shadowBlur = 0;
+        }
+        // Draw Defense System Extra Building Graphics (Simplified base override etc if needed)
+    }
+
+    drawNPC(npc) {
+        // Interpolate Position
+        const MOVE_DURATION = 500; // ms to match movement speed
+        let t = (Date.now() - npc.moveStartTime) / MOVE_DURATION;
+        t = Math.min(1, Math.max(0, t));
+
+        let currX = npc.prevX + (npc.x - npc.prevX) * t;
+        let currY = npc.prevY + (npc.y - npc.prevY) * t;
+
+        // Bounce Animation
+        let bounce = 0;
+        if (t < 1) {
+            bounce = Math.sin(t * Math.PI) * 10;
+        }
+
+        let drawX =
+            (currX - this.player.x) * TILE_SIZE +
+            this.canvas.width / 2 -
+            TILE_SIZE / 2;
+        let drawY =
+            (currY - this.player.y) * TILE_SIZE +
+            this.canvas.height / 2 -
+            TILE_SIZE / 2 - bounce;
+
+        // Draw Daycare Man or Generic NPC
+        if (npc.type === 'daycare') {
+            this.ctx.drawImage(this.daycareImg, Math.floor(drawX) - 10, Math.floor(drawY) - 10, TILE_SIZE + 20, TILE_SIZE + 20);
+        } else if (npc.type === 'talk' && npc.name === 'Villager') {
+            this.ctx.drawImage(this.villagerImg, Math.floor(drawX) - 10, Math.floor(drawY) - 10, TILE_SIZE + 20, TILE_SIZE + 20);
+        } else if (npc.type === 'quest') {
+            this.ctx.drawImage(this.herbalistImg, Math.floor(drawX) - 10, Math.floor(drawY) - 10, TILE_SIZE + 20, TILE_SIZE + 20);
+        } else {
             // Simple NPC Render (Circle with Name)
             this.ctx.fillStyle = npc.color;
             this.ctx.beginPath();
@@ -821,21 +858,102 @@ class Renderer {
                 Math.PI * 2
             );
             this.ctx.fill();
+        }
 
-            // Name
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '10px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(
-                npc.name,
-                Math.floor(drawX) + TILE_SIZE / 2,
-                Math.floor(drawY) - 10
+        // Name
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = '10px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(
+            npc.name,
+            Math.floor(drawX) + TILE_SIZE / 2,
+            Math.floor(drawY) - 10
+        );
+    }
+
+    drawPlayer(player) {
+        // Draw Player (Always Center relative to map, but offset if camera moves)
+        // Actually in this engine player is center of screen.
+        const px = this.canvas.width / 2 - TILE_SIZE / 2;
+        const py = this.canvas.height / 2 - TILE_SIZE / 2;
+
+        // Shadow
+        this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+            px + TILE_SIZE / 2,
+            py + TILE_SIZE - 5,
+            15,
+            5,
+            0,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Dust Particles (Spawn if moving)
+        // We spawn them at player feet in world coordinates
+        // Footstep effect: Lower frequency
+        if (this.player.moving) {
+            if (Math.random() < 0.1) {
+                // Reduced from 0.3
+                this.addParticle(this.player.x + 0.5, this.player.y + 0.9);
+            }
+        }
+
+        // Sprite (Flip if facing RIGHT, since raw sprite faces LEFT)
+        this.ctx.save();
+
+        // Bounce Animation
+        let bounceY = 0;
+        if (this.player.moving) {
+            bounceY = Math.abs(Math.sin(Date.now() / 100)) * -5; // Bounce up 5px
+        }
+
+        if (this.player.dir === 'right') {
+            this.ctx.translate(px + TILE_SIZE, py - 10 + bounceY);
+            this.ctx.scale(-1, 1);
+            this.ctx.drawImage(this.sprite, 0, 0, TILE_SIZE, TILE_SIZE);
+        } else {
+            this.ctx.drawImage(
+                this.sprite,
+                px,
+                py - 10 + bounceY,
+                TILE_SIZE,
+                TILE_SIZE
             );
-        });
+        }
+        this.ctx.restore();
 
-        // Draw Rival (if approaching)
-        if (typeof rivalSystem !== 'undefined') {
-            rivalSystem.draw(this.ctx, this.canvas, this.world, this.player);
+        // Tall Grass Overlay (Occlusion)
+        let currentTile = this.world.getTile(
+            Math.round(this.player.x),
+            Math.round(this.player.y)
+        );
+        if (currentTile === 'grass_tall') {
+            this.ctx.fillStyle = 'rgba(39, 174, 96, 0.8)'; // Semi-transparent grass color
+            this.ctx.fillRect(px, py + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);
+
+            // Random grass blades
+            this.ctx.fillStyle = '#1e8449';
+            this.ctx.fillRect(px + 5, py + TILE_SIZE / 2 + 5, 4, 10);
+            this.ctx.fillRect(px + 25, py + TILE_SIZE / 2 + 2, 4, 12);
+        }
+    }
+
+    drawOverlays() {
+        // Particles
+        this.drawParticles(0, 0);
+
+        // Simple Atmospheric Effects (Fog/Clouds)
+        // Moving over the whole screen
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        for (let i = 0; i < 5; i++) {
+            let cloudX = (Date.now() / 1000 + i * 200) % this.canvas.width;
+            let cloudY = i * 100;
+            this.ctx.beginPath();
+            this.ctx.arc(cloudX, cloudY, 80, 0, Math.PI * 2);
+            this.ctx.fill();
         }
 
         // --- BLOOD MOON DEFENSE RENDERER ---
@@ -944,84 +1062,6 @@ class Renderer {
                     this.ctx.shadowBlur = 0;
                 });
             }
-        }
-
-        // Draw Player (Always Center)
-        const px = this.canvas.width / 2 - TILE_SIZE / 2;
-        const py = this.canvas.height / 2 - TILE_SIZE / 2;
-
-        // Atmospheric Effects (Fog/Clouds)
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        for (let i = 0; i < 5; i++) {
-            let cloudX = (Date.now() / 1000 + i * 200) % this.canvas.width;
-            let cloudY = i * 100;
-            this.ctx.beginPath();
-            this.ctx.arc(cloudX, cloudY, 80, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-
-        // Shadow
-        this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        this.ctx.beginPath();
-        this.ctx.ellipse(
-            px + TILE_SIZE / 2,
-            py + TILE_SIZE - 5,
-            15,
-            5,
-            0,
-            0,
-            Math.PI * 2
-        );
-        this.ctx.fill();
-
-        // Dust Particles (Spawn if moving)
-        // We spawn them at player feet in world coordinates
-        // Footstep effect: Lower frequency
-        if (this.player.moving) {
-            if (Math.random() < 0.1) {
-                // Reduced from 0.3
-                this.addParticle(this.player.x + 0.5, this.player.y + 0.9);
-            }
-        }
-        this.drawParticles(0, 0);
-
-        // Sprite (Flip if facing RIGHT, since raw sprite faces LEFT)
-        this.ctx.save();
-
-        // Bounce Animation
-        let bounceY = 0;
-        if (this.player.moving) {
-            bounceY = Math.abs(Math.sin(Date.now() / 100)) * -5; // Bounce up 5px
-        }
-
-        if (this.player.dir === 'right') {
-            this.ctx.translate(px + TILE_SIZE, py - 10 + bounceY);
-            this.ctx.scale(-1, 1);
-            this.ctx.drawImage(this.sprite, 0, 0, TILE_SIZE, TILE_SIZE);
-        } else {
-            this.ctx.drawImage(
-                this.sprite,
-                px,
-                py - 10 + bounceY,
-                TILE_SIZE,
-                TILE_SIZE
-            );
-        }
-        this.ctx.restore();
-
-        // Tall Grass Overlay (Occlusion)
-        let currentTile = this.world.getTile(
-            Math.round(this.player.x),
-            Math.round(this.player.y)
-        );
-        if (currentTile === 'grass_tall') {
-            this.ctx.fillStyle = 'rgba(39, 174, 96, 0.8)'; // Semi-transparent grass color
-            this.ctx.fillRect(px, py + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);
-
-            // Random grass blades
-            this.ctx.fillStyle = '#1e8449';
-            this.ctx.fillRect(px + 5, py + TILE_SIZE / 2 + 5, 4, 10);
-            this.ctx.fillRect(px + 25, py + TILE_SIZE / 2 + 2, 4, 12);
         }
     }
 }

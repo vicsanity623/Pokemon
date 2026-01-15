@@ -131,10 +131,11 @@ function gameLoop(timestamp) {
     // Force Render Battle Screen Logic
     if (battleSystem.isActive) {
         // Clear screen to black to prevent transparency issues
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         lastTime = timestamp;
         requestAnimationFrame(gameLoop);
         return;
@@ -198,7 +199,7 @@ function gameLoop(timestamp) {
                 Math.round(nextY)
             );
 
-            if (targetTile !== 'water') {
+            if (!world.isBlocked(Math.round(nextX), Math.round(nextY))) {
                 player.x = nextX;
                 player.y = nextY;
                 player.steps += moveSpeed; // Approximate steps
@@ -376,9 +377,9 @@ function gameLoop(timestamp) {
 // Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
-    
+
     // If a menu is open, don't allow world interactions
-    if (storeSystem.isOpen || isPaused) return; 
+    if (storeSystem.isOpen || isPaused) return;
 
     if (key === 'Enter') {
         // 'A' button mapped to Enter
@@ -464,9 +465,9 @@ function toggleSortMode(context) {
     const modes = ['default', 'name', 'strong', 'weak', 'recent'];
     let idx = modes.indexOf(currentSortMode);
     currentSortMode = modes[(idx + 1) % modes.length];
-    
+
     showDialog(`Sorting by: ${currentSortMode.toUpperCase()}`, 1000);
-    
+
     if (context === 'pc') renderPC();
     else if (context === 'bag') showBagTab('pokemon'); // Only sorting pokemon tab for now
 }
@@ -502,7 +503,7 @@ function getSortedPokemonList(list) {
     // Fill the rest with nulls up to the original length (usually 25 for box)
     let sortedList = [...pokemons, ...empties];
     while (sortedList.length < list.length) sortedList.push(null);
-    
+
     return sortedList;
 }
 
@@ -551,20 +552,22 @@ function showBagTab(tab) {
         sortBtn.id = 'bag-sort-btn';
         sortBtn.innerText = 'SORT';
         sortBtn.className = 'back-btn';
-        sortBtn.style.padding = '5px'; 
-        sortBtn.style.fontSize = '10px';
-        sortBtn.style.width = '100%';
+        sortBtn.style.textAlign = 'center'; // Fix centering
         sortBtn.style.marginBottom = '10px';
         sortBtn.style.backgroundColor = '#34495e';
-        sortBtn.onclick = () => { toggleSortMode('bag'); };
-        
+        // FIXED: Mobile touch support
+        sortBtn.onpointerdown = (e) => {
+            e.stopPropagation();
+            toggleSortMode('bag');
+        };
+
         // Insert before content container
         document.getElementById('player-bag-menu').insertBefore(sortBtn, content);
     }
     sortBtn.innerText = `SORT: ${currentSortMode.toUpperCase()}`;
 
     if (tab === 'pokemon') {
-        selectedBagItem = null; 
+        selectedBagItem = null;
         if (player.team.length === 0) {
             content.innerHTML = '<p style="text-align:center; color: #999;">No Pokemon</p>';
             return;
@@ -595,20 +598,24 @@ function showBagTab(tab) {
                     ${!p.isEgg ? `<div style="font-size: 11px; color: #2ecc71;">SR: ${scoreRating}</div>` : ''}
                 </div>
                 <div class="pokemon-actions">
-                    ${index > 0 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
-                    ${index < player.team.length - 1 ? `<button onclick="event.stopPropagation(); swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
+                    ${index > 0 ? `<button onpointerdown="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
+                    ${index < player.team.length - 1 ? `<button onpointerdown="event.stopPropagation(); swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
                 </div>
             `;
-            div.onclick = () => { if (!p.isEgg) showPokemonStats(p); };
+            // FIXED: Mobile touch support
+            div.onpointerdown = (e) => {
+                e.preventDefault(); // Stop ghost clicks
+                if (!p.isEgg) showPokemonStats(p);
+            };
             content.appendChild(div);
         });
 
     } else if (tab === 'items') {
         let hasItems = false;
-        
+
         // Convert bag object to array for sorting
         let bagArray = Object.entries(player.bag);
-        
+
         // Sort Bag Array
         if (currentSortMode === 'name') {
             bagArray.sort((a, b) => a[0].localeCompare(b[0]));
@@ -624,7 +631,12 @@ function showBagTab(tab) {
                 div.className = 'menu-item';
                 if (selectedBagItem === item) div.classList.add('selected');
                 div.innerHTML = `${item} x${count}`;
-                div.onclick = () => { selectedBagItem = item; showBagTab('items'); };
+                // FIXED: Mobile touch support
+                div.onpointerdown = (e) => {
+                    e.preventDefault();
+                    selectedBagItem = item;
+                    showBagTab('items');
+                };
                 content.appendChild(div);
             }
         }
@@ -640,14 +652,20 @@ function showBagTab(tab) {
         useBtn.className = 'bag-btn btn-use';
         useBtn.innerText = 'USE';
         useBtn.disabled = !selectedBagItem;
-        useBtn.onclick = () => { if (selectedBagItem) useBagItem(selectedBagItem); };
-        
+        useBtn.onpointerdown = (e) => {
+            e.stopPropagation();
+            if (selectedBagItem) useBagItem(selectedBagItem);
+        };
+
         const tossBtn = document.createElement('button');
         tossBtn.className = 'bag-btn btn-toss';
         tossBtn.innerText = 'TOSS';
         tossBtn.disabled = !selectedBagItem;
-        tossBtn.onclick = () => { if (selectedBagItem) tossBagItem(selectedBagItem); };
-        
+        tossBtn.onpointerdown = (e) => {
+            e.stopPropagation();
+            if (selectedBagItem) tossBagItem(selectedBagItem);
+        };
+
         actionDiv.appendChild(useBtn);
         actionDiv.appendChild(tossBtn);
         content.appendChild(actionDiv);
@@ -1228,7 +1246,7 @@ function loadGame() {
         player.steps = data.player.stats.steps;
         player.team = data.player.team;
         player.bag = data.player.bag;
-        
+
         // Restore Defense System
         if (data.defense) {
             defenseSystem.lastRaidDay = data.defense.lastRaidDay;
@@ -1267,12 +1285,12 @@ function loadGame() {
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
-        
+
         // Restore Store System
         if (data.store) {
             storeSystem.hasSpawned = data.store.hasSpawned;
             storeSystem.location = data.store.location;
-        
+
             // Ensure it's in world.buildings if it was spawned
             if (storeSystem.hasSpawned && storeSystem.location) {
                 const hasStore = world.buildings.some(b => b.type === 'store');
@@ -1727,7 +1745,7 @@ function renderPC() {
     // 2. Render Box
     const boxGrid = document.getElementById('pc-box-grid');
     boxGrid.innerHTML = '';
-    
+
     // Sort Button Header
     const header = document.querySelector('.box-header');
     if (header && !document.getElementById('pc-sort-btn')) {
@@ -1744,7 +1762,7 @@ function renderPC() {
         };
         header.appendChild(btn);
     }
-    
+
     document.getElementById('box-label').innerText = `BOX ${currentBox + 1} [${currentSortMode.toUpperCase()}]`;
 
     player.storage[currentBox].forEach((p, index) => {
@@ -1918,13 +1936,13 @@ function cancelPCSelection() {
 
 function updatePartySidebar() {
     const sb = document.getElementById('party-sidebar');
-    
+
     // Safety check: hide sidebar during battle
     if (!sb || battleSystem.isActive) {
-        if(sb) sb.classList.add('hidden');
+        if (sb) sb.classList.add('hidden');
         return;
     }
-    
+
     sb.classList.remove('hidden');
     sb.innerHTML = '';
 
@@ -1932,23 +1950,23 @@ function updatePartySidebar() {
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'party-toggle-btn';
     toggleBtn.innerHTML = isPartyOpen ? '▼ TEAM' : '▶ TEAM';
-    
+
     // Define toggle logic separately
     const handleToggle = (e) => {
         // Stop the event from reaching the map
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
-        
+
         // Toggle state
         isPartyOpen = !isPartyOpen;
-        
+
         // Re-render
         updatePartySidebar();
     };
 
     // Attach both events for responsiveness
-    toggleBtn.onclick = handleToggle;
-    toggleBtn.ontouchstart = handleToggle; 
+    // FIXED: Use pointerdown for both desktop/mobile support
+    toggleBtn.onpointerdown = handleToggle;
 
     sb.appendChild(toggleBtn);
 
@@ -1989,7 +2007,7 @@ function updatePartySidebar() {
         `;
 
         const handleSwap = (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
             e.stopPropagation();
 
             if (index === 0) {
@@ -2002,12 +2020,12 @@ function updatePartySidebar() {
             player.team[index] = temp;
 
             showDialog(`Switched to ${player.team[0].name}!`, 1500);
-            updatePartySidebar(); 
-            updateHUD(); 
+            updatePartySidebar();
+            updateHUD();
         };
 
-        item.onclick = handleSwap;
-        item.ontouchstart = handleSwap;
+        // FIXED: Use pointerdown for reliable interaction
+        item.onpointerdown = handleSwap;
 
         listContainer.appendChild(item);
     });

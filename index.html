@@ -58,7 +58,7 @@
 
                 <!-- Sprites -->
                 <img id="enemy-sprite" src="" alt="Enemy" />
-                
+
                 <!-- NEW SQUAD CONTAINER: Replaces old player-sprite -->
                 <div id="player-party-container">
                     <!-- JavaScript will inject 6 Pokemon wrappers here -->
@@ -71,7 +71,8 @@
                         <button onclick="battleSystem.bagBtn()">BAG</button>
                         <button onclick="battleSystem.pokemonBtn()">PKMN</button>
                         <button onclick="battleSystem.runBtn()">RUN</button>
-                        <button id="btn-auto" onclick="battleSystem.toggleAuto()" style="grid-column: span 2; background-color: #fff; color: #000;">AUTO</button>
+                        <button id="btn-auto" onclick="battleSystem.toggleAuto()"
+                            style="grid-column: span 2; background-color: #fff; color: #000;">AUTO</button>
                     </div>
                 </div>
                 <div id="move-selector" class="hidden">
@@ -118,8 +119,9 @@
                 <div id="damage-text"></div>
                 <div id="effectiveness-text"></div>
             </div>
-            
-            <img id="pokeball-anim" class="hidden" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png">
+
+            <img id="pokeball-anim" class="hidden"
+                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png">
 
             <div id="quest-tracker">
                 <small>QUEST</small><br>
@@ -142,11 +144,13 @@
             <div id="player-bag-menu" class="hidden battle-sub-menu">
                 <div class="menu-header">BAG</div>
                 <div class="bag-tabs">
-                    <button id="tab-pokemon" class="tab-btn active" onclick="showBagTab('pokemon')">POKEMON</button>
-                    <button id="tab-items" class="tab-btn" onclick="showBagTab('items')">ITEMS</button>
+                    <button id="tab-pokemon" class="tab-btn active"
+                        onpointerdown="showBagTab('pokemon')">POKEMON</button>
+                    <button id="tab-items" class="tab-btn" onpointerdown="showBagTab('items')">ITEMS</button>
                 </div>
                 <div id="bag-content"></div>
-                <button onclick="closePlayerBag()" class="back-btn">CLOSE</button>
+                <!-- FIXED: added onpointerdown for mobile touch -->
+                <button onpointerdown="closePlayerBag()" class="back-btn">CLOSE</button>
             </div>
 
             <div id="level-up-overlay" class="hidden">
@@ -221,9 +225,9 @@
                 </div>
                 <div class="pokedex-tabs"
                     style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
-                    <button id="pokedex-tab-normal" class="tab-btn active" onclick="showPokedexTab('normal')"
+                    <button id="pokedex-tab-normal" class="tab-btn active" onpointerdown="showPokedexTab('normal')"
                         style="flex: 1; max-width: 200px;">NORMAL</button>
-                    <button id="pokedex-tab-shiny" class="tab-btn" onclick="showPokedexTab('shiny')"
+                    <button id="pokedex-tab-shiny" class="tab-btn" onpointerdown="showPokedexTab('shiny')"
                         style="flex: 1; max-width: 200px;">SHINY ✨</button>
                 </div>
                 <div id="pokedex-grid"></div>
@@ -278,7 +282,7 @@
                 <div class="modal-content">
                     <h2 id="pokemon-list-title">POKEMON</h2>
                     <div id="pokemon-list-content" style="max-height: 70vh; overflow-y: auto;"></div>
-                    <button onclick="closePokemonList()" class="back-btn">CLOSE</button>
+                    <button onpointerdown="closePokemonList()" class="back-btn">CLOSE</button>
                 </div>
             </div>
 
@@ -286,7 +290,7 @@
             <div id="pokemon-stats-modal" class="hidden full-screen-modal">
                 <div class="modal-content" style="max-width: 500px;">
                     <div id="pokemon-stats-display"></div>
-                    <button onclick="closePokemonStats()" class="back-btn">CLOSE</button>
+                    <button onpointerdown="closePokemonStats()" class="back-btn">CLOSE</button>
                 </div>
             </div>
         </div>
@@ -320,7 +324,7 @@
         <audio id="sfx-attack2" src="attack2.mp3" preload="auto"></audio>
         <audio id="sfx-attack3" src="attack3.mp3" preload="auto"></audio>
     </div>
-    
+
     <div id="store-ui" class="hidden">
         <div class="store-header">
             <span>POKE MART</span>

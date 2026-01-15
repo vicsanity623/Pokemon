@@ -15,20 +15,20 @@ class BattleSystem {
     constructor(player) {
         this.player = player;
         this.isActive = false;
-        this.isAttacking = false; 
+        this.isAttacking = false;
         this.enemy = null;
         this.isTrainer = false;
-        
+
         // --- NEW: Auto Battle Flag ---
         this.isAuto = false;
         // -----------------------------
 
         this.bg = new AnimeBattleBackground('battle-ui');
         this.ui = document.getElementById('battle-ui');
-        
-        this.turnQueue = []; 
-        this.queueIndex = 0; 
-        this.actingPokemon = null; 
+
+        this.turnQueue = [];
+        this.queueIndex = 0;
+        this.actingPokemon = null;
 
         if (!document.getElementById('flash-overlay')) {
             let f = document.createElement('div');
@@ -56,17 +56,17 @@ class BattleSystem {
             document.body.appendChild(img);
         }
     }
-    
+
     triggerAnimation(elementId, animationClass) {
         const el = document.getElementById(elementId);
         if (!el) return;
-        
+
         // 1. Remove class to reset
         el.classList.remove(animationClass);
-        
+
         // 2. Force Browser Reflow (Magic line that resets animation state)
-        void el.offsetWidth; 
-        
+        void el.offsetWidth;
+
         // 3. Add class back to start animation
         el.classList.add(animationClass);
     }
@@ -99,7 +99,7 @@ class BattleSystem {
         const attackText = document.getElementById('attack-text');
         attackText.innerText = text.toUpperCase();
         attackText.classList.remove('anim-attack-text');
-        void attackText.offsetWidth; 
+        void attackText.offsetWidth;
         attackText.classList.add('anim-attack-text');
         await this.delay(1500);
         attackText.classList.remove('anim-attack-text');
@@ -111,7 +111,7 @@ class BattleSystem {
         damageText.style.left = `${x}%`;
         damageText.style.top = `${y}%`;
         damageText.classList.remove('anim-damage-float');
-        void damageText.offsetWidth; 
+        void damageText.offsetWidth;
         damageText.classList.add('anim-damage-float');
         await this.delay(1800);
         damageText.classList.remove('anim-damage-float');
@@ -147,7 +147,7 @@ class BattleSystem {
             btn.style.color = this.isAuto ? '#fff' : '#000';
             btn.innerText = this.isAuto ? 'STOP' : 'AUTO';
         }
-        
+
         // If it's currently player's turn, trigger the loop immediately
         if (this.isAuto && this.turnQueue[this.queueIndex] && this.turnQueue[this.queueIndex].type === 'player') {
             this.autoBattleLoop();
@@ -169,7 +169,7 @@ class BattleSystem {
         if (p.hp / p.maxHp < 0.30) {
             const healItems = ['Potion', 'Super Potion', 'Hyper Potion', 'Herb'];
             let itemToUse = null;
-            
+
             // Find first available potion
             for (let item of healItems) {
                 if (this.player.bag[item] > 0) {
@@ -195,7 +195,7 @@ class BattleSystem {
         // or just pick random if similar
         let bestMoveIndex = 0;
         let maxPower = 0;
-        
+
         p.moves.forEach((m, idx) => {
             if (m.power > maxPower) {
                 maxPower = m.power;
@@ -211,12 +211,12 @@ class BattleSystem {
         this.isActive = true;
         this.isAttacking = false;
         this.isTrainer = isTrainer;
-        
+
         // Reset Auto state on new battle
         this.isAuto = false;
         const btn = document.getElementById('btn-auto');
-        if(btn) { 
-            btn.innerText = 'AUTO'; 
+        if (btn) {
+            btn.innerText = 'AUTO';
             btn.style.backgroundColor = '#fff';
             btn.style.color = '#000';
         }
@@ -229,16 +229,16 @@ class BattleSystem {
         }
 
         this.ui.classList.remove('hidden');
-        
+
         this.ui.style.backgroundColor = 'transparent';
-        if (this.bg) { 
-            this.bg.resize(); 
-            this.bg.start(); 
+        if (this.bg) {
+            this.bg.resize();
+            this.bg.start();
         }
 
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
-        
+
         const sidebar = document.getElementById('party-sidebar');
         if (sidebar) sidebar.classList.add('hidden');
 
@@ -247,14 +247,16 @@ class BattleSystem {
         document.getElementById('hamburger-btn').classList.add('battle-hidden');
         document.getElementById('player-stat-box').classList.add('hidden');
 
-        const canvas = document.getElementById('gameCanvas');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#000'; 
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const battleMusic = document.getElementById('battle-music');
+        const battleMusic = /** @type {HTMLAudioElement} */ (document.getElementById('battle-music'));
         if (battleMusic) {
-            document.getElementById('main-music').pause();
+            /** @type {HTMLAudioElement} */
+            const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+            if (mainMusic) mainMusic.pause();
             battleMusic.currentTime = 0;
             battleMusic.play().catch((err) => console.log('Music blocked'));
         }
@@ -264,16 +266,16 @@ class BattleSystem {
             id = bossConfig.id;
         } else {
             if (biome === 'snow') {
-                const pool = [86, 87, 124, 131, 144, 220, 221]; 
+                const pool = [86, 87, 124, 131, 144, 220, 221];
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else if (biome === 'desert') {
-                const pool = [27, 28, 74, 75, 95, 77, 4, 5]; 
+                const pool = [27, 28, 74, 75, 95, 77, 4, 5];
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else {
                 id = this.getRandomWildId();
             }
         }
-        
+
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
         const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < 0.02;
 
@@ -306,7 +308,7 @@ class BattleSystem {
             this.renderSquad();
             this.setupTurnQueue();
 
-            const enemyImg = document.getElementById('enemy-sprite');
+            const enemyImg = /** @type {HTMLImageElement} */ (document.getElementById('enemy-sprite'));
             enemyImg.src = this.enemy.sprite;
             enemyImg.classList.remove('hidden');
             if (isArenaBoss) {
@@ -343,35 +345,40 @@ class BattleSystem {
     calculateEnemyLevel(bonus, config) {
         if (config && config.level) return config.level;
         const playerLevel = this.player.pLevel || 1;
-        let randomOffset = Math.floor(Math.random() * 5) - 2; 
+        let randomOffset = Math.floor(Math.random() * 5) - 2;
         return Math.max(1, playerLevel + randomOffset + bonus);
     }
 
     renderSquad() {
         const container = document.getElementById('player-party-container');
         container.innerHTML = '';
-        
+
         this.player.team.forEach((p, index) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'party-member-wrapper';
             wrapper.id = `party-wrapper-${index}`;
-            
+
             const hpBar = document.createElement('div');
             hpBar.className = 'sprite-hp-bar';
-            hpBar.innerHTML = `<div class="sprite-hp-fill" id="squad-hp-${index}" style="width: ${(p.hp/p.maxHp)*100}%"></div>`;
-            
+            hpBar.innerHTML = `<div class="sprite-hp-fill" id="squad-hp-${index}" style="width: ${(p.hp / p.maxHp) * 100}%"></div>`;
+
             const expBar = document.createElement('div');
             expBar.className = 'sprite-exp-bar';
             const expPct = (p.exp / (p.level * 100)) * 100;
             expBar.innerHTML = `<div class="sprite-exp-fill" id="squad-exp-${index}" style="width: ${expPct}%"></div>`;
-            
+
+            const levelText = document.createElement('div');
+            levelText.className = 'sprite-level-text';
+            levelText.innerText = `Lv.${p.level}`;
+
             const img = document.createElement('img');
             img.src = p.backSprite || p.sprite;
             img.className = 'party-sprite';
             if (p.hp <= 0) wrapper.classList.add('fainted-member');
-    
+
             wrapper.appendChild(hpBar);
             wrapper.appendChild(expBar);
+            wrapper.appendChild(levelText);
             wrapper.appendChild(img);
             container.appendChild(wrapper);
         });
@@ -390,8 +397,8 @@ class BattleSystem {
     }
 
     async nextTurn() {
-        if (!this.isActive || this.enemy.hp <= 0) return; 
-        
+        if (!this.isActive || this.enemy.hp <= 0) return;
+
         if (!this.player.team.some(p => p.hp > 0)) {
             this.lose();
             return;
@@ -402,7 +409,7 @@ class BattleSystem {
         }
 
         const current = this.turnQueue[this.queueIndex];
-        
+
         if (current.type === 'player' && this.player.team[current.index].hp <= 0) {
             this.queueIndex++;
             this.nextTurn();
@@ -440,7 +447,7 @@ class BattleSystem {
             document.getElementById('enemy-level').innerText = `Lv.${this.enemy.level}`;
             document.getElementById('enemy-hp-fill').style.width = `${(this.enemy.hp / this.enemy.maxHp) * 100}%`;
         }
-    
+
         this.player.team.forEach((p, i) => {
             const bar = document.getElementById(`squad-hp-${i}`);
             const expBar = document.getElementById(`squad-exp-${i}`);
@@ -476,21 +483,21 @@ class BattleSystem {
     }
 
     closeMoves() { document.getElementById('move-selector').classList.add('hidden'); }
-    closeMenus() { 
+    closeMenus() {
         document.getElementById('bag-menu').classList.add('hidden');
         document.getElementById('pokemon-menu').classList.add('hidden');
         document.getElementById('confirmation-dialog').classList.add('hidden');
     }
     closeCatchScreen() {
         document.getElementById('new-catch-overlay').classList.add('hidden');
-        this.endBattle(); 
+        this.endBattle();
     }
 
     async handleStatusDamage(pokemon, isEnemy = false) {
         if (!pokemon.status) return;
         let damage = 0;
         let msg = "";
-        if (pokemon.status === 'PSN') { damage = Math.max(1, Math.floor(pokemon.maxHp / 8)); msg = "is hurt by poison!"; } 
+        if (pokemon.status === 'PSN') { damage = Math.max(1, Math.floor(pokemon.maxHp / 8)); msg = "is hurt by poison!"; }
         else if (pokemon.status === 'BRN') { damage = Math.max(1, Math.floor(pokemon.maxHp / 16)); msg = "is hurt by its burn!"; }
 
         if (damage > 0) {
@@ -518,19 +525,19 @@ class BattleSystem {
         if (p.status === 'SLP' || p.status === 'FRZ' || (p.status === 'PAR' && Math.random() < 0.25)) {
             showDialog(`${p.name} is unable to move!`);
             await this.delay(1000);
-            this.queueIndex++; 
-            this.nextTurn(); 
+            this.queueIndex++;
+            this.nextTurn();
             return;
         }
 
         let move = p.moves[slot] || p.moves[0];
-        
+
         // --- 1. Player Attack Animation (Lunge) ---
         const attackerIndex = this.player.team.indexOf(p);
         const attackerEl = document.getElementById(`party-wrapper-${attackerIndex}`);
         if (attackerEl) {
-            attackerEl.classList.remove('anim-lunge', 'active-turn'); 
-            void attackerEl.offsetWidth; 
+            attackerEl.classList.remove('anim-lunge', 'active-turn');
+            void attackerEl.offsetWidth;
             attackerEl.classList.add('anim-lunge');
         }
 
@@ -590,7 +597,7 @@ class BattleSystem {
 
     async enemyTurn() {
         if (this.enemy.hp <= 0 || !this.isActive) return;
-        const targets = this.player.team.map((p, i) => ({p, i})).filter(o => o.p.hp > 0);
+        const targets = this.player.team.map((p, i) => ({ p, i })).filter(o => o.p.hp > 0);
         if (targets.length === 0) return;
         const targetObj = targets[Math.floor(Math.random() * targets.length)];
         const target = targetObj.p;
@@ -619,7 +626,7 @@ class BattleSystem {
         target.hp = Math.max(0, target.hp - dmg);
         this.updateBattleUI();
         this.showDamageNumber(dmg, 25, 60);
-        
+
         const wrapper = document.getElementById(`party-wrapper-${targetObj.i}`);
         if (wrapper) {
             wrapper.classList.remove('anim-hit', 'active-turn');
@@ -632,8 +639,8 @@ class BattleSystem {
         if (target.hp <= 0) showDialog(`${target.name} fainted!`);
         await this.delay(1000);
         await this.handleStatusDamage(this.enemy, true);
-        
-        if (this.enemy.hp <= 0) { this.win(false); } 
+
+        if (this.enemy.hp <= 0) { this.win(false); }
         else { this.queueIndex++; this.nextTurn(); }
     }
 
@@ -657,7 +664,7 @@ class BattleSystem {
         if (this.isAttacking) return;
         const db = (typeof ITEMS !== 'undefined') ? ITEMS : BATTLE_ITEMS;
         let itemData = db[itemName];
-        
+
         if (!itemData) return;
         document.getElementById('bag-menu').classList.add('hidden');
 
@@ -668,7 +675,7 @@ class BattleSystem {
 
         this.isAttacking = true;
         this.player.bag[itemName]--;
-        
+
         let p = this.actingPokemon;
         p.hp = Math.min(p.maxHp, p.hp + itemData.val);
         this.updateBattleUI();
@@ -680,25 +687,21 @@ class BattleSystem {
 
     async throwPokeball(ballType) {
         const enemySprite = document.getElementById('enemy-sprite');
-            enemySprite.classList.remove('anim-shrink');
-            void enemySprite.offsetWidth; // Force reset
-            
-            // Add shrink class
-            enemySprite.classList.add('anim-shrink');
+        // REMOVED PREMATURE SHRINK HERE
 
-            await this.delay(500);
+        await this.delay(500);
         if (this.isTrainer) { showDialog("Can't steal!"); return; }
         this.isAttacking = true;
         this.player.bag[ballType]--;
 
         showDialog(`Go! ${ballType}!`);
         const ballAnim = document.getElementById('pokeball-anim');
-        
+
         if (ballAnim) {
             // Ensure ball is visible and on top
             ballAnim.style.zIndex = '99999';
             ballAnim.style.display = 'block';
-            
+
             ballAnim.classList.remove('hidden', 'anim-shake');
             ballAnim.classList.add('anim-throw');
             await this.delay(1000);
@@ -714,14 +717,18 @@ class BattleSystem {
 
             // --- 3. Enemy Shrink Animation ---
             // This pulls the enemy into the ball
-            document.getElementById('enemy-sprite').classList.add('anim-shrink');
+            const eSprite = document.getElementById('enemy-sprite');
+            // FIX: Remove ALL potential animation classes to prevent conflicts
+            eSprite.classList.remove('anim-shrink', 'anim-enemy-attack', 'anim-hit', 'anim-shake');
+            void eSprite.offsetWidth; // Force reflow
+            eSprite.classList.add('anim-shrink');
             // --------------------------------
 
             await this.delay(500);
             ballAnim.classList.remove('anim-throw');
             ballAnim.classList.add('anim-shake');
         } else {
-             await this.delay(1000); 
+            await this.delay(1000);
         }
 
         const db = (typeof ITEMS !== 'undefined') ? ITEMS : BATTLE_ITEMS;
@@ -734,11 +741,11 @@ class BattleSystem {
             await this.delay(800);
             if (!success && i >= Math.floor(Math.random() * 3)) {
                 if (ballAnim) ballAnim.classList.add('hidden');
-                
+
                 // --- 4. Restore Enemy Size if Failed ---
                 document.getElementById('enemy-sprite').classList.remove('anim-shrink');
                 // --------------------------------------
-                
+
                 showDialog("Darn! It broke free!");
                 await this.delay(1000);
                 this.queueIndex++;
@@ -750,23 +757,23 @@ class BattleSystem {
     }
 
     async catchSuccess() {
-        this.isAttacking = true; 
+        this.isAttacking = true;
         const ballAnim = document.getElementById('pokeball-anim');
         if (ballAnim) ballAnim.classList.add('hidden');
-        
+
         showDialog(`Gotcha! ${this.enemy.name} was caught!`, 2000);
-        
+
         if (!this.player.seen.includes(this.enemy.id)) { this.player.seen.push(this.enemy.id); }
         if (this.enemy.isShiny && !this.player.seenShiny.includes(this.enemy.id)) { this.player.seenShiny.push(this.enemy.id); }
 
         await this.delay(1000);
 
-        const caughtPokemon = { 
-            ...this.enemy, 
-            hp: this.enemy.maxHp, 
+        const caughtPokemon = {
+            ...this.enemy,
+            hp: this.enemy.maxHp,
             exp: 0,
-            backSprite: this.enemy.isShiny 
-                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png` 
+            backSprite: this.enemy.isShiny
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png`
                 : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
         };
 
@@ -783,7 +790,7 @@ class BattleSystem {
                 <div style="font-size: 10px; color: #888; margin-top: 5px;">Level ${this.enemy.level} | ${this.enemy.type.toUpperCase()}</div>
             `;
         }
-        
+
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
 
@@ -793,14 +800,14 @@ class BattleSystem {
     async win(caught) {
         let xpGain = Math.floor(this.enemy.level * 20 / this.player.team.filter(p => p.hp > 0).length);
         this.player.money += 50 + (this.enemy.level * 25);
-        for (let p of this.player.team) { if (p.hp > 0) { p.exp += xpGain; if (p.exp >= p.level * 100) await this.levelUp(p); }}
+        for (let p of this.player.team) { if (p.hp > 0) { p.exp += xpGain; if (p.exp >= p.level * 100) await this.levelUp(p); } }
         if (this.enemy.isArenaBoss) arenaSystem.winStage();
         this.endBattle();
     }
 
     async levelUp(p) {
         p.exp -= p.level * 100; p.level++;
-        const inc = { strength: Math.floor(Math.random()*3)+1, defense: Math.floor(Math.random()*3)+1, speed: Math.floor(Math.random()*3)+1, hp: Math.floor(Math.random()*3)+1, special: Math.floor(Math.random()*3)+1 };
+        const inc = { strength: Math.floor(Math.random() * 3) + 1, defense: Math.floor(Math.random() * 3) + 1, speed: Math.floor(Math.random() * 3) + 1, hp: Math.floor(Math.random() * 3) + 1, special: Math.floor(Math.random() * 3) + 1 };
         p.stats.strength += inc.strength; p.stats.defense += inc.defense; p.stats.speed += inc.speed; p.stats.hp += inc.hp; p.stats.special += inc.special;
         p.maxHp = p.level * 5 + p.stats.hp; p.hp = p.maxHp;
         await this.showLevelUpScreen(p, inc, 5);
@@ -833,16 +840,17 @@ class BattleSystem {
     lose() { showDialog('The squad whited out...'); setTimeout(() => this.endBattle(), 2000); }
 
     endBattle() {
-        const enemySprite = document.getElementById('enemy-sprite');
+        const enemySprite = /** @type {HTMLImageElement} */ (document.getElementById('enemy-sprite'));
         if (enemySprite) {
-             enemySprite.classList.remove('anim-shrink', 'boss-sprite', 'anim-hit'); // Clear all potential anims
-             enemySprite.classList.add('hidden');
-             enemySprite.src = '';
+            enemySprite.classList.remove('anim-shrink', 'boss-sprite', 'anim-hit'); // Clear all potential anims
+            enemySprite.classList.add('hidden');
+            enemySprite.src = '';
         }
         this.bg.stop()
         this.isActive = false; this.isAttacking = false; this.ui.classList.add('hidden');
         this.turnQueue = []; this.actingPokemon = null;
         if (typeof hideDialog === 'function') hideDialog();
+        // @ts-ignore
         if (typeof rivalSystem !== 'undefined') { rivalSystem.isChasing = false; rivalSystem.onBattleEnd(); }
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
@@ -854,10 +862,10 @@ class BattleSystem {
         document.getElementById('player-stat-box').classList.remove('hidden');
         const squadContainer = document.getElementById('player-party-container');
         if (squadContainer) squadContainer.innerHTML = '';
-        const mainMusic = document.getElementById('main-music');
-        const battleMusic = document.getElementById('battle-music');
+        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        const battleMusic = /** @type {HTMLAudioElement} */ (document.getElementById('battle-music'));
         if (battleMusic) battleMusic.pause();
-        if (mainMusic) mainMusic.play().catch(e => {});
+        if (mainMusic) mainMusic.play().catch(e => { });
         document.getElementById('bottom-hud').classList.remove('hud-battle');
         if (typeof renderer !== 'undefined') renderer.draw();
         updateHUD();

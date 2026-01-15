@@ -131,7 +131,7 @@ class HomeSystem {
             Math.pow(this.houseLocation.y - playerY, 2)
         );
 
-        return dist < 1.5;
+        return dist < 3.0;
     }
 
     /**
