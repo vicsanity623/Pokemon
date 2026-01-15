@@ -176,6 +176,3 @@ class ArenaSystem {
         // but typically we wait for player input
     }
 }
-
-// Global Instance
-const arenaSystem = new ArenaSystem(null);
