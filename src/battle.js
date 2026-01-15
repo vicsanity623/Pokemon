@@ -798,10 +798,57 @@ class BattleSystem {
     runBtn() { if (this.isAttacking) return; showDialog('Got away safely!', 2000); setTimeout(() => this.endBattle(), 1000); }
 
     async win(caught) {
-        let xpGain = Math.floor(this.enemy.level * 20 / this.player.team.filter(p => p.hp > 0).length);
+        // 1. Calculate XP Gain
+        // Divide XP among living squad members
+        const livingMembers = this.player.team.filter(p => p.hp > 0);
+        let xpGain = Math.floor(this.enemy.level * 20 / (livingMembers.length || 1));
+        
+        // Bonus for bosses
+        if (this.enemy.isArenaBoss) xpGain *= 5;
+
         this.player.money += 50 + (this.enemy.level * 25);
-        for (let p of this.player.team) { if (p.hp > 0) { p.exp += xpGain; if (p.exp >= p.level * 100) await this.levelUp(p); } }
+
+        // 2. Show Dialog
+        showDialog(`Victory! Team gained ${xpGain} XP!`);
+
+        // 3. ANIME XP SEQUENCE
+        // A. Add the "Explosive" class to all visible XP bars in the squad list
+        const expBars = document.querySelectorAll('.sprite-exp-fill');
+        expBars.forEach(bar => bar.classList.add('anime-xp-active'));
+
+        // B. Apply XP to data (This triggers the width change because we call updateBattleUI right after)
+        let leveledUpPokemon = [];
+        
+        for (let p of this.player.team) {
+            if (p.hp > 0) {
+                p.exp += xpGain; 
+                // We don't resolve level up YET, we just let the bar fill past 100% visually if needed
+                if (p.exp >= p.level * 100) {
+                    leveledUpPokemon.push(p);
+                }
+            }
+        }
+
+        // C. Update UI - The CSS will now animate the width change over 3 seconds
+        this.updateBattleUI();
+
+        // D. FREEZE THE SCREEN (Wait for animation)
+        await this.delay(3000);
+
+        // E. Remove the explosive class
+        expBars.forEach(bar => bar.classList.remove('anime-xp-active'));
+
+        // 4. Handle Level Ups (now that animation is done)
+        for (let p of leveledUpPokemon) {
+            // While loop handles multiple level ups at once
+            while (p.exp >= p.level * 100) {
+                await this.levelUp(p);
+            }
+        }
+
         if (this.enemy.isArenaBoss) arenaSystem.winStage();
+        
+        // 5. End Battle
         this.endBattle();
     }
 
