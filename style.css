@@ -894,29 +894,42 @@ canvas {
     animation: effectiveness-pop 1.5s ease-out;
 }
 
+/* ========================================= */
+/*      FIX FOR INVENTORY / BAG CLICKS       */
+/* ========================================= */
+
 #player-bag-menu {
-    position: absolute;
+    /* CHANGED from absolute to fixed to break out of game container */
+    position: fixed !important; 
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.95);
-    z-index: 30000 !important; /* Force it on top of everything */
+    
+    /* Max possible Z-Index to force it on top of EVERYTHING */
+    z-index: 2147483647 !important; 
+    
     display: flex;
     flex-direction: column;
     padding: 20px;
     box-sizing: border-box;
     color: white;
-    pointer-events: auto;
+    
+    /* Ensure clicks work */
+    pointer-events: auto !important;
+    touch-action: manipulation; /* Helps with mobile taps */
 }
 
+/* Ensure buttons inside are strictly clickable */
 #player-bag-menu button,
 #player-bag-menu .tab-btn,
 #player-bag-menu .menu-item {
     cursor: pointer;
     pointer-events: auto !important;
     position: relative;
-    z-index: 30001;
+    z-index: 2147483648; /* One higher than container */
+    touch-action: manipulation;
 }
 
 #player-bag-menu.hidden {
@@ -938,10 +951,13 @@ canvas {
     color: white;
     border: 2px solid #555;
     font-family: 'Press Start 2P', cursive;
-    font-size: 10px; /* Adjusted for readability */
+    font-size: 10px;
     cursor: pointer;
-    position: relative;
-    z-index: 10;
+    
+    /* CRITICAL FIXES HERE */
+    position: relative; 
+    z-index: 30002 !important; /* Must be higher than the bag container (30000) */
+    pointer-events: auto !important; /* Force it to accept clicks */
     touch-action: manipulation;
 }
 
