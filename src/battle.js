@@ -332,14 +332,36 @@ class BattleSystem {
     }
 
     getRandomWildId() {
-        const LEGENDARY_IDS = [144, 145, 146, 150, 151];
-        let id;
-        do {
-            id = Math.floor(Math.random() * 151) + 1;
-            if (this.player.pLevel < 40 && LEGENDARY_IDS.includes(id)) continue;
-            break;
-        } while (true);
-        return id;
+        // 1. WHITELIST: Only Base Forms (No evolutions like Charizard, Raichu, etc.)
+        const BASE_FORM_IDS = [
+            1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 32, 35, 37, 39, 41, 43, 
+            46, 48, 50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 74, 77, 79, 81, 83, 
+            84, 86, 88, 90, 92, 95, 96, 98,
+            // --- GATED AREA (IDs 100+) ---
+            100, 102, 104, 106, 107, 108, 109, 111, 113, 114, 115, 116, 118, 
+            120, 122, 123, 124, 125, 126, 127, 128, 129, 131, 132, 133, 137, 
+            138, 140, 142, 143, 147
+        ];
+
+        // 2. CHECK CONDITIONS
+        // Allow 100+ only if Player Level > 50 OR World Day > 50
+        // (Assuming 'world' is globally accessible, otherwise relying on pLevel)
+        let isLateGame = this.player.pLevel >= 50;
+        
+        if (typeof world !== 'undefined' && world.day >= 50) {
+            isLateGame = true;
+        }
+
+        // 3. FILTER POOL
+        let allowedPool = BASE_FORM_IDS.filter(id => {
+            // If it's early game, BLOCK anything >= 100
+            if (!isLateGame && id >= 100) return false;
+            return true;
+        });
+
+        // 4. PICK RANDOM FROM POOL
+        const randomIndex = Math.floor(Math.random() * allowedPool.length);
+        return allowedPool[randomIndex];
     }
 
     calculateEnemyLevel(bonus, config) {
