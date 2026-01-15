@@ -71,7 +71,6 @@
                         <button onclick="battleSystem.bagBtn()">BAG</button>
                         <button onclick="battleSystem.pokemonBtn()">PKMN</button>
                         <button onclick="battleSystem.runBtn()">RUN</button>
-                        <button id="btn-auto" onclick="battleSystem.toggleAuto()" style="grid-column: span 2; background-color: #fff; color: #000;">AUTO</button>
                     </div>
                 </div>
                 <div id="move-selector" class="hidden">
@@ -119,7 +118,7 @@
                 <div id="effectiveness-text"></div>
             </div>
             
-            <img id="pokeball-anim" class="hidden" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png">
+            <div id="pokeball-anim" class="hidden"></div>
 
             <div id="quest-tracker">
                 <small>QUEST</small><br>
@@ -341,7 +340,6 @@
     <script src="src/utils.js"></script>
     <script src="src/data.js"></script>
     <script src="src/world.js"></script>
-    <script src="src/anime-bg.js"></script>
     <script src="src/battle.js"></script>
     <script src="src/combine.js"></script>
     <script src="src/arena.js"></script>
