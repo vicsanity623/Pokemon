@@ -714,11 +714,26 @@ class Renderer {
             // Reset shadow
             this.ctx.shadowBlur = 0;
         } else if (building.type === 'arena') {
-            // Use Arena System Draw if available to prevent duplication
-            if (typeof arenaSystem !== 'undefined') {
+            // FIX: Check if arenaSystem AND its draw method exist
+            if (typeof arenaSystem !== 'undefined' && typeof arenaSystem.draw === 'function') {
                 arenaSystem.draw(this.ctx, this.canvas, this.player);
                 return;
             }
+            
+            // Fallback Renderer (In case arena.js is outdated/missing the draw function)
+            // This ensures the game doesn't crash and you still see where the arena is
+            let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+            let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+            // Draw large base
+            this.ctx.fillStyle = '#f1c40f'; // Gold
+            this.ctx.fillRect(Math.floor(drawX) - TILE_SIZE / 2, Math.floor(drawY) - TILE_SIZE / 2, TILE_SIZE * 2, TILE_SIZE * 2);
+            
+            // Label
+            this.ctx.fillStyle = '#000';
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText("ARENA", Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY));
         } else if (building.type === 'home') {
             // Draw Player's Home Image
             let drawX =
