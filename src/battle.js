@@ -358,20 +358,62 @@ class BattleSystem {
     }
 
     getRandomWildId() {
-        // 1. WHITELIST: Only Base Forms (No evolutions like Charizard, Raichu, etc.)
+        // --- GRASS BIOME POOL (Regular) ---
+        // EXCLUDES: Fire, Rock, Ground, Water, Ice (They are now exclusive to Desert/Snow)
         const BASE_FORM_IDS = [
-            1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 32, 35, 37, 39, 41, 43, 
-            46, 48, 50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 74, 77, 79, 81, 83, 
-            84, 86, 88, 90, 92, 95, 96, 98,
+            1,   // Bulbasaur
+            10,  // Caterpie
+            13,  // Weedle
+            16,  // Pidgey
+            19,  // Rattata
+            21,  // Spearow
+            23,  // Ekans
+            25,  // Pikachu
+            29,  // Nidoran F
+            32,  // Nidoran M
+            35,  // Clefairy
+            39,  // Jigglypuff
+            41,  // Zubat
+            43,  // Oddish
+            46,  // Paras
+            48,  // Venonat
+            52,  // Meowth
+            56,  // Mankey
+            63,  // Abra
+            66,  // Machop
+            69,  // Bellsprout
+            81,  // Magnemite
+            83,  // Farfetch'd
+            84,  // Doduo
+            88,  // Grimer
+            92,  // Gastly
+            96,  // Drowzee
+            
             // --- GATED AREA (IDs 100+) ---
-            100, 102, 104, 106, 107, 108, 109, 111, 113, 114, 115, 116, 118, 
-            120, 122, 123, 124, 125, 126, 127, 128, 129, 131, 132, 133, 137, 
-            138, 140, 142, 143, 147
+            // Unlocks at Level 50+
+            100, // Voltorb
+            102, // Exeggcute
+            106, // Hitmonlee
+            107, // Hitmonchan
+            108, // Lickitung
+            109, // Koffing
+            113, // Chansey
+            114, // Tangela
+            115, // Kangaskhan
+            122, // Mr. Mime
+            123, // Scyther
+            125, // Electabuzz
+            127, // Pinsir
+            128, // Tauros
+            132, // Ditto
+            133, // Eevee
+            137, // Porygon
+            143, // Snorlax
+            147  // Dratini
         ];
 
         // 2. CHECK CONDITIONS
         // Allow 100+ only if Player Level > 50 OR World Day > 50
-        // (Assuming 'world' is globally accessible, otherwise relying on pLevel)
         let isLateGame = this.player.pLevel >= 50;
         
         if (typeof world !== 'undefined' && world.day >= 50) {
