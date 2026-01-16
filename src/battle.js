@@ -938,6 +938,10 @@ class BattleSystem {
 
         if (this.enemy.isArenaBoss) arenaSystem.winStage();
         
+        if (typeof questSystem !== 'undefined') {
+            questSystem.update('battle');
+        }
+        
         // 5. End Battle
         this.endBattle();
     }
