@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.0.3'; // Bumped Version
+const VERSION = 'v1.0.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -216,19 +216,13 @@ function gameLoop(timestamp) {
                         Math.round(player.y)
                     );
                     playSFX('sfx-pickup'); // Play pickup sound
-                    if (item === 'Herb') {
-                        if (player.inventory['Herb'])
-                            player.inventory['Herb']++;
-                        else player.inventory['Herb'] = 1;
-                        showDialog(
-                            `Gathered a Herb! (Total: ${player.inventory['Herb']})`,
-                            2000
-                        );
-                    } else {
-                        if (player.bag[item]) player.bag[item]++;
-                        else player.bag[item] = 1;
-                        showDialog(`Found a ${item}!`, 2000);
-                    }
+                    
+                    // UNIFIED BAG LOGIC
+                    // Treat 'Herb' exactly like 'Potion' or 'Pokeball'
+                    if (player.bag[item]) player.bag[item]++;
+                    else player.bag[item] = 1;
+                    
+                    showDialog(`Found a ${item}! (Total: ${player.bag[item]})`, 2000);
                 }
 
                 // Update Direction for sprites (if we had them)
