@@ -923,7 +923,7 @@ class BattleSystem {
         this.updateBattleUI();
 
         // D. FREEZE THE SCREEN (Wait for animation)
-        await this.delay(3000);
+        await this.delay(2000);
 
         // E. Remove the explosive class
         expBars.forEach(bar => bar.classList.remove('anime-xp-active'));
