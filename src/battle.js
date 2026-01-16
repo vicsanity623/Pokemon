@@ -939,7 +939,7 @@ class BattleSystem {
         if (this.enemy.isArenaBoss) arenaSystem.winStage();
         
         if (typeof questSystem !== 'undefined') {
-            questSystem.update('battle');
+            questSystem.update('hunt');
         }
         
         // 5. End Battle
