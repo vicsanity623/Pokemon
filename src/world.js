@@ -907,7 +907,6 @@ class Renderer {
         this.drawParticles(0, 0);
 
         // Simple Atmospheric Effects (Fog/Clouds)
-        // Moving over the whole screen
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         for (let i = 0; i < 5; i++) {
             let cloudX = (Date.now() / 1000 + i * 200) % this.canvas.width;
@@ -917,111 +916,115 @@ class Renderer {
             this.ctx.fill();
         }
 
-        // --- BLOOD MOON DEFENSE RENDERER ---
+        // --- BLOOD MOON DEFENSE RENDERER (Safe Mode) ---
         if (typeof defenseSystem !== 'undefined' && defenseSystem.active && homeSystem.houseLocation) {
-            const home = homeSystem.houseLocation;
-            // Calculate Home Screen Position (Center of house tile)
-            let hx = (home.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-            let hy = (home.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+            try {
+                const home = homeSystem.houseLocation;
+                // Calculate Home Screen Position
+                let hx = (home.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+                let hy = (home.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
 
-            // 1. Draw Base HP Bar
-            if (defenseSystem.maxBaseHealth > 0) {
-                this.ctx.fillStyle = '#000';
-                this.ctx.fillRect(Math.floor(hx), Math.floor(hy) - 15, TILE_SIZE, 8);
-                this.ctx.fillStyle = defenseSystem.baseHealth > 250 ? '#2ecc71' : '#e74c3c';
-                let bhp = Math.max(0, (defenseSystem.baseHealth / defenseSystem.maxBaseHealth) * TILE_SIZE);
-                this.ctx.fillRect(Math.floor(hx), Math.floor(hy) - 15, bhp, 8);
-            }
+                // 1. Draw Base HP Bar
+                if (defenseSystem.maxBaseHealth > 0) {
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.fillRect(Math.floor(hx), Math.floor(hy) - 15, TILE_SIZE, 8);
+                    this.ctx.fillStyle = defenseSystem.baseHealth > 250 ? '#2ecc71' : '#e74c3c';
+                    let bhp = Math.max(0, (defenseSystem.baseHealth / defenseSystem.maxBaseHealth) * TILE_SIZE);
+                    this.ctx.fillRect(Math.floor(hx), Math.floor(hy) - 15, bhp, 8);
+                }
 
-            // 2. Draw Turrets
-            if (defenseSystem.turretOffsets) {
-                defenseSystem.turretOffsets.forEach((offset, idx) => {
-                    let t = defenseSystem.defenders[idx];
-                    let tx = hx + offset.x * TILE_SIZE;
-                    let ty = hy + offset.y * TILE_SIZE;
+                // 2. Draw Turrets
+                if (defenseSystem.turretOffsets && Array.isArray(defenseSystem.defenders)) {
+                    defenseSystem.turretOffsets.forEach((offset, idx) => {
+                        let t = defenseSystem.defenders[idx];
+                        let tx = hx + offset.x * TILE_SIZE;
+                        let ty = hy + offset.y * TILE_SIZE;
 
-                    // Draw Turret Base (Platform)
-                    this.ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
-                    this.ctx.beginPath();
-                    this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.stroke();
-
-                    if (t && t.hp > 0) {
-                        // Draw Pokemon (Circle) representing Turret
-                        this.ctx.fillStyle = defenseSystem.getTypeColor(t.type || 'Normal');
+                        // Draw Platform
+                        this.ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
                         this.ctx.beginPath();
-                        this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+                        this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
                         this.ctx.fill();
-
-                        // Draw Turret HP Bar
-                        let hpPct = t.hp / t.maxHp;
-                        this.ctx.fillStyle = '#000';
-                        this.ctx.fillRect(tx + 5, ty - 12, TILE_SIZE - 10, 6);
-                        this.ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
-                        this.ctx.fillRect(tx + 5, ty - 12, (TILE_SIZE - 10) * Math.max(0, hpPct), 6);
-                    } else {
-                        // Empty/Broken Slot
-                        this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-                        this.ctx.fill();
-                        this.ctx.strokeStyle = 'red';
-                        this.ctx.moveTo(tx + 15, ty + 15);
-                        this.ctx.lineTo(tx + TILE_SIZE - 15, ty + TILE_SIZE - 15);
-                        this.ctx.moveTo(tx + TILE_SIZE - 15, ty + 15);
-                        this.ctx.lineTo(tx + 15, ty + TILE_SIZE - 15);
+                        this.ctx.strokeStyle = '#fff';
+                        this.ctx.lineWidth = 2;
                         this.ctx.stroke();
-                    }
-                });
-            }
 
-            // 3. Draw Enemies
-            if (defenseSystem.enemies) {
-                defenseSystem.enemies.forEach(e => {
-                    let ex = (e.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
-                    let ey = (e.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+                        if (t && t.hp > 0) {
+                            // Safe Color Check
+                            let typeColor = '#fff';
+                            if (typeof defenseSystem.getTypeColor === 'function') {
+                                // Ensure type is lowercase to match dictionary keys
+                                let typeKey = t.type ? t.type.toLowerCase() : 'normal';
+                                typeColor = defenseSystem.getTypeColor(typeKey);
+                            }
 
-                    // Shadow
-                    this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                    this.ctx.beginPath();
-                    this.ctx.ellipse(ex + TILE_SIZE / 2, ey + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI * 2);
-                    this.ctx.fill();
+                            this.ctx.fillStyle = typeColor;
+                            this.ctx.beginPath();
+                            this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+                            this.ctx.fill();
 
-                    // Body
-                    this.ctx.fillStyle = '#8e44ad'; // Purple Enemy
-                    this.ctx.fillRect(ex + 10, ey + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+                            // Draw Turret HP Bar
+                            let max = t.maxHp || 100;
+                            let cur = t.hp || 0;
+                            let hpPct = cur / max;
+                            
+                            this.ctx.fillStyle = '#000';
+                            this.ctx.fillRect(tx + 5, ty - 12, TILE_SIZE - 10, 6);
+                            this.ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
+                            this.ctx.fillRect(tx + 5, ty - 12, (TILE_SIZE - 10) * Math.max(0, hpPct), 6);
+                        } else {
+                            // Empty/Broken Slot
+                            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                            this.ctx.fill();
+                            this.ctx.strokeStyle = 'red';
+                            this.ctx.moveTo(tx + 15, ty + 15);
+                            this.ctx.lineTo(tx + TILE_SIZE - 15, ty + TILE_SIZE - 15);
+                            this.ctx.moveTo(tx + TILE_SIZE - 15, ty + 15);
+                            this.ctx.lineTo(tx + 15, ty + TILE_SIZE - 15);
+                            this.ctx.stroke();
+                        }
+                    });
+                }
 
-                    // Name
-                    this.ctx.fillStyle = '#fff';
-                    this.ctx.font = '10px Arial';
-                    this.ctx.fillText(e.name, ex + TILE_SIZE / 2, ey + 5);
+                // 3. Draw Enemies
+                if (defenseSystem.enemies) {
+                    defenseSystem.enemies.forEach(e => {
+                        let ex = (e.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+                        let ey = (e.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
 
-                    // Enemy HP
-                    let ehp = Math.max(0, e.hp / e.maxHp);
-                    this.ctx.fillStyle = 'red';
-                    this.ctx.fillRect(ex + 10, ey - 5, (TILE_SIZE - 20) * ehp, 4);
-                });
-            }
+                        this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(ex + TILE_SIZE / 2, ey + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI * 2);
+                        this.ctx.fill();
 
-            // 4. Draw Projectiles
-            if (defenseSystem.projectiles) {
-                defenseSystem.projectiles.forEach(p => {
-                    // Projectiles are in world coordinates
-                    let px = (p.x - this.player.x) * TILE_SIZE + this.canvas.width / 2;
-                    let py = (p.y - this.player.y) * TILE_SIZE + this.canvas.height / 2;
+                        this.ctx.fillStyle = '#8e44ad';
+                        this.ctx.fillRect(ex + 10, ey + 10, TILE_SIZE - 20, TILE_SIZE - 20);
 
-                    this.ctx.fillStyle = p.color || '#fff';
-                    this.ctx.beginPath();
-                    this.ctx.arc(px, py, 6, 0, Math.PI * 2);
-                    this.ctx.fill();
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.font = '10px Arial';
+                        this.ctx.fillText(e.name || '???', ex + TILE_SIZE / 2, ey + 5);
 
-                    // Trail/Glow
-                    this.ctx.shadowBlur = 10;
-                    this.ctx.shadowColor = p.color;
-                    this.ctx.fill();
-                    this.ctx.shadowBlur = 0;
-                });
+                        let ehp = Math.max(0, e.hp / e.maxHp);
+                        this.ctx.fillStyle = 'red';
+                        this.ctx.fillRect(ex + 10, ey - 5, (TILE_SIZE - 20) * ehp, 4);
+                    });
+                }
+
+                // 4. Draw Projectiles
+                if (defenseSystem.projectiles) {
+                    defenseSystem.projectiles.forEach(p => {
+                        let px = (p.x - this.player.x) * TILE_SIZE + this.canvas.width / 2;
+                        let py = (p.y - this.player.y) * TILE_SIZE + this.canvas.height / 2;
+
+                        this.ctx.fillStyle = p.color || '#fff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(px, py, 6, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    });
+                }
+            } catch (e) {
+                // If drawing fails, Log it but DO NOT CRASH the game loop
+                console.error("Raid Render Error (Suppressed):", e);
             }
         }
     }
