@@ -265,13 +265,39 @@ class BattleSystem {
         if (isArenaBoss && bossConfig) {
             id = bossConfig.id;
         } else {
+            // --- UPDATED BIOME LOGIC (Strict Gen 1 Base Forms) ---
             if (biome === 'snow') {
-                const pool = [86, 87, 124, 131, 144, 220, 221];
+                // Ice/Water Base Forms (No Legendaries, No Evolutions)
+                const pool = [
+                    7,   // Squirtle
+                    54,  // Psyduck
+                    60,  // Poliwag
+                    72,  // Tentacool
+                    79,  // Slowpoke
+                    86,  // Seel
+                    90,  // Shellder
+                    98,  // Krabby
+                    116, // Horsea
+                    120, // Staryu
+                    129  // Magikarp
+                ];
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else if (biome === 'desert') {
-                const pool = [27, 28, 74, 75, 95, 77, 4, 5];
+                // Ground/Rock/Fire Base Forms (No Evolutions)
+                const pool = [
+                    4,   // Charmander
+                    27,  // Sandshrew
+                    37,  // Vulpix
+                    50,  // Diglett
+                    58,  // Growlithe
+                    74,  // Geodude
+                    77,  // Ponyta
+                    104, // Cubone
+                    111  // Rhyhorn
+                ];
                 id = pool[Math.floor(Math.random() * pool.length)];
             } else {
+                // Grass / Normal Biome
                 id = this.getRandomWildId();
             }
         }
