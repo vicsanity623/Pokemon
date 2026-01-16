@@ -232,8 +232,9 @@ class GameClock {
     update(player) {
         let now = Date.now();
         let diff = now - this.startTime + this.elapsedTime;
-        // 1 Game Day = 1 Real Minute for playability
-        const DAY_LENGTH = 6 * 60 * 60 * 1000;
+        
+        // CHANGE THIS LINE (2 * 60 * 60 * 1000 = 2 Hours)
+        const DAY_LENGTH = 2 * 60 * 60 * 1000; 
 
         if (diff > (this.gameDays + 1) * DAY_LENGTH) {
             this.gameDays++;
@@ -255,7 +256,6 @@ class GameClock {
         document.getElementById('meta-time').innerText = timeStr;
     }
 }
-
 // Dialog
 function showDialog(text, duration = 0) {
     const box = document.getElementById('dialog-box');
