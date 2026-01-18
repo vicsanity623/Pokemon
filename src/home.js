@@ -78,6 +78,10 @@ class HomeSystem {
      * Teleport player to home
      */
     teleportHome() {
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            showDialog("NO SIGNAL. CANNOT TELEPORT.", 2000);
+            return false;
+        }
         if (!this.hasSpawned || !this.houseLocation) {
             showDialog('You don\'t have a house yet!', 2000);
             return false;
