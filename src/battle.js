@@ -961,11 +961,115 @@ class BattleSystem {
 
     async levelUp(p) {
         p.exp -= p.level * 100; p.level++;
-        const inc = { strength: Math.floor(Math.random() * 3) + 1, defense: Math.floor(Math.random() * 3) + 1, speed: Math.floor(Math.random() * 3) + 1, hp: Math.floor(Math.random() * 3) + 1, special: Math.floor(Math.random() * 3) + 1 };
-        p.stats.strength += inc.strength; p.stats.defense += inc.defense; p.stats.speed += inc.speed; p.stats.hp += inc.hp; p.stats.special += inc.special;
-        p.maxHp = p.level * 5 + p.stats.hp; p.hp = p.maxHp;
+        
+        // Stat Increases
+        const inc = { 
+            strength: Math.floor(Math.random() * 3) + 1, 
+            defense: Math.floor(Math.random() * 3) + 1, 
+            speed: Math.floor(Math.random() * 3) + 1, 
+            hp: Math.floor(Math.random() * 3) + 1, 
+            special: Math.floor(Math.random() * 3) + 1 
+        };
+        p.stats.strength += inc.strength; 
+        p.stats.defense += inc.defense; 
+        p.stats.speed += inc.speed; 
+        p.stats.hp += inc.hp; 
+        p.stats.special += inc.special;
+        
+        p.maxHp = p.level * 5 + p.stats.hp; 
+        p.hp = p.maxHp;
+        
+        // Show Stats Screen
         await this.showLevelUpScreen(p, inc, 5);
+        
+        // --- CHECK MOVES ---
+        await this.checkNewMoves(p);
+        // -------------------
+
         await this.checkEvolution(p);
+    }
+
+    async checkNewMoves(p) {
+        // Learn a move every 5 levels
+        if (p.level % 5 !== 0) return;
+
+        // Calculate Move Tier based on level (0-3)
+        const moveTier = Math.min(3, Math.floor(p.level / 5) - 1);
+        
+        // Get Move Data
+        const newMove = getMove(p.type, moveTier);
+
+        if (!p.moves) p.moves = [];
+        
+        // Don't learn if we already have it
+        if (p.moves.some(m => m.name === newMove.name)) return;
+
+        if (p.moves.length < 4) {
+            // Free slot? Learn automatically
+            p.moves.push(newMove);
+            showDialog(`${p.name} learned ${newMove.name}!`, 2000);
+            await this.delay(2000);
+        } else {
+            // Full slots? Prompt User
+            await this.promptMoveReplace(p, newMove);
+        }
+    }
+
+    promptMoveReplace(p, newMove) {
+        return new Promise(resolve => {
+            const container = document.getElementById('move-learn-container');
+            const list = document.getElementById('move-forget-list');
+            const contBtn = document.getElementById('levelup-continue-btn'); 
+
+            // Update UI Text
+            document.getElementById('new-move-name').innerText = newMove.name;
+            container.classList.remove('hidden');
+            contBtn.classList.add('hidden'); // Hide continue so they MUST choose
+
+            list.innerHTML = '';
+
+            // Generate "Forget X" buttons
+            p.moves.forEach((move, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'forget-btn';
+                btn.style.width = '100%';
+                btn.style.marginBottom = '5px';
+                btn.innerHTML = `Forget <strong>${move.name}</strong> <span style="font-size:8px">(Pow:${move.power})</span>`;
+                
+                // Click Handler
+                btn.onclick = () => {
+                    showDialog(`Forgot ${move.name} and learned ${newMove.name}!`);
+                    p.moves[index] = newMove; // Replace Logic
+                    this.finishMoveLearn(resolve);
+                };
+                
+                // Mobile Touch Support
+                btn.ontouchstart = (e) => {
+                    e.preventDefault();
+                    btn.click();
+                };
+
+                list.appendChild(btn);
+            });
+
+            // Store resolve for the "Do not learn" button (skipLearnMove)
+            this.pendingMoveResolve = resolve;
+        });
+    }
+
+    // Called by the Red "Do Not Learn" button
+    skipLearnMove() {
+        showDialog(`Gave up on learning the move.`);
+        if (this.pendingMoveResolve) {
+            this.finishMoveLearn(this.pendingMoveResolve);
+        }
+    }
+
+    // Cleanup UI and resume game
+    finishMoveLearn(resolve) {
+        document.getElementById('move-learn-container').classList.add('hidden');
+        document.getElementById('levelup-continue-btn').classList.remove('hidden'); // Show continue button again
+        setTimeout(() => resolve(), 1500);
     }
 
     async checkEvolution(p) {
