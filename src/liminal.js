@@ -19,20 +19,22 @@ class LiminalSystem {
         const mainMusic = document.getElementById('main-music');
         if (mainMusic) { mainMusic.pause(); mainMusic.currentTime = 0; }
 
-        // Teleport deep into positive space
-        this.player.x = 50000; 
-        this.player.y = 50000;
+        // FIX: Teleport to 50002 (Floor), not 50000 (Wall)
+        this.player.x = 50002; 
+        this.player.y = 50002;
 
-        // Activate Mirror Entity at offset
-        this.entity.x = 50000 + 10;
-        this.entity.y = 50000;
+        // Activate Entity nearby (also on floor coordinates)
+        this.entity.x = 50002 + 5; 
+        this.entity.y = 50002;
         this.entity.active = true;
 
+        // Hide UI
         document.getElementById('bottom-hud').classList.add('hidden');
         document.getElementById('quest-tracker').classList.add('hidden');
+        document.getElementById('hamburger-btn').classList.add('hidden');
         document.body.style.backgroundColor = '#1a1a00'; 
 
-        showDialog("... Connection Lost ...", 4000);
+        showDialog("... CONNECTION LOST ...", 4000);
     }
 
     update(dt) {
