@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.0.7'; // Bumped Version
+const VERSION = 'v1.0.8'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -14,6 +14,7 @@ const homeSystem = new HomeSystem(player);
 const storeSystem = new StoreSystem(player);
 const defenseSystem = new DefenseSystem(player, world);
 const liminalSystem = new LiminalSystem(player, world);
+world.init(); 
 let isPartyOpen = true; // Default to open
 
 // Music System
