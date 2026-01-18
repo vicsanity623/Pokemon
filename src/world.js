@@ -936,6 +936,34 @@ class Renderer {
             this.ctx.arc(cloudX, cloudY, 80, 0, Math.PI * 2);
             this.ctx.fill();
         }
+        
+        if (typeof liminalSystem !== 'undefined' && !liminalSystem.active && homeSystem.houseLocation) {
+            const hx = homeSystem.houseLocation.x;
+            const hy = homeSystem.houseLocation.y;
+            
+            // Trigger Location: House Y + 666
+            const trigX = hx;
+            const trigY = hy + 666;
+    
+            const drawX = (trigX - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+            const drawY = (trigY - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+    
+            // Only draw if on screen
+            if (drawX > -TILE_SIZE && drawX < this.canvas.width && drawY > -TILE_SIZE && drawY < this.canvas.height) {
+                // Draw a Red Telephone Booth / Door
+                this.ctx.fillStyle = '#c0392b'; // Dark Red
+                this.ctx.fillRect(Math.floor(drawX) + 20, Math.floor(drawY) + 10, 40, 60);
+                
+                // Glow
+                this.ctx.shadowBlur = 20;
+                this.ctx.shadowColor = 'red';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '30px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText("☎️", Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + TILE_SIZE/2);
+                this.ctx.shadowBlur = 0;
+            }
+        }
 
         // --- BLOOD MOON DEFENSE RENDERER (Safe Mode) ---
         if (typeof defenseSystem !== 'undefined' && defenseSystem.active && homeSystem.houseLocation) {
