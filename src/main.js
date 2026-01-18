@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.0.8'; // Bumped Version
+const VERSION = 'v1.0.9'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1082,6 +1082,22 @@ function handleNPCInteraction(npc) {
 
 // Init
 window.onload = async () => {
+    const rawSave = localStorage.getItem('poke_save');
+    if (rawSave) {
+        const check = JSON.parse(rawSave);
+        if (check.status === "CORRUPTED") {
+            document.body.innerHTML = `
+                <div style="background:black; color:red; height:100vh; display:flex; align-items:center; justify-content:center; font-family:monospace; flex-direction:column;">
+                    <h1>FATAL ERROR</h1>
+                    <p>SAVE FILE CORRUPTED</p>
+                    <p>REASON: ${check.reason || "UNKNOWN"}</p>
+                    <br>
+                    <button onclick="localStorage.removeItem('poke_save'); window.location.reload();" style="background:#333; color:white; border:1px solid red; padding:10px;">RESET MEMORY</button>
+                </div>
+            `;
+            return; // STOP GAME LOADING
+        }
+    }
     // 1. UPDATE VERSION TEXT IN MENU
     const verEl = document.getElementById('game-version');
     if (verEl) verEl.innerText = `Version: ${VERSION}`;
@@ -1437,6 +1453,10 @@ let gameSpeed = 1.0;
 let currentBox = 0;
 
 function toggleMainMenu() {
+    if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+        showDialog("MENU DISABLED. SYSTEM ERROR.", 1000);
+        return;
+    }
     const menu = document.getElementById('main-menu-modal');
     const sidebar = document.getElementById('party-sidebar');
 
