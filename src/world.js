@@ -950,6 +950,7 @@ class Renderer {
             this.ctx.fill();
         }
         
+        // --- LIMINAL TRIGGER (Red Phone) ---
         if (typeof liminalSystem !== 'undefined' && !liminalSystem.active && homeSystem.houseLocation) {
             const hx = homeSystem.houseLocation.x;
             const hy = homeSystem.houseLocation.y;
@@ -978,6 +979,10 @@ class Renderer {
             }
         }
 
+        // --- DRAW LIMINAL ENTITY (Mirror Self) ---
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            liminalSystem.drawEntity(this.ctx, this.canvas, TILE_SIZE);
+        }
         // --- BLOOD MOON DEFENSE RENDERER (Safe Mode) ---
         if (typeof defenseSystem !== 'undefined' && defenseSystem.active && homeSystem.houseLocation) {
             try {
