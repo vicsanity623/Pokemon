@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.0.6'; // Bumped Version
+const VERSION = 'v1.0.7'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -13,6 +13,7 @@ const rivalSystem = new RivalSystem(player);
 const homeSystem = new HomeSystem(player);
 const storeSystem = new StoreSystem(player);
 const defenseSystem = new DefenseSystem(player, world);
+const liminalSystem = new LiminalSystem(player, world);
 let isPartyOpen = true; // Default to open
 
 // Music System
@@ -147,6 +148,10 @@ function gameLoop(timestamp) {
         lastTime = timestamp;
         if (dt > 0.1) dt = 0.1; // Cap dt for lag spikes
 
+        // --- LIMINAL SYSTEM UPDATE (Safe Placement) ---
+        if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
+        // ----------------------------------------------
+
         let dx = 0;
         let dy = 0;
 
@@ -218,7 +223,6 @@ function gameLoop(timestamp) {
                     playSFX('sfx-pickup'); // Play pickup sound
                     
                     // UNIFIED BAG LOGIC
-                    // Treat 'Herb' exactly like 'Potion' or 'Pokeball'
                     if (player.bag[item]) player.bag[item]++;
                     else player.bag[item] = 1;
                     
@@ -320,7 +324,7 @@ function gameLoop(timestamp) {
         const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
-        // --- BLOOD MOON RAID LOGIC ---
+        // --- BLOOD MOON RAID LOGIC (SAFE WRAPPER) ---
         if (clock.gameDays > 0 && clock.gameDays % 2 === 0 && !defenseSystem.active) {
             if (defenseSystem.lastRaidDay !== clock.gameDays) {
                 defenseSystem.startRaid();
@@ -329,7 +333,15 @@ function gameLoop(timestamp) {
         }
 
         if (defenseSystem.active) {
-            defenseSystem.update(dt);
+            try {
+                defenseSystem.update(dt);
+            } catch (e) {
+                console.error("Defense Update Crash:", e);
+                // Emergency shutoff
+                defenseSystem.active = false;
+                document.getElementById('raid-hud').classList.add('hidden');
+                document.getElementById('flash-overlay').classList.remove('blood-moon');
+            }
         }
 
         // Egg Hatching Logic
@@ -340,12 +352,10 @@ function gameLoop(timestamp) {
                     p.isEgg = false;
                     p.name = p.species; // Hatch!
 
-                    // --- SPRITE RESTORATION FIX ---
                     // Restore the sprite we saved when the egg was created
                     if (p.storedSprite) {
                         p.backSprite = p.storedSprite;
                     } else {
-                        // Fallback if data is missing (old saves)
                         p.backSprite = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
                     }
 
@@ -358,8 +368,6 @@ function gameLoop(timestamp) {
                     p.hp = p.maxHp;
 
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
-
-                    // Force UI refresh immediately
                     updateHUD();
                 }
             }
