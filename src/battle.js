@@ -969,18 +969,49 @@ class BattleSystem {
     }
 
     async checkEvolution(p) {
-        const evoData = (typeof EVOLUTIONS !== 'undefined') ? EVOLUTIONS[p.name.split(' ')[0]] : null;
+        // Clean name to handle Shiny stars e.g. "ABRA ✨" -> "ABRA"
+        const cleanName = p.name.split(' ')[0];
+        const evoData = (typeof EVOLUTIONS !== 'undefined') ? EVOLUTIONS[cleanName] : null;
+
         if (evoData && p.level >= evoData.level) {
             showDialog(`What? ${p.name} is evolving!`);
+            
+            // Flash Effect
             const overlay = document.getElementById('level-up-overlay');
-            for (let i = 0; i < 3; i++) { overlay.style.backgroundColor = 'white'; await this.delay(200); overlay.style.backgroundColor = 'black'; await this.delay(200); }
+            for (let i = 0; i < 3; i++) { 
+                overlay.style.backgroundColor = 'white'; 
+                overlay.classList.remove('hidden'); // Ensure visible
+                await this.delay(200); 
+                overlay.classList.add('hidden');
+                await this.delay(200); 
+            }
+
             try {
                 const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evoData.id}`);
                 const data = await res.json();
-                p.name = evoData.evolvesInto; p.id = evoData.id; p.backSprite = data.sprites.back_default; p.type = data.types[0].type.name;
+
+                // 1. Update Identity
+                p.name = evoData.evolvesInto; 
+                p.id = evoData.id; 
+                p.type = data.types[0].type.name;
+
+                // 2. FIX: Update ALL Sprites
+                p.backSprite = data.sprites.back_default;
+                p.sprite = data.sprites.front_default; // Icons
+                
+                // Animated Sprite (Try Gen 5 GIF, fallback to static)
+                const anim = data.sprites.versions['generation-v']['black-white']['animated']['front_default'];
+                p.animatedSprite = anim || data.sprites.front_default;
+
                 showDialog(`Congratulations! Evolved into ${p.name}!`, 4000);
                 await this.delay(4000);
-            } catch (e) { console.error(e); }
+                
+                // Force HUD refresh to update Sidebar Icon immediately
+                if (typeof updateHUD === 'function') updateHUD();
+
+            } catch (e) { 
+                console.error("Evolution Error:", e); 
+            }
         }
     }
 
