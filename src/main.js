@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.0.9'; // Bumped Version
+const VERSION = 'v1.2.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1174,6 +1174,19 @@ window.onload = async () => {
         });
     }
 
+    if (mainMusic && battleMusic) {
+        mainMusic.volume = musicVolume;
+        battleMusic.volume = musicVolume;
+
+        // CHANGE THIS BLOCK:
+        // Only play music if NOT in Liminal Space
+        if (!liminalSystem.active) {
+            mainMusic.play().catch((err) => {
+                // ... autoplay blocked logic ...
+            });
+        }
+    }
+
     // Auto-Save every 30s
     setInterval(saveGame, 30000);
 
@@ -1257,6 +1270,7 @@ function saveGame() {
         merge: (typeof mergeSystem !== 'undefined') ? mergeSystem.getSaveData() : null,
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
         defense: { lastRaidDay: defenseSystem.lastRaidDay },
+        liminal: (typeof liminalSystem !== 'undefined') ? liminalSystem.getSaveData() : null,
 
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
@@ -1381,6 +1395,10 @@ function loadGame() {
         // 5.5 Restore Merge System (Fix for lost pokemon)
         if (data.merge && typeof mergeSystem !== 'undefined') {
             mergeSystem.loadSaveData(data.merge);
+        }
+
+        if (data.liminal && typeof liminalSystem !== 'undefined') {
+            liminalSystem.loadSaveData(data.liminal);
         }
 
         // 6. Restore Time
