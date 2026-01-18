@@ -385,7 +385,8 @@ input.press = (key) => {
 
     if (key === 'Enter') {
         // 'A' button mapped to Enter
-        // Check for nearby Poke Center first
+        
+        // 1. Check for nearby Poke Center
         let nearbyPokeCenter = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
@@ -399,7 +400,7 @@ input.press = (key) => {
             return;
         }
 
-        // Check for nearby Arena
+        // 2. Check for nearby Arena
         let nearbyArena = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
@@ -413,11 +414,11 @@ input.press = (key) => {
             return;
         }
         
-        if (homeSystem.houseLocation && !liminalSystem.active) {
+        // 3. Check Liminal Trigger (The Red Phone)
+        if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
             const doorY = homeSystem.houseLocation.y + 666;
             
-            // Distance check (Player must be standing on or next to it)
             const dist = Math.sqrt(Math.pow(doorX - player.x, 2) + Math.pow(doorY - player.y, 2));
             
             if (dist < 1.5) {
@@ -428,7 +429,7 @@ input.press = (key) => {
             }
         }
 
-        // Check for nearby NPC
+        // 4. Check for nearby NPC
         let nearbyNPC = world.npcs.find(
             (npc) =>
                 Math.abs(npc.x - player.x) < 1.5 &&
@@ -439,13 +440,13 @@ input.press = (key) => {
             return;
         }
 
-        // Check for nearby Home
+        // 5. Check for nearby Home
         if (homeSystem.isNearHome(player.x, player.y)) {
             homeSystem.interact();
             return;
         }
 
-        // Check for nearby Store
+        // 6. Check for nearby Store
         if (storeSystem.location) {
             let dist = Math.sqrt(
                 Math.pow(storeSystem.location.x - player.x, 2) +
