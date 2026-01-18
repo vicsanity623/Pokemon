@@ -177,4 +177,32 @@ class LiminalSystem {
         ctx.fillRect(drawX + tileSize/1.5, drawY + tileSize/3, 5, 5);
         ctx.shadowBlur = 0;
     }
+    // --- SAVE/LOAD LOGIC ---
+    getSaveData() {
+        return {
+            active: this.active,
+            sanityTimer: this.sanityTimer,
+            isHunting: this.isHunting,
+            entity: this.entity
+        };
+    }
+
+    loadSaveData(data) {
+        this.active = data.active || false;
+        this.sanityTimer = data.sanityTimer || 0;
+        this.isHunting = data.isHunting || false;
+        this.entity = data.entity || { x: 0, y: 0, active: false };
+
+        // If we loaded into the backrooms, re-apply the horror state immediately
+        if (this.active) {
+            document.getElementById('bottom-hud').classList.add('hidden');
+            document.getElementById('quest-tracker').classList.add('hidden');
+            document.getElementById('hamburger-btn').classList.add('hidden');
+            document.body.style.backgroundColor = '#1a1a00';
+            
+            // Ensure music stays off
+            const mainMusic = document.getElementById('main-music');
+            if (mainMusic) mainMusic.pause();
+        }
+    }
 }
