@@ -149,7 +149,7 @@ class World {
     }
 
     getColor(type) {
-        if (type.startsWith('glitch_')) {
+        if (type.startsWith('liminal_')) {
             return liminalSystem.getColor(type);
         }
         switch (type) {
