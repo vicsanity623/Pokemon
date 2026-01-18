@@ -412,6 +412,21 @@ input.press = (key) => {
             arenaSystem.enter();
             return;
         }
+        
+        if (homeSystem.houseLocation && !liminalSystem.active) {
+            const doorX = homeSystem.houseLocation.x;
+            const doorY = homeSystem.houseLocation.y + 666;
+            
+            // Distance check (Player must be standing on or next to it)
+            const dist = Math.sqrt(Math.pow(doorX - player.x, 2) + Math.pow(doorY - player.y, 2));
+            
+            if (dist < 1.5) {
+                if (confirm("Answer the call?")) {
+                    liminalSystem.enter();
+                }
+                return;
+            }
+        }
 
         // Check for nearby NPC
         let nearbyNPC = world.npcs.find(
