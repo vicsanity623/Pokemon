@@ -5,9 +5,14 @@ const VIEW_H = 15; // Tiles high
 class World {
     constructor(seed) {
         this.rng = new SeededRandom(seed);
-        this.items = {}; // Store items by "x,y" key
+        this.items = {}; 
         this.npcs = [];
-        this.buildings = []; // Poke Centers and other buildings
+        this.buildings = []; 
+        // We do NOT call initItems/initNPCs here anymore to prevent crash
+    }
+
+    // Call this manually after all systems are loaded
+    init() {
         this.initItems();
         this.initNPCs();
     }
