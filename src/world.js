@@ -115,6 +115,9 @@ class World {
     }
 
     getTile(x, y) {
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            return liminalSystem.getLiminalTile(x, y);
+        }
         // 1. Temperature & Biome Noise
         let tempNoise = this.rng.noise(x * 0.02, y * 0.02);
         let temperature = (y / 200) + (tempNoise * 0.5); // Negative Y = North (Cold)
@@ -146,6 +149,9 @@ class World {
     }
 
     getColor(type) {
+        if (type.startsWith('glitch_')) {
+            return liminalSystem.getColor(type);
+        }
         switch (type) {
             case 'water': return '#4FA4F4';
             case 'ice': return '#A5E3F9';
