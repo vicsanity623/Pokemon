@@ -290,6 +290,14 @@ class World {
     }
 
     isBlocked(x, y) {
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            // Check if this tile is a wall or void
+            const tile = liminalSystem.getLiminalTile(x, y);
+            if (tile === 'liminal_wall' || tile === 'liminal_void') return true;
+            
+            // Allow walking on floor
+            return false;
+        }
         // 1. Water Check
         if (this.getTile(x, y) === 'water') return true;
 
