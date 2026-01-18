@@ -433,10 +433,23 @@ class BattleSystem {
     }
 
     calculateEnemyLevel(bonus, config) {
+        // 1. Boss/Arena Configuration Override
         if (config && config.level) return config.level;
-        const playerLevel = this.player.pLevel || 1;
-        let randomOffset = Math.floor(Math.random() * 5) - 2;
-        return Math.max(1, playerLevel + randomOffset + bonus);
+
+        // 2. Get Current Day from the Global Clock
+        // If it's Day 0 (start), treat it as Day 1
+        let currentDay = (typeof clock !== 'undefined') ? Math.max(1, clock.gameDays) : 1;
+
+        // 3. Calculate Base Level (Day * 10)
+        // Day 1 = 10, Day 2 = 20, Day 3 = 30...
+        let baseLevel = currentDay * 10;
+
+        // 4. Subtract 0 to 3 levels
+        // Day 1 (10) becomes 7, 8, 9, or 10
+        let variation = Math.floor(Math.random() * 4); 
+
+        // 5. Calculate Final Level
+        return Math.max(2, baseLevel - variation + bonus);
     }
 
     renderSquad() {
