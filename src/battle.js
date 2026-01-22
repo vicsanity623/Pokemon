@@ -83,7 +83,12 @@ class BattleSystem {
         return 'sfx-attack1';
     }
 
-    generateStats() {
+    generateStats(isComboMatch = false) {
+        // Combo Bonus: Max IVs if 20+ chain
+        if (isComboMatch && typeof rpgSystem !== 'undefined' && rpgSystem.comboCount >= 20) {
+            return { strength: 100, defense: 100, speed: 100, hp: 100, special: 100 };
+        }
+
         return {
             strength: Math.floor(Math.random() * 89) + 12,
             defense: Math.floor(Math.random() * 89) + 12,
@@ -303,13 +308,25 @@ class BattleSystem {
         }
 
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
-        const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < 0.02;
+
+        // --- SHINY COMBO CHECK ---
+        let shinyThreshold = 0.02; // Base 1/50ish
+        let isComboMatch = false;
+
+        if (typeof rpgSystem !== 'undefined') {
+            if (rpgSystem.comboSpecies === id) {
+                isComboMatch = true;
+                if (rpgSystem.comboCount >= 50) shinyThreshold = 0.20; // 10x Boost
+            }
+        }
+
+        const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < shinyThreshold;
 
         try {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
             let data = await res.json();
 
-            const stats = this.generateStats();
+            const stats = this.generateStats(isComboMatch);
             let maxHp = level * 5 + stats.hp;
             if (isArenaBoss) {
                 maxHp *= 10;
@@ -347,7 +364,15 @@ class BattleSystem {
             }
 
             this.updateBattleUI();
-            showDialog(`A wild ${this.enemy.name} appeared!`);
+            this.updateBattleUI();
+
+            // Show Combo Count if Active
+            let msg = `A wild ${this.enemy.name} appeared!`;
+            if (typeof rpgSystem !== 'undefined' && rpgSystem.comboCount > 0) {
+                msg += ` (Chain: ${rpgSystem.comboCount})`;
+            }
+            showDialog(msg);
+
             document.getElementById('bottom-hud').classList.add('hud-battle');
 
             this.nextTurn();
@@ -916,6 +941,29 @@ class BattleSystem {
         this.catchSuccess();
     }
 
+    updateCombo(speciesId, outcome) {
+        if (typeof rpgSystem === 'undefined') return;
+
+        if (outcome === 'run') {
+            // Preserving combo, do nothing specific
+            return;
+        }
+
+        // Win or Catch
+        // Note: Using strict equality check ID. 
+        // If we want to group "Pidgey" and "Pidgeotto", we need access to evolutionary lines, but exact ID is safer for now.
+        if (rpgSystem.comboSpecies === speciesId) {
+            rpgSystem.comboCount++;
+            showDialog(`Catch Combo: ${rpgSystem.comboCount}!`, 1000);
+        } else {
+            if (rpgSystem.comboCount > 0) showDialog(`Combo Broken...`, 1000);
+            rpgSystem.comboCount = 1;
+            rpgSystem.comboSpecies = speciesId;
+        }
+        // Force HUD update if we add combo display there later
+        if (typeof updateHUD === 'function') updateHUD();
+    }
+
     async catchSuccess() {
         this.isAttacking = true;
         const ballAnim = document.getElementById('pokeball-anim');
@@ -951,11 +999,22 @@ class BattleSystem {
             `;
         }
 
+        // Update Combo
+        this.updateCombo(this.enemy.id, 'catch');
+
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
 
     pokemonBtn() { showDialog("You are fighting as a squad! No switching needed."); }
-    runBtn() { if (this.isAttacking) return; showDialog('Got away safely!', 2000); setTimeout(() => this.endBattle(), 1000); }
+    runBtn() {
+        if (this.isAttacking) return;
+
+        // Run preserves combo
+        // this.updateCombo(this.enemy.id, 'run'); 
+
+        showDialog('Got away safely!', 2000);
+        setTimeout(() => this.endBattle(), 1000);
+    }
 
     async win(caught) {
         // 1. Calculate XP Gain
@@ -966,10 +1025,20 @@ class BattleSystem {
         // Bonus for bosses
         if (this.enemy.isArenaBoss) xpGain *= 5;
 
+        // Combo Bonus
+        if (typeof rpgSystem !== 'undefined' && rpgSystem.comboCount >= 10) {
+            xpGain = Math.floor(xpGain * 1.5);
+        }
+
         this.player.money += 50 + (this.enemy.level * 25);
 
         // 2. Show Dialog
-        showDialog(`Victory! Team gained ${xpGain} XP!`);
+        let msg = `Victory! Team gained ${xpGain} XP!`;
+        if (typeof rpgSystem !== 'undefined' && rpgSystem.comboCount >= 10) msg += " (Combo Bonus!)";
+        showDialog(msg);
+
+        // Update Combo
+        this.updateCombo(this.enemy.id, 'win');
 
         // 3. ANIME XP SEQUENCE
         // A. Add the "Explosive" class to all visible XP bars in the squad list
@@ -1064,7 +1133,7 @@ class BattleSystem {
         if (p.moves.length < 4) {
             // Free slot? Learn automatically
             p.moves.push(newMove);
-            showDialog(`${p.name} learned ${newMove.name}!`, 2000);
+            showDialog(`${p.name} learned ${newMove.name} !`, 2000);
             await this.delay(2000);
         } else {
             // Full slots? Prompt User
@@ -1091,11 +1160,11 @@ class BattleSystem {
                 btn.className = 'forget-btn';
                 btn.style.width = '100%';
                 btn.style.marginBottom = '5px';
-                btn.innerHTML = `Forget <strong>${move.name}</strong> <span style="font-size:8px">(Pow:${move.power})</span>`;
+                btn.innerHTML = `Forget < strong > ${move.name}</strong > <span style="font-size:8px">(Pow:${move.power})</span>`;
 
                 // Click Handler
                 btn.onclick = () => {
-                    showDialog(`Forgot ${move.name} and learned ${newMove.name}!`);
+                    showDialog(`Forgot ${move.name} and learned ${newMove.name} !`);
                     p.moves[index] = newMove; // Replace Logic
                     this.finishMoveLearn(resolve);
                 };
@@ -1135,7 +1204,7 @@ class BattleSystem {
         const evoData = (typeof EVOLUTIONS !== 'undefined') ? EVOLUTIONS[cleanName] : null;
 
         if (evoData && p.level >= evoData.level) {
-            showDialog(`What? ${p.name} is evolving!`);
+            showDialog(`What ? ${p.name} is evolving!`);
 
             // Flash Effect
             const overlay = document.getElementById('level-up-overlay');

@@ -10,6 +10,10 @@ class RPGSystem {
         this.xp = 0;
         this.level = 1;
 
+        // Catch Combo
+        this.comboCount = 0;
+        this.comboSpecies = null; // ID of the Pokemon being chained
+
         // Combat
         this.isAttacking = false;
         this.attackCooldown = 0;
@@ -298,7 +302,15 @@ class RPGSystem {
     }
 
     getSaveData() {
-        return { hp: this.hp, maxHp: this.maxHp, xp: this.xp, level: this.level, equipment: this.equipment };
+        return {
+            hp: this.hp,
+            maxHp: this.maxHp,
+            xp: this.xp,
+            level: this.level,
+            equipment: this.equipment,
+            comboCount: this.comboCount,
+            comboSpecies: this.comboSpecies
+        };
     }
 
     loadSaveData(data) {
@@ -307,5 +319,7 @@ class RPGSystem {
         this.xp = data.xp || 0;
         this.level = data.level || 1;
         this.equipment = data.equipment || { weapon: null, armor: null, accessory: null };
+        this.comboCount = data.comboCount || 0;
+        this.comboSpecies = data.comboSpecies || null;
     }
 }
