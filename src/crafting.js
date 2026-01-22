@@ -213,18 +213,15 @@ class CraftingSystem {
                 // --- DYNAMIC TEXT LOGIC ---
                 let displayName = upg.name;
                 let displayDesc = upg.desc;
-                let isMaxed = false;
-
+                
                 if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
                     displayName = `Fireball (Lvl ${guardianSystem.skills.fireball.level})`;
                     displayDesc = "Increases damage/range (Coming Soon)";
-                    // Logic to change cost for leveling up could go here
                 }
                 if (upg.id === 'asteroid' && guardianSystem.skills.asteroid.unlocked) {
                     displayName = `Asteroid (Lvl ${guardianSystem.skills.asteroid.level})`;
                     displayDesc = "Increases rotation speed (Coming Soon)";
                 }
-                // --------------------------
 
                 let costStr = Object.entries(upg.cost).map(([k, v]) => `${k} x${v}`).join(', ');
                 let canBuy = true;
@@ -254,15 +251,27 @@ class CraftingSystem {
         }
     }
 
+    // FIXED: Checks affordability before crafting
     craftItem(item) {
+        // 1. CHECK AFFORDABILITY FIRST
+        for (let [res, qty] of Object.entries(item.cost)) {
+            if ((this.player.bag[res] || 0) < qty) {
+                showDialog(`Not enough ${res}! Need ${qty}.`, 2000);
+                return; // Stop here, do not craft
+            }
+        }
+
+        // 2. DEDUCT RESOURCES
         for (let [res, qty] of Object.entries(item.cost)) {
             this.player.bag[res] -= qty;
             if (this.player.bag[res] <= 0) delete this.player.bag[res];
         }
 
+        // 3. GRANT ITEM
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
 
+        // 4. FEEDBACK & REFRESH
         playSFX('sfx-pickup'); 
         showDialog(`Crafted ${item.name}!`, 1000);
         
@@ -275,7 +284,7 @@ class CraftingSystem {
         for (let [res, qty] of Object.entries(upg.cost)) {
             if ((this.player.bag[res] || 0) < qty) {
                 showDialog(`Not enough ${res}! Need ${qty}.`, 2000);
-                return; // Stop here, do not upgrade
+                return; 
             }
         }
 
@@ -302,8 +311,7 @@ class CraftingSystem {
         }
         if (upg.id === 'fireball') {
             guardianSystem.skills.fireball.unlocked = true;
-            guardianSystem.skills.fireball.level = 1; // Set base level
-            // Change recipe text for future (Optional logic, see step 5)
+            guardianSystem.skills.fireball.level = 1; 
             showDialog("Fireball Unlocked!", 2000);
         }
         if (upg.id === 'asteroid') {
