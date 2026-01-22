@@ -26,7 +26,7 @@ let isPartyOpen = true; // Default to open
 // --- AUTO HARVEST VARIABLES ---
 let autoHarvestTarget = null;
 let lastAutoAttackTime = 0;
-const TILE_SIZE_VISUAL = 48; // Adjust to 32 or 64 if clicks are slightly offset
+const TILE_SIZE_VISUAL = 32; // Adjust to 32 or 64 if clicks are slightly offset
 
 // Music System
 const mainMusic = document.getElementById('main-music');
