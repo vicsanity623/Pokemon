@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.6'; // Bumped Version
+const VERSION = 'v1.3.7'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -20,7 +20,7 @@ const resourceSystem = new ResourceSystem(player, world);
 const enemySystem = new EnemySystem(player, world);
 const craftingSystem = new CraftingSystem(player);
 const mapSystem = new MapSystem(player, world);
-world.init(); 
+world.init();
 let isPartyOpen = true; // Default to open
 
 // --- AUTO HARVEST VARIABLES ---
@@ -120,16 +120,16 @@ gameCanvas.addEventListener('pointerdown', (e) => {
     // 3. Find Resource Node
     const tx = Math.round(worldClickX);
     const ty = Math.round(worldClickY);
-    
+
     // Check exact tile and neighbors (for easier mobile tapping)
     const candidates = [
-        `${tx},${ty}`, 
-        `${tx+1},${ty}`, `${tx-1},${ty}`, 
-        `${tx},${ty+1}`, `${tx},${ty-1}`
+        `${tx},${ty}`,
+        `${tx + 1},${ty}`, `${tx - 1},${ty}`,
+        `${tx},${ty + 1}`, `${tx},${ty - 1}`
     ];
 
     let found = null;
-    for(let key of candidates) {
+    for (let key of candidates) {
         if (resourceSystem.nodes[key]) {
             const parts = key.split(',');
             found = { x: parseInt(parts[0]), y: parseInt(parts[1]), key: key };
@@ -200,7 +200,7 @@ function gameLoop(timestamp) {
         // Smooth Movement Logic
         let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
         lastTime = timestamp;
-        if (dt > 0.1) dt = 0.1; 
+        if (dt > 0.1) dt = 0.1;
 
         // --- PHASE 1-4 SYSTEMS UPDATES ---
         if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
@@ -233,7 +233,7 @@ function gameLoop(timestamp) {
         // --- AUTO HARVEST LOGIC ---
         // If manual input exists, cancel auto-harvest
         if (dx !== 0 || dy !== 0) {
-            autoHarvestTarget = null; 
+            autoHarvestTarget = null;
         }
         // If no manual input, process auto-harvest
         else if (autoHarvestTarget) {
@@ -244,7 +244,7 @@ function gameLoop(timestamp) {
             } else {
                 // 2. Distance Check
                 const dist = Math.sqrt(Math.pow(autoHarvestTarget.x - player.x, 2) + Math.pow(autoHarvestTarget.y - player.y, 2));
-                
+
                 if (dist > 1.2) {
                     // WALK TOWARDS
                     const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
@@ -263,7 +263,7 @@ function gameLoop(timestamp) {
                 } else {
                     // ATTACK
                     player.moving = false;
-                    
+
                     // Face target
                     const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
                     if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
@@ -287,7 +287,7 @@ function gameLoop(timestamp) {
             let length = Math.sqrt(dx * dx + dy * dy);
             if (length > 0) { dx /= length; dy /= length; }
 
-            let moveSpeed = player.speed * (dt * 60); 
+            let moveSpeed = player.speed * (dt * 60);
             let nextX = player.x + dx * moveSpeed;
             let nextY = player.y + dy * moveSpeed;
 
@@ -302,7 +302,7 @@ function gameLoop(timestamp) {
                 let item = world.getItem(Math.round(player.x), Math.round(player.y));
                 if (item) {
                     world.removeItem(Math.round(player.x), Math.round(player.y));
-                    playSFX('sfx-pickup'); 
+                    playSFX('sfx-pickup');
                     if (player.bag[item]) player.bag[item]++;
                     else player.bag[item] = 1;
                     showDialog(`Found a ${item}! (Total: ${player.bag[item]})`, 2000);
@@ -333,7 +333,7 @@ function gameLoop(timestamp) {
         }
 
         clock.update(player);
-        world.updateNPCs(); 
+        world.updateNPCs();
         renderer.draw();
         updateHUD();
 
@@ -375,7 +375,7 @@ function gameLoop(timestamp) {
         arenaSystem.checkSpawn(world, clock.gameDays);
         // Check Store Spawn
         storeSystem.checkSpawn(world, arenaSystem);
-        
+
         // --- PHASE 5: WORKBENCH SPAWN ---
         if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
         // --------------------------------
@@ -461,11 +461,11 @@ input.press = (key) => {
 
         // Check Workbench
         if (craftingSystem.workbenchLocation) {
-             const dist = Math.sqrt(Math.pow(craftingSystem.workbenchLocation.x - player.x, 2) + Math.pow(craftingSystem.workbenchLocation.y - player.y, 2));
-             if (dist < 1.5) {
-                 craftingSystem.interact();
-                 return;
-             }
+            const dist = Math.sqrt(Math.pow(craftingSystem.workbenchLocation.x - player.x, 2) + Math.pow(craftingSystem.workbenchLocation.y - player.y, 2));
+            if (dist < 1.5) {
+                craftingSystem.interact();
+                return;
+            }
         }
 
         // 3. Check for nearby Arena
@@ -481,7 +481,7 @@ input.press = (key) => {
             arenaSystem.enter();
             return;
         }
-        
+
         // 4. Check Liminal Trigger (The Red Phone)
         if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
@@ -1024,8 +1024,8 @@ function handleNPCInteraction(npc) {
     } else if (npc.type === 'quest') {
         if (npc.questCompleted) {
             showDialog('Herbalist: Thanks again for the herbs!', 3000);
-        } else if (npc.questGiven && player.inventory['Herb'] >= 10) {
-            player.inventory['Herb'] -= 10;
+        } else if (npc.questGiven && player.bag['Herb'] >= 10) {
+            player.bag['Herb'] -= 10;
 
             // --- NEW DYNAMIC REWARD ---
             // Base $500 + ($100 for every Player Level)
@@ -1045,7 +1045,7 @@ function handleNPCInteraction(npc) {
             updateHUD(); // Force Money UI to update immediately
 
         } else if (npc.questGiven) {
-            let remaining = 10 - (player.inventory['Herb'] || 0);
+            let remaining = 10 - (player.bag['Herb'] || 0);
             showDialog(`Herbalist: Still need ${remaining} more Herbs!`, 3000);
         } else {
             npc.questGiven = true;
@@ -1291,7 +1291,7 @@ window.onload = async () => {
             window.location.reload();
         });
     }
-    
+
     // --- ITEM RESPAWN TIMER ---
     // Runs every 2 minutes (120,000 ms)
     setInterval(() => {
@@ -1343,7 +1343,7 @@ function saveGame() {
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
         defense: { lastRaidDay: defenseSystem.lastRaidDay },
         liminal: (typeof liminalSystem !== 'undefined') ? liminalSystem.getSaveData() : null,
-        
+
         // --- NEW RPG & GUARDIAN DATA ---
         rpg: (typeof rpgSystem !== 'undefined') ? rpgSystem.getSaveData() : null,
         guardian: (typeof guardianSystem !== 'undefined') ? guardianSystem.getSaveData() : null,
@@ -1480,7 +1480,7 @@ function loadGame() {
         // --- 8. RESTORE RPG & GUARDIAN & RESOURCES ---
         if (data.rpg && typeof rpgSystem !== 'undefined') {
             rpgSystem.loadSaveData(data.rpg);
-            rpgSystem.updateHUD(); 
+            rpgSystem.updateHUD();
         }
         if (data.guardian && typeof guardianSystem !== 'undefined') {
             guardianSystem.loadSaveData(data.guardian);
@@ -1515,7 +1515,7 @@ function loadGame() {
             console.log("Player stuck in wall/water! Teleporting to safety...");
             if (homeSystem.houseLocation) {
                 player.x = homeSystem.houseLocation.x;
-                player.y = homeSystem.houseLocation.y + 4; 
+                player.y = homeSystem.houseLocation.y + 4;
             } else {
                 let safe = world.findSafeNear(player.x, player.y);
                 player.x = safe.x;
@@ -1557,7 +1557,7 @@ function updateHUD() {
     if (typeof updatePartySidebar === 'function') {
         updatePartySidebar();
     }
-    
+
     if (typeof updateResourceDisplay === 'function') {
         updateResourceDisplay();
     }
@@ -2194,77 +2194,44 @@ function updatePartySidebar() {
     sb.appendChild(listContainer);
 }
 
-// --- RESOURCE HUD DISPLAY (FIXED) ---
+// --- RESOURCE HUD DISPLAY (Integrated) ---
 function updateResourceDisplay() {
-    // 1. Target the Game Container or Body
-    // We use document.body to ensure it floats over everything
-    const uiLayer = document.body;
+    // 1. Find the container INSIDE the RPG HUD
+    const resContainer = document.getElementById('rpg-resources');
 
-    // 2. Create the Container if it doesn't exist
-    let resContainer = document.getElementById('resource-hud-overlay');
-    if (!resContainer) {
-        resContainer = document.createElement('div');
-        resContainer.id = 'resource-hud-overlay';
-        
-        // --- POSITIONING ---
-        resContainer.style.position = 'fixed'; 
-        resContainer.style.top = '7%'; // Positioned under the Top HUD bars
-        resContainer.style.left = '50%';
-        resContainer.style.transform = 'translateX(-50%)';
-        
-        // --- STYLING ---
-        resContainer.style.display = 'flex';
-        resContainer.style.justifyContent = 'center';
-        resContainer.style.gap = '10px';
-        resContainer.style.zIndex = '900'; // Visible but below menus
-        resContainer.style.pointerEvents = 'none'; // Click-through
-        resContainer.style.fontSize = '10px';
-        resContainer.style.color = '#fff';
-        resContainer.style.textShadow = '1px 1px 0 #000';
-        resContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'; // Dark background for readability
-        resContainer.style.padding = '4px 10px';
-        resContainer.style.borderRadius = '12px';
-        resContainer.style.whiteSpace = 'nowrap'; // Keep on one line if possible
-        
-        uiLayer.appendChild(resContainer);
-    }
+    // If HUD hasn't been built yet, stop (it will run again next frame)
+    if (!resContainer) return;
 
-    // 3. Hide if in Battle (Optional cleanup)
+    // 2. Hide if in Battle (Clean UI)
     if (typeof battleSystem !== 'undefined' && battleSystem.isActive) {
         resContainer.style.display = 'none';
         return;
     }
 
-    // 4. Define Resources to track
+    // 3. Define Resources
     const trackList = {
-        'Wood': '🌲',
-        'Stone': '🪨',
-        'Coal': '⚫',
-        'Iron Ore': '🔩',
-        'Gold Ore': '🧈',
-        'Obsidian': '🔮',
-        'Bone': '🦴',
-        'Shadow Essence': '👻',
-        'Berry': '🍒'
+        'Wood': '🌲', 'Stone': '🪨', 'Coal': '⚫',
+        'Iron Ore': '🔩', 'Gold Ore': '🧈', 'Obsidian': '🔮',
+        'Bone': '🦴', 'Shadow Essence': '👻', 'Berry': '🍒'
     };
 
-    // 5. Build the HTML
+    // 4. Build HTML
     let html = '';
     let hasResources = false;
 
     for (let [item, icon] of Object.entries(trackList)) {
         const count = player.bag[item] || 0;
         if (count > 0) {
-            html += `<span style="margin-right:2px;">${icon} ${count}</span>`;
+            html += `<span>${icon} ${count}</span>`;
             hasResources = true;
         }
     }
 
-    // 6. Render or Hide
+    // 5. Render
     if (hasResources) {
         resContainer.innerHTML = html;
-        resContainer.style.display = 'flex';
+        resContainer.style.display = 'flex'; // Unhide it
     } else {
-        resContainer.style.display = 'none';
+        resContainer.style.display = 'none'; // Keep hidden if empty
     }
 }

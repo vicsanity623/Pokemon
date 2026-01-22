@@ -388,7 +388,7 @@ class BattleSystem {
             88,  // Grimer
             92,  // Gastly
             96,  // Drowzee
-            
+
             // --- GATED AREA (IDs 100+) ---
             // Unlocks at Level 50+
             100, // Voltorb
@@ -415,8 +415,8 @@ class BattleSystem {
         // 2. CHECK CONDITIONS
         // Allow 100+ only if Player Level > 50 OR World Day > 50
         let isLateGame = this.player.pLevel >= 50;
-        
-        if (typeof world !== 'undefined' && world.day >= 50) {
+
+        if (typeof world !== 'undefined' && typeof clock !== 'undefined' && clock.gameDays >= 50) {
             isLateGame = true;
         }
 
@@ -446,7 +446,7 @@ class BattleSystem {
 
         // 4. Subtract 0 to 3 levels
         // Day 1 (10) becomes 7, 8, 9, or 10
-        let variation = Math.floor(Math.random() * 4); 
+        let variation = Math.floor(Math.random() * 4);
 
         // 5. Calculate Final Level
         return Math.max(2, baseLevel - variation + bonus);
@@ -458,7 +458,7 @@ class BattleSystem {
 
         // 1. Ensure the container allows absolute positioning of children
         // (You might already have this in CSS, but this guarantees it)
-        container.style.position = 'relative'; 
+        container.style.position = 'relative';
         container.style.width = '100%';
         container.style.height = '100%';
 
@@ -473,13 +473,13 @@ class BattleSystem {
             // Calculate Grid Position
             const row = Math.floor(index / 4); // 0 for first 4, 1 for next 2
             const col = index % 4;             // 0, 1, 2, 3
-            
+
             // Adjust these numbers to fit your sprite sizes:
             const startY = 38;  // Row 0 starts 38% down the screen
             const rowGap = 16;  // Row 1 starts 16% lower (at 54%)
             const startX = 2;   // Start 2% from the left edge
             const colGap = 24;  // Each column is 24% wide
-            
+
             // Apply coordinates
             // Row 0 Y = 38%, Row 1 Y = 54% 
             // (Leaves room for Dialog at 75%)
@@ -494,7 +494,7 @@ class BattleSystem {
             const expBar = document.createElement('div');
             expBar.className = 'sprite-exp-bar';
             // Safety check for level to prevent divide by zero
-            const level = p.level || 1; 
+            const level = p.level || 1;
             const expPct = (p.exp / (level * 100)) * 100;
             expBar.innerHTML = `<div class="sprite-exp-fill" id="squad-exp-${index}" style="width: ${expPct}%"></div>`;
 
@@ -505,7 +505,7 @@ class BattleSystem {
             const img = document.createElement('img');
             img.src = p.backSprite || p.sprite;
             img.className = 'party-sprite';
-            
+
             // Visual feedback for fainted pokemon
             if (p.hp <= 0) {
                 wrapper.classList.add('fainted-member');
@@ -743,14 +743,14 @@ class BattleSystem {
                 void enemyEl.offsetWidth;
                 enemyEl.classList.add('anim-shake');
             }
-            
+
             let msg = "is fully paralyzed!";
             if (this.enemy.status === 'SLP') msg = "is fast asleep.";
             if (this.enemy.status === 'FRZ') msg = "is frozen solid!";
-            
+
             showDialog(`${this.enemy.name} ${msg}`);
             await this.delay(1000);
-            
+
             this.queueIndex++;
             this.nextTurn();
             return;
@@ -962,7 +962,7 @@ class BattleSystem {
         // Divide XP among living squad members
         const livingMembers = this.player.team.filter(p => p.hp > 0);
         let xpGain = Math.floor(this.enemy.level * 20 / (livingMembers.length || 1));
-        
+
         // Bonus for bosses
         if (this.enemy.isArenaBoss) xpGain *= 5;
 
@@ -978,10 +978,10 @@ class BattleSystem {
 
         // B. Apply XP to data (This triggers the width change because we call updateBattleUI right after)
         let leveledUpPokemon = [];
-        
+
         for (let p of this.player.team) {
             if (p.hp > 0) {
-                p.exp += xpGain; 
+                p.exp += xpGain;
                 // We don't resolve level up YET, we just let the bar fill past 100% visually if needed
                 if (p.exp >= p.level * 100) {
                     leveledUpPokemon.push(p);
@@ -1007,38 +1007,38 @@ class BattleSystem {
         }
 
         if (this.enemy.isArenaBoss) arenaSystem.winStage();
-        
+
         if (typeof questSystem !== 'undefined') {
             questSystem.update('hunt');
         }
-        
+
         // 5. End Battle
         this.endBattle();
     }
 
     async levelUp(p) {
         p.exp -= p.level * 100; p.level++;
-        
+
         // Stat Increases
-        const inc = { 
-            strength: Math.floor(Math.random() * 3) + 1, 
-            defense: Math.floor(Math.random() * 3) + 1, 
-            speed: Math.floor(Math.random() * 3) + 1, 
-            hp: Math.floor(Math.random() * 3) + 1, 
-            special: Math.floor(Math.random() * 3) + 1 
+        const inc = {
+            strength: Math.floor(Math.random() * 3) + 1,
+            defense: Math.floor(Math.random() * 3) + 1,
+            speed: Math.floor(Math.random() * 3) + 1,
+            hp: Math.floor(Math.random() * 3) + 1,
+            special: Math.floor(Math.random() * 3) + 1
         };
-        p.stats.strength += inc.strength; 
-        p.stats.defense += inc.defense; 
-        p.stats.speed += inc.speed; 
-        p.stats.hp += inc.hp; 
+        p.stats.strength += inc.strength;
+        p.stats.defense += inc.defense;
+        p.stats.speed += inc.speed;
+        p.stats.hp += inc.hp;
         p.stats.special += inc.special;
-        
-        p.maxHp = p.level * 5 + p.stats.hp; 
+
+        p.maxHp = p.level * 5 + p.stats.hp;
         p.hp = p.maxHp;
-        
+
         // Show Stats Screen
         await this.showLevelUpScreen(p, inc, 5);
-        
+
         // --- CHECK MOVES ---
         await this.checkNewMoves(p);
         // -------------------
@@ -1052,12 +1052,12 @@ class BattleSystem {
 
         // Calculate Move Tier based on level (0-3)
         const moveTier = Math.min(3, Math.floor(p.level / 5) - 1);
-        
+
         // Get Move Data
         const newMove = getMove(p.type, moveTier);
 
         if (!p.moves) p.moves = [];
-        
+
         // Don't learn if we already have it
         if (p.moves.some(m => m.name === newMove.name)) return;
 
@@ -1076,7 +1076,7 @@ class BattleSystem {
         return new Promise(resolve => {
             const container = document.getElementById('move-learn-container');
             const list = document.getElementById('move-forget-list');
-            const contBtn = document.getElementById('levelup-continue-btn'); 
+            const contBtn = document.getElementById('levelup-continue-btn');
 
             // Update UI Text
             document.getElementById('new-move-name').innerText = newMove.name;
@@ -1092,14 +1092,14 @@ class BattleSystem {
                 btn.style.width = '100%';
                 btn.style.marginBottom = '5px';
                 btn.innerHTML = `Forget <strong>${move.name}</strong> <span style="font-size:8px">(Pow:${move.power})</span>`;
-                
+
                 // Click Handler
                 btn.onclick = () => {
                     showDialog(`Forgot ${move.name} and learned ${newMove.name}!`);
                     p.moves[index] = newMove; // Replace Logic
                     this.finishMoveLearn(resolve);
                 };
-                
+
                 // Mobile Touch Support
                 btn.ontouchstart = (e) => {
                     e.preventDefault();
@@ -1136,15 +1136,15 @@ class BattleSystem {
 
         if (evoData && p.level >= evoData.level) {
             showDialog(`What? ${p.name} is evolving!`);
-            
+
             // Flash Effect
             const overlay = document.getElementById('level-up-overlay');
-            for (let i = 0; i < 3; i++) { 
-                overlay.style.backgroundColor = 'white'; 
+            for (let i = 0; i < 3; i++) {
+                overlay.style.backgroundColor = 'white';
                 overlay.classList.remove('hidden'); // Ensure visible
-                await this.delay(200); 
+                await this.delay(200);
                 overlay.classList.add('hidden');
-                await this.delay(200); 
+                await this.delay(200);
             }
 
             try {
@@ -1152,26 +1152,26 @@ class BattleSystem {
                 const data = await res.json();
 
                 // 1. Update Identity
-                p.name = evoData.evolvesInto; 
-                p.id = evoData.id; 
+                p.name = evoData.evolvesInto;
+                p.id = evoData.id;
                 p.type = data.types[0].type.name;
 
                 // 2. FIX: Update ALL Sprites
                 p.backSprite = data.sprites.back_default;
                 p.sprite = data.sprites.front_default; // Icons
-                
+
                 // Animated Sprite (Try Gen 5 GIF, fallback to static)
                 const anim = data.sprites.versions['generation-v']['black-white']['animated']['front_default'];
                 p.animatedSprite = anim || data.sprites.front_default;
 
                 showDialog(`Congratulations! Evolved into ${p.name}!`, 4000);
                 await this.delay(4000);
-                
+
                 // Force HUD refresh to update Sidebar Icon immediately
                 if (typeof updateHUD === 'function') updateHUD();
 
-            } catch (e) { 
-                console.error("Evolution Error:", e); 
+            } catch (e) {
+                console.error("Evolution Error:", e);
             }
         }
     }
@@ -1197,7 +1197,7 @@ class BattleSystem {
         this.turnQueue = []; this.actingPokemon = null;
         if (typeof hideDialog === 'function') hideDialog();
         // @ts-ignore
-        if (typeof rivalSystem !== 'undefined') { rivalSystem.isChasing = false; rivalSystem.onBattleEnd(); }
+        if (typeof rivalSystem !== 'undefined') { rivalSystem.onBattleEnd(); }
         document.getElementById('boss-hud').classList.add('hidden');
         document.getElementById('enemy-stat-box').classList.add('hidden');
         const sidebar = document.getElementById('party-sidebar');

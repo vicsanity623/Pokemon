@@ -53,13 +53,13 @@ class CraftingSystem {
         const modal = document.createElement('div');
         modal.id = 'crafting-ui';
         modal.className = 'battle-sub-menu';
-        
+
         // --- VISUAL FIXES ---
         modal.style.display = 'flex';
         modal.style.flexDirection = 'column';
         modal.style.zIndex = '9000'; // Set Menu lower than the dialog
         // --------------------
-        
+
         modal.innerHTML = `
             <div class="menu-header">WORKBENCH</div>
             
@@ -116,9 +116,9 @@ class CraftingSystem {
         const eq = rpgSystem.equipment;
 
         // --- UPDATE STATS ---
-        document.getElementById('stat-hp').innerText = rpgSystem.maxHp;
-        document.getElementById('stat-stam').innerText = rpgSystem.maxStamina;
-        document.getElementById('stat-dmg').innerText = rpgSystem.getDamage();
+        document.getElementById('stat-hp').innerText = String(rpgSystem.maxHp);
+        document.getElementById('stat-stam').innerText = String(rpgSystem.maxStamina);
+        document.getElementById('stat-dmg').innerText = String(rpgSystem.getDamage());
         document.getElementById('stat-def').innerText = rpgSystem.getDefense() + '%';
 
         // --- UPDATE SLOTS ---
@@ -154,7 +154,7 @@ class CraftingSystem {
         invList.innerHTML = '';
 
         this.RECIPES.forEach(recipe => {
-            if (this.player.bag[recipe.id]) { 
+            if (this.player.bag[recipe.id]) {
                 const count = this.player.bag[recipe.id];
                 const div = document.createElement('div');
                 div.style.borderBottom = '1px solid #333';
@@ -172,7 +172,7 @@ class CraftingSystem {
     showTab(tab) {
         const container = document.getElementById('crafting-content');
         container.innerHTML = '';
-        
+
         document.getElementById('btn-tab-craft').classList.toggle('active', tab === 'craft');
         document.getElementById('btn-tab-guardian').classList.toggle('active', tab === 'guardian');
 
@@ -181,7 +181,7 @@ class CraftingSystem {
                 const div = document.createElement('div');
                 div.className = 'menu-item';
                 div.style.borderColor = item.color;
-                
+
                 let costStr = Object.entries(item.cost).map(([k, v]) => `${k} x${v}`).join(', ');
                 let canCraft = true;
                 for (let [res, qty] of Object.entries(item.cost)) {
@@ -202,7 +202,7 @@ class CraftingSystem {
                 btn.style.float = 'right';
                 btn.style.marginTop = '-30px';
                 btn.disabled = !canCraft;
-                
+
                 btn.onpointerdown = (e) => {
                     e.stopPropagation();
                     this.craftItem(item);
@@ -211,7 +211,7 @@ class CraftingSystem {
                 div.appendChild(btn);
                 container.appendChild(div);
             });
-        } 
+        }
         else if (tab === 'guardian') {
             if (!guardianSystem.activeGuardian) {
                 container.innerHTML = "<p style='padding:20px; text-align:center;'>You have no Guardian active.</p>";
@@ -220,11 +220,11 @@ class CraftingSystem {
             this.GUARDIAN_UPGRADES.forEach(upg => {
                 const div = document.createElement('div');
                 div.className = 'menu-item';
-                
+
                 // --- DYNAMIC TEXT LOGIC ---
                 let displayName = upg.name;
                 let displayDesc = upg.desc;
-                
+
                 if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
                     displayName = `Fireball (Lvl ${guardianSystem.skills.fireball.level})`;
                     displayDesc = "Increases damage/range (Coming Soon)";
@@ -250,12 +250,12 @@ class CraftingSystem {
                 btn.innerText = 'UPGRADE';
                 btn.style.float = 'right';
                 btn.disabled = !canBuy;
-                
+
                 btn.onpointerdown = (e) => {
                     e.stopPropagation();
                     this.upgradeGuardian(upg);
                 };
-                
+
                 div.appendChild(btn);
                 container.appendChild(div);
             });
@@ -268,7 +268,7 @@ class CraftingSystem {
             if ((this.player.bag[res] || 0) < qty) {
                 // HARD CODE FIX: Force Dialog above everything
                 this.forceDialogTop(`Not enough ${res}! Need ${qty}.`);
-                return; 
+                return;
             }
         }
 
@@ -282,11 +282,11 @@ class CraftingSystem {
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
 
-        playSFX('sfx-pickup'); 
+        playSFX('sfx-pickup');
         this.forceDialogTop(`Crafted ${item.name}!`); // Feedback also on top
-        
-        this.showTab('craft'); 
-        this.updateEquipmentUI(); 
+
+        this.showTab('craft');
+        this.updateEquipmentUI();
     }
 
     upgradeGuardian(upg) {
@@ -294,7 +294,7 @@ class CraftingSystem {
         for (let [res, qty] of Object.entries(upg.cost)) {
             if ((this.player.bag[res] || 0) < qty) {
                 this.forceDialogTop(`Not enough ${res}! Need ${qty}.`);
-                return; 
+                return;
             }
         }
 
@@ -306,7 +306,7 @@ class CraftingSystem {
         }
 
         // 3. APPLY UPGRADE (Unlock OR Level Up)
-        
+
         // --- HEAL PULSE ---
         if (upg.id === 'heal') {
             guardianSystem.skills.heal.level++;
@@ -318,7 +318,7 @@ class CraftingSystem {
             if (!guardianSystem.skills.fireball.unlocked) {
                 // Not unlocked yet? Unlock it.
                 guardianSystem.skills.fireball.unlocked = true;
-                guardianSystem.skills.fireball.level = 1; 
+                guardianSystem.skills.fireball.level = 1;
                 this.forceDialogTop("Fireball Unlocked!");
             } else {
                 // Already unlocked? Level it up!
@@ -344,7 +344,7 @@ class CraftingSystem {
         // 4. REFRESH UI
         this.showTab('guardian');
     }
-    
+
     getSaveData() { return { hasSpawned: this.hasSpawned, loc: this.workbenchLocation }; }
     loadSaveData(data) { this.hasSpawned = data.hasSpawned; this.workbenchLocation = data.loc; }
 }

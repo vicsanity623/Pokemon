@@ -1,7 +1,7 @@
 class RPGSystem {
     constructor(player) {
         this.player = player;
-        
+
         // Stats
         this.hp = 100;
         this.maxHp = 100;
@@ -9,11 +9,11 @@ class RPGSystem {
         this.maxStamina = 100;
         this.xp = 0;
         this.level = 1;
-        
+
         // Combat
         this.isAttacking = false;
         this.attackCooldown = 0;
-        
+
         // Equipment Slots
         this.equipment = {
             weapon: null, // { name, damage, id }
@@ -42,13 +42,13 @@ class RPGSystem {
     takeDamage(amount) {
         const defense = this.getDefense();
         const reduced = Math.max(1, Math.floor(amount * (1 - (defense / 100))));
-        
+
         this.hp -= reduced;
         this.updateHUD();
-        
+
         // Visual Shake
         const canvas = document.getElementById('gameCanvas');
-        canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
+        canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
         setTimeout(() => canvas.style.transform = 'none', 100);
 
         if (this.hp <= 0) {
@@ -76,14 +76,12 @@ class RPGSystem {
         const hud = document.createElement('div');
         hud.id = 'rpg-hud';
         hud.style.position = 'absolute';
-        
-        // --- UPDATED POSITIONING (CENTER TOP) ---
+
+        // --- POSITIONING ---
         hud.style.top = '10px';
         hud.style.left = '50%';
-        hud.style.transform = 'translateX(-50%)'; // Centers the element
-        // ----------------------------------------
-        
-        hud.style.width = '250px'; // Made slightly wider for better visibility
+        hud.style.transform = 'translateX(-50%)';
+        hud.style.width = '250px';
         hud.style.zIndex = '500';
         hud.style.fontFamily = 'monospace';
         hud.style.pointerEvents = 'none';
@@ -98,7 +96,7 @@ class RPGSystem {
                 <div id="rpg-hp-bar" style="width:100%; height:100%; background:#e74c3c; transition:width 0.2s;"></div>
             </div>
 
-            <!-- NEW: XP BAR (Blue) -->
+            <!-- XP BAR (Blue) -->
             <div style="width:100%; height:6px; background:#333; border:2px solid #000; margin-bottom:2px; position:relative;">
                 <div id="rpg-xp-bar" style="width:0%; height:100%; background:#3498db; transition:width 0.2s;"></div>
             </div>
@@ -112,6 +110,9 @@ class RPGSystem {
             <div id="rpg-gear" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">
                 Wpn: Fists | Arm: None
             </div>
+
+            <!-- NEW: Resource Row (NOW WITH BACKGROUND) -->
+            <div id="rpg-resources" style="margin-top: 4px; border-top: 1px dashed #555; background-color: rgba(0, 0, 0, 0.7); border-radius: 4px; padding: 4px; display: none; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #000;"></div>
         `;
         document.body.appendChild(hud);
 
@@ -144,11 +145,11 @@ class RPGSystem {
 
         this.isAttacking = true;
         this.stamina -= 10;
-        this.attackCooldown = 0.4; 
+        this.attackCooldown = 0.4;
 
         // Visual
         const canvas = document.getElementById('gameCanvas');
-        canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
+        canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
         setTimeout(() => canvas.style.transform = 'none', 100);
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
@@ -157,18 +158,18 @@ class RPGSystem {
         const px = Math.round(this.player.x);
         const py = Math.round(this.player.y);
 
-        if (this.player.dir === 'left') { targets.push({x: px-1, y: py}, {x: px-1, y: py-1}, {x: px-1, y: py+1}); } 
-        else if (this.player.dir === 'right') { targets.push({x: px+1, y: py}, {x: px+1, y: py-1}, {x: px+1, y: py+1}); } 
-        else if (this.player.dir === 'up') { targets.push({x: px, y: py-1}, {x: px-1, y: py-1}, {x: px+1, y: py-1}); } 
-        else if (this.player.dir === 'down') { targets.push({x: px, y: py+1}, {x: px-1, y: py+1}, {x: px+1, y: py+1}); }
+        if (this.player.dir === 'left') { targets.push({ x: px - 1, y: py }, { x: px - 1, y: py - 1 }, { x: px - 1, y: py + 1 }); }
+        else if (this.player.dir === 'right') { targets.push({ x: px + 1, y: py }, { x: px + 1, y: py - 1 }, { x: px + 1, y: py + 1 }); }
+        else if (this.player.dir === 'up') { targets.push({ x: px, y: py - 1 }, { x: px - 1, y: py - 1 }, { x: px + 1, y: py - 1 }); }
+        else if (this.player.dir === 'down') { targets.push({ x: px, y: py + 1 }, { x: px - 1, y: py + 1 }, { x: px + 1, y: py + 1 }); }
 
-        const damage = this.getDamage(); 
+        const damage = this.getDamage();
 
         // 1. Resources
         if (typeof resourceSystem !== 'undefined') {
             for (let t of targets) {
                 const hit = resourceSystem.checkHit(t.x, t.y, damage);
-                if (hit) return; 
+                if (hit) return;
             }
         }
 
@@ -176,7 +177,7 @@ class RPGSystem {
         if (typeof enemySystem !== 'undefined') {
             for (let t of targets) {
                 const hitEnemy = enemySystem.checkHit(t.x, t.y, damage);
-                if (hitEnemy) return; 
+                if (hitEnemy) return;
             }
         }
     }
@@ -184,7 +185,7 @@ class RPGSystem {
     updateHUD() {
         const hpPct = Math.max(0, (this.hp / this.maxHp) * 100);
         const stamPct = Math.max(0, (this.stamina / this.maxStamina) * 100);
-        
+
         // --- XP CALCULATION ---
         const xpNeeded = this.level * 100;
         const xpPct = Math.min(100, Math.max(0, (this.xp / xpNeeded) * 100));
@@ -199,12 +200,12 @@ class RPGSystem {
         if (hpBar) hpBar.style.width = `${hpPct}%`;
         if (xpBar) xpBar.style.width = `${xpPct}%`;
         if (stamBar) stamBar.style.width = `${stamPct}%`;
-        if (lvlText) lvlText.innerText = this.level;
-        
+        if (lvlText) lvlText.innerText = this.level.toString();
+
         if (gearText) {
             const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
             const aName = this.equipment.armor ? this.equipment.armor.name : "None";
-            
+
             // We use innerHTML to create a colored background box
             gearText.innerHTML = `
                 <div style="background-color: rgba(0, 0, 0, 0.7); padding: 2px 8px; border-radius: 4px; display: inline-block; color: #fff;">
@@ -261,7 +262,7 @@ class RPGSystem {
         this.player.bag[item.id]++;
 
         this.equipment[slotType] = null;
-        
+
         showDialog(`Unequipped ${item.name}.`, 1000);
         this.updateHUD();
     }

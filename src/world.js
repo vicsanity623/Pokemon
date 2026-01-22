@@ -5,9 +5,9 @@ const VIEW_H = 15; // Tiles high
 class World {
     constructor(seed) {
         this.rng = new SeededRandom(seed);
-        this.items = {}; 
+        this.items = {};
         this.npcs = [];
-        this.buildings = []; 
+        this.buildings = [];
         // We do NOT call initItems/initNPCs here anymore to prevent crash
     }
 
@@ -294,7 +294,7 @@ class World {
             // Check if this tile is a wall or void
             const tile = liminalSystem.getLiminalTile(x, y);
             if (tile === 'liminal_wall' || tile === 'liminal_void') return true;
-            
+
             // Allow walking on floor
             return false;
         }
@@ -305,7 +305,7 @@ class World {
         if (typeof resourceSystem !== 'undefined' && resourceSystem.nodes[`${x},${y}`]) {
             return true;
         }
-        
+
         // 2. Building Collision
         for (let b of this.buildings) {
             if (b.type === 'home') {
@@ -502,13 +502,14 @@ class Renderer {
         this.ctx.imageSmoothingEnabled = false;
     }
 
-    addParticle(x, y) {
+    addParticle(x, y, color = null) {
         this.particles.push({
             x: x,
             y: y,
             life: 0.8, // Shorter life
             vx: (Math.random() - 0.5) * 0.2, // Much slower spread
-            vy: (Math.random() - 0.5) * 0.2
+            vy: (Math.random() - 0.5) * 0.2,
+            color: color
         });
     }
 
@@ -533,8 +534,15 @@ class Renderer {
                 this.canvas.height / 2 +
                 offsetY;
 
-            this.ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
+            if (p.color) {
+                this.ctx.globalAlpha = Math.max(0, p.life);
+                this.ctx.fillStyle = p.color;
+            } else {
+                this.ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
+            }
+
             this.ctx.fillRect(drawX, drawY, 3, 3); // Smaller particles
+            this.ctx.globalAlpha = 1.0; // Reset
         }
     }
 
@@ -674,16 +682,13 @@ class Renderer {
         // 3. Add Player
         renderList.push({ type: 'player', y: this.player.y, data: this.player });
 
-        // 4. Add Rival
-        if (typeof rivalSystem !== 'undefined' && rivalSystem.isChasing) {
-            renderList.push({ type: 'rival', y: rivalSystem.y, data: rivalSystem });
-        }
-        
+
+
         // 5. Add Guardian
         if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
             renderList.push({ type: 'guardian', y: guardianSystem.entity.y, data: guardianSystem });
         }
-        
+
         // 6. Add Resources
         if (typeof resourceSystem !== 'undefined') {
             for (let key in resourceSystem.nodes) {
@@ -700,7 +705,7 @@ class Renderer {
                 renderList.push({ type: 'crop', y: cy, data: { ...crop, x: cx, y: cy } });
             }
         }
-        
+
         // 7. Add Enemies (PHASE 4)
         if (typeof enemySystem !== 'undefined') {
             enemySystem.enemies.forEach(e => {
@@ -717,11 +722,11 @@ class Renderer {
             else if (item.type === 'npc') this.drawNPC(item.data);
             else if (item.type === 'player') this.drawPlayer(item.data);
             else if (item.type === 'rival') item.data.draw(this.ctx, this.canvas, this.world, this.player);
-            else if (item.type === 'guardian') item.data.draw(this.ctx, TILE_SIZE, this.canvas.width/2, this.canvas.height/2);
-            
+            else if (item.type === 'guardian') item.data.draw(this.ctx, TILE_SIZE, this.canvas.width / 2, this.canvas.height / 2);
+
             else if (item.type === 'resource') this.drawResource(item.data);
             else if (item.type === 'crop') this.drawCrop(item.data);
-            
+
             // --- NEW: DRAW ENEMY ---
             else if (item.type === 'enemy') this.drawEnemy(item.data);
         });
@@ -730,7 +735,7 @@ class Renderer {
 
         this.ctx.restore();
     }
-    
+
     drawResource(node) {
         let drawX = (node.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
         let drawY = (node.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
@@ -738,13 +743,13 @@ class Renderer {
         // Draw Base
         this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
         this.ctx.beginPath();
-        this.ctx.ellipse(drawX + TILE_SIZE/2, drawY + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI*2);
+        this.ctx.ellipse(drawX + TILE_SIZE / 2, drawY + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI * 2);
         this.ctx.fill();
 
         // Draw Emoji Icon as Sprite
         this.ctx.font = '50px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(resourceSystem.TYPES[node.type].icon, drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
+        this.ctx.fillText(resourceSystem.TYPES[node.type].icon, drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 1.5);
 
         // Draw Health Bar (ALWAYS DRAW FOR DEBUGGING IF NEEDED)
         // Only draw if < max to avoid clutter, or always if you want to see stats
@@ -767,9 +772,9 @@ class Renderer {
         this.ctx.font = '40px Arial';
         this.ctx.textAlign = 'center';
         if (crop.ready) {
-            this.ctx.fillText('🍓', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
+            this.ctx.fillText('🍓', drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 1.5);
         } else {
-            this.ctx.fillText('🌱', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
+            this.ctx.fillText('🌱', drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 1.5);
         }
     }
 
@@ -780,23 +785,23 @@ class Renderer {
         // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
         this.ctx.beginPath();
-        this.ctx.ellipse(drawX + TILE_SIZE/2, drawY + TILE_SIZE - 5, 15, 5, 0, 0, Math.PI*2);
+        this.ctx.ellipse(drawX + TILE_SIZE / 2, drawY + TILE_SIZE - 5, 15, 5, 0, 0, Math.PI * 2);
         this.ctx.fill();
 
         // Sprite
         if (e.type === 'skeleton') {
             this.ctx.font = '40px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('💀', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
+            this.ctx.fillText('💀', drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 1.5);
         } else {
             // Shadow Pokemon
             this.ctx.fillStyle = 'rgba(75, 0, 130, 0.8)';
             this.ctx.beginPath();
-            this.ctx.arc(drawX + TILE_SIZE/2, drawY + TILE_SIZE/2, 20, 0, Math.PI*2);
+            this.ctx.arc(drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 2, 20, 0, Math.PI * 2);
             this.ctx.fill();
-            this.ctx.fillStyle = '#fff'; 
-            this.ctx.fillRect(drawX + TILE_SIZE/2 - 10, drawY + TILE_SIZE/2 - 5, 5, 2);
-            this.ctx.fillRect(drawX + TILE_SIZE/2 + 5, drawY + TILE_SIZE/2 - 5, 5, 2);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.fillRect(drawX + TILE_SIZE / 2 - 10, drawY + TILE_SIZE / 2 - 5, 5, 2);
+            this.ctx.fillRect(drawX + TILE_SIZE / 2 + 5, drawY + TILE_SIZE / 2 - 5, 5, 2);
         }
 
         // HP Bar
@@ -850,7 +855,7 @@ class Renderer {
                 arenaSystem.draw(this.ctx, this.canvas, this.player);
                 return;
             }
-            
+
             // Fallback Renderer (In case arena.js is outdated/missing the draw function)
             // This ensures the game doesn't crash and you still see where the arena is
             let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
@@ -859,12 +864,12 @@ class Renderer {
             // Draw large base
             this.ctx.fillStyle = '#f1c40f'; // Gold
             this.ctx.fillRect(Math.floor(drawX) - TILE_SIZE / 2, Math.floor(drawY) - TILE_SIZE / 2, TILE_SIZE * 2, TILE_SIZE * 2);
-            
+
             // Label
             this.ctx.fillStyle = '#000';
             this.ctx.font = 'bold 12px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText("ARENA", Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY));
+            this.ctx.fillText("ARENA", Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY));
         } else if (building.type === 'home') {
             // Draw Player's Home Image
             let drawX =
@@ -887,23 +892,23 @@ class Renderer {
                 TILE_SIZE * 4
             );
         }
-            else if (building.type === 'workbench') {
+        else if (building.type === 'workbench') {
             let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
             let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
 
             // Draw Table
             this.ctx.fillStyle = '#8e44ad'; // Purple table
             this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
-            
+
             // Draw Hammer Icon
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '30px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('⚒️', Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + 20);
-            
+            this.ctx.fillText('⚒️', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 20);
+
             // Label
             this.ctx.font = '10px Arial';
-            this.ctx.fillText('CRAFT', Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + 50);
+            this.ctx.fillText('CRAFT', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 50);
         }
         else if (building.type === 'store') {
             let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
@@ -1079,32 +1084,32 @@ class Renderer {
             this.ctx.arc(cloudX, cloudY, 80, 0, Math.PI * 2);
             this.ctx.fill();
         }
-        
+
         // --- LIMINAL TRIGGER (Red Phone) ---
         if (typeof liminalSystem !== 'undefined' && !liminalSystem.active && homeSystem.houseLocation) {
             const hx = homeSystem.houseLocation.x;
             const hy = homeSystem.houseLocation.y;
-            
+
             // Trigger Location: House Y + 666
             const trigX = hx;
             const trigY = hy + 666;
-    
+
             const drawX = (trigX - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
             const drawY = (trigY - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
-    
+
             // Only draw if on screen
             if (drawX > -TILE_SIZE && drawX < this.canvas.width && drawY > -TILE_SIZE && drawY < this.canvas.height) {
                 // Draw a Red Telephone Booth / Door
                 this.ctx.fillStyle = '#c0392b'; // Dark Red
                 this.ctx.fillRect(Math.floor(drawX) + 20, Math.floor(drawY) + 10, 40, 60);
-                
+
                 // Glow
                 this.ctx.shadowBlur = 20;
                 this.ctx.shadowColor = 'red';
                 this.ctx.fillStyle = '#fff';
                 this.ctx.font = '30px Arial';
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText("☎️", Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + TILE_SIZE/2);
+                this.ctx.fillText("☎️", Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + TILE_SIZE / 2);
                 this.ctx.shadowBlur = 0;
             }
         }
@@ -1117,12 +1122,12 @@ class Renderer {
             enemySystem.projectiles.forEach(p => {
                 let px = (p.x - this.player.x) * TILE_SIZE + this.canvas.width / 2;
                 let py = (p.y - this.player.y) * TILE_SIZE + this.canvas.height / 2;
-                
+
                 this.ctx.fillStyle = p.color || '#8e44ad'; // Default Purple
                 this.ctx.beginPath();
-                this.ctx.arc(px, py, 8, 0, Math.PI*2);
+                this.ctx.arc(px, py, 8, 0, Math.PI * 2);
                 this.ctx.fill();
-                
+
                 // Glow
                 this.ctx.shadowBlur = 10;
                 this.ctx.shadowColor = p.color || '#8e44ad';
@@ -1181,7 +1186,7 @@ class Renderer {
                             let max = t.maxHp || 100;
                             let cur = t.hp || 0;
                             let hpPct = cur / max;
-                            
+
                             this.ctx.fillStyle = '#000';
                             this.ctx.fillRect(tx + 5, ty - 12, TILE_SIZE - 10, 6);
                             this.ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';

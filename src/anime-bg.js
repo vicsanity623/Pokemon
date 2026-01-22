@@ -5,7 +5,7 @@
 class AnimeBattleBackground {
     constructor(containerId, options = {}) {
         this.container = document.getElementById(containerId) || document.body;
-        
+
         // Configuration options
         this.config = {
             direction: 'up', // 'up' or 'down'
@@ -48,17 +48,17 @@ class AnimeBattleBackground {
         if (computedStyle.position === 'static') {
             this.container.style.position = 'relative';
         }
-        
+
         // Clear existing canvases if re-initializing
         const existing = this.container.querySelector('canvas[data-anime-bg]');
         if (existing) existing.remove();
-        
+
         this.canvas.setAttribute('data-anime-bg', 'true');
         this.container.prepend(this.canvas);
 
         this.resize();
         this.createLines();
-        
+
         // Handle window resizing
         window.addEventListener('resize', () => this.resize());
     }
@@ -66,7 +66,7 @@ class AnimeBattleBackground {
     resize() {
         this.width = this.container.clientWidth;
         this.height = this.container.clientHeight;
-        
+
         // Handle High DPI displays (Retina) for crisp lines
         const dpr = window.devicePixelRatio || 1;
         this.canvas.width = this.width * dpr;
@@ -85,12 +85,12 @@ class AnimeBattleBackground {
         // Parallax logic: 
         // Layer 0: Far away (slow, thin, opaque)
         // Layer 1: Close (fast, thick, transparent)
-        const layer = Math.random(); 
-        
+        const layer = Math.random();
+
         const speedMult = layer > 0.8 ? 2.5 : (layer > 0.5 ? 1.5 : 0.8);
         const width = layer > 0.8 ? Math.random() * 4 + 2 : Math.random() * 1.5 + 0.5;
         const opacity = layer > 0.8 ? 0.3 : (layer > 0.5 ? 0.5 : 0.15);
-        
+
         return {
             x: Math.random() * this.width,
             y: resetY ? this.height + (Math.random() * 200) : Math.random() * this.height,
@@ -105,7 +105,7 @@ class AnimeBattleBackground {
         // Create the Anime Sky Gradient (Vertical)
         // Matches the blue streaks in your example images
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
-        
+
         // Deep Blue top -> Lighter Cyan bottom (Simulates atmosphere)
         gradient.addColorStop(0, '#021124'); // Dark Space/Blue
         gradient.addColorStop(0.4, '#0f4b85'); // Mid Sky
@@ -140,7 +140,7 @@ class AnimeBattleBackground {
 
             // Draw line
             this.ctx.beginPath();
-            
+
             // Visual style: Tapered ends look faster
             // We use a gradient for the line itself to make it fade at tails
             const lineGrad = this.ctx.createLinearGradient(line.x, line.y, line.x, line.y + line.length);
@@ -175,16 +175,16 @@ class AnimeBattleBackground {
             this.animationId = null;
         }
     }
-    
+
     // Call this if you want to switch to a "Dark Mode" intense background
     setTheme(theme) {
-        if(theme === 'dark') {
-             // Red/Black danger theme
-             this.config.colors.skyTop = '#000000';
-             this.config.colors.skyBot = '#434343';
+        if (theme === 'dark') {
+            // Red/Black danger theme
+            this.config.colors.skyTop = '#000000';
+            this.config.colors.skyBot = '#434343';
         }
     }
 }
 
 // Make it globally available or export it
-window.AnimeBattleBackground = AnimeBattleBackground;
+/** @type {any} */ (window).AnimeBattleBackground = AnimeBattleBackground;
