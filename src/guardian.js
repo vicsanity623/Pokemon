@@ -3,6 +3,10 @@ class GuardianSystem {
         this.player = player;
         this.activeGuardian = null; // The Pokemon Data
         this.entity = { x: 0, y: 0 }; // World Position
+        
+        // NEW: Track rotation for asteroids
+        this.asteroidAngle = 0; 
+
         this.skills = {
             heal: { level: 1, unlocked: true },
             fireball: { level: 0, unlocked: false },
@@ -33,6 +37,10 @@ class GuardianSystem {
             this.entity.x = this.player.x;
             this.entity.y = this.player.y;
 
+            // Reset Skills on new assignment (Optional, keeps it fair)
+            this.skills.fireball.unlocked = false;
+            this.skills.asteroid.unlocked = false;
+
             showDialog(`${p.name} is now your Guardian!`, 3000);
             
             // Force save to prevent data loss
@@ -59,16 +67,19 @@ class GuardianSystem {
             this.entity.y += dy * 2.0 * dt;
         }
 
-        // --- SKILL LOGIC (Auto-Heal) ---
-        if (Math.random() < 0.001) { 
+        // --- SKILL 1: HEAL PULSE (Auto-Heal) ---
+        if (this.skills.heal.unlocked && Math.random() < 0.001) { 
             if (typeof rpgSystem !== 'undefined' && rpgSystem.hp < rpgSystem.maxHp) {
-                rpgSystem.hp = Math.min(rpgSystem.maxHp, rpgSystem.hp + 5);
-                showDialog(`${this.activeGuardian.name} cast Heal Pulse!`, 1000);
+                // Heal amount scales with skill level
+                let healAmt = 5 + (this.skills.heal.level * 2);
+                rpgSystem.hp = Math.min(rpgSystem.maxHp, rpgSystem.hp + healAmt);
+                showDialog(`${this.activeGuardian.name} cast Heal Pulse! (+${healAmt} HP)`, 1000);
             }
         }
 
-        // --- COMBAT LOGIC (Auto-Attack with Prediction) ---
-        if (typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
+        // --- SKILL 2: FIREBALL (Predictive Shooting) ---
+        // Only run if Unlocked!
+        if (this.skills.fireball.unlocked && typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
             
             if (typeof this.attackCooldown === 'undefined') this.attackCooldown = 0;
             
@@ -90,23 +101,18 @@ class GuardianSystem {
                 if (closest) {
                     const bulletSpeed = 7.0;
 
-                    // --- PREDICTIVE AIMING ---
-                    // Calculate time for bullet to reach current enemy position
+                    // Predictive Aiming
                     const timeToHit = minDist / bulletSpeed;
-
-                    // Predict where enemy will be in that time
-                    // We use the vx/vy stored in EnemySystem
                     const predX = closest.x + (closest.vx || 0) * timeToHit;
                     const predY = closest.y + (closest.vy || 0) * timeToHit;
 
-                    // Calculate firing vector towards Predicted Position
                     const dx = predX - this.entity.x;
                     const dy = predY - this.entity.y;
                     const aimDist = Math.sqrt(dx*dx + dy*dy);
 
-                    // Shoot
-                    let damage = 10 + Math.floor(this.activeGuardian.level * 0.5);
-                    this.attackCooldown = 1.2; 
+                    // Damage scales with level
+                    let damage = 15 + (this.skills.fireball.level * 5);
+                    this.attackCooldown = 1.5; // Fire rate
 
                     enemySystem.projectiles.push({
                         x: this.entity.x,
@@ -114,10 +120,53 @@ class GuardianSystem {
                         vx: (dx / aimDist) * bulletSpeed,
                         vy: (dy / aimDist) * bulletSpeed,
                         life: 1.5,
-                        color: '#f1c40f',
-                        source: 'guardian', // Important for collision
+                        color: '#e74c3c', // Red for fireball
+                        source: 'guardian', 
                         damage: damage
                     });
+                }
+            }
+        }
+
+        // --- SKILL 3: ASTEROIDS (Orbiting Shield) ---
+        if (this.skills.asteroid.unlocked && typeof enemySystem !== 'undefined') {
+            
+            // 1. Spin the angle
+            const rotationSpeed = 2.0; // Speed of orbit
+            this.asteroidAngle += rotationSpeed * dt;
+
+            // 2. Determine stats based on level
+            const count = 1 + Math.floor(this.skills.asteroid.level / 2); // 1 rock at lvl 1, 2 at lvl 3
+            const radius = 2.5; // How far from guardian
+            const damage = 5 + (this.skills.asteroid.level * 2);
+
+            // 3. Check collision for EACH asteroid
+            for (let i = 0; i < count; i++) {
+                // Calculate position relative to Guardian
+                const angleOffset = (Math.PI * 2 / count) * i;
+                const finalAngle = this.asteroidAngle + angleOffset;
+                
+                const astX = this.entity.x + Math.cos(finalAngle) * radius;
+                const astY = this.entity.y + Math.sin(finalAngle) * radius;
+
+                // Check against ALL enemies
+                for (let e of enemySystem.enemies) {
+                    const dist = Math.sqrt(Math.pow(e.x - astX, 2) + Math.pow(e.y - astY, 2));
+                    
+                    // Collision Radius (0.8 tiles)
+                    if (dist < 0.8) {
+                        // Apply Damage
+                        e.hp -= damage * dt * 5; // DPS based (multiplied by DT)
+                        
+                        // Pushback effect
+                        e.x += Math.cos(finalAngle) * 5 * dt;
+                        e.y += Math.sin(finalAngle) * 5 * dt;
+
+                        // Visual Particle
+                        if (Math.random() < 0.1 && typeof renderer !== 'undefined') {
+                            renderer.addParticle(astX, astY, '#8e44ad');
+                        }
+                    }
                 }
             }
         }
@@ -126,7 +175,7 @@ class GuardianSystem {
     draw(ctx, tileSize, centerScreenX, centerScreenY) {
         if (!this.activeGuardian) return;
 
-        // Calculate Screen Position
+        // Calculate Screen Position of Guardian
         let drawX = (this.entity.x - this.player.x) * tileSize + centerScreenX - tileSize / 2;
         let drawY = (this.entity.y - this.player.y) * tileSize + centerScreenY - tileSize / 2;
 
@@ -137,7 +186,6 @@ class GuardianSystem {
         ctx.fill();
 
         // Draw Sprite
-        // We use the 'sprite' (Front) property
         const img = new Image();
         img.src = this.activeGuardian.sprite || this.activeGuardian.backSprite; 
         
@@ -151,21 +199,49 @@ class GuardianSystem {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText("GUARDIAN", drawX + tileSize/2, drawY - 5);
+
+        // --- DRAW ASTEROIDS ---
+        if (this.skills.asteroid.unlocked) {
+            const count = 1 + Math.floor(this.skills.asteroid.level / 2);
+            const radius = 2.5 * tileSize; // Scale radius to screen pixels
+
+            for (let i = 0; i < count; i++) {
+                const angleOffset = (Math.PI * 2 / count) * i;
+                const finalAngle = this.asteroidAngle + angleOffset;
+
+                // Center of the Guardian on screen
+                const centerX = drawX + tileSize / 2;
+                const centerY = drawY + tileSize / 2;
+
+                const rockX = centerX + Math.cos(finalAngle) * radius;
+                const rockY = centerY + Math.sin(finalAngle) * radius;
+
+                // Draw Rock
+                ctx.fillStyle = '#555'; // Dark Grey
+                ctx.beginPath();
+                ctx.arc(rockX, rockY, 8, 0, Math.PI * 2); // 8px radius rock
+                ctx.fill();
+                
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
     }
 
     // Triggered by clicking the Guardian
     openMenu() {
         if (!this.activeGuardian) return;
         
-        let info = `
-            GUARDIAN: ${this.activeGuardian.name}
-            Level: ${this.activeGuardian.level}
-            \nSKILLS:
-            1. Heal Pulse (Lvl ${this.skills.heal.level})
-            2. Fireball (Locked)
-            3. Asteroid (Locked)
-        `;
-        alert(info); // Placeholder for a real UI later
+        // Simple alert for now, can be replaced with a UI later
+        let info = `GUARDIAN: ${this.activeGuardian.name}\n`;
+        info += `Level: ${this.activeGuardian.level}\n\n`;
+        info += `SKILLS:\n`;
+        info += `1. Heal Pulse: Lvl ${this.skills.heal.level} (${this.skills.heal.unlocked ? 'ACTIVE' : 'LOCKED'})\n`;
+        info += `2. Fireball: Lvl ${this.skills.fireball.level} (${this.skills.fireball.unlocked ? 'ACTIVE' : 'LOCKED'})\n`;
+        info += `3. Asteroids: Lvl ${this.skills.asteroid.level} (${this.skills.asteroid.unlocked ? 'ACTIVE' : 'LOCKED'})\n`;
+        
+        alert(info); 
     }
 
     getSaveData() {
