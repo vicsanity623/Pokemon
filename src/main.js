@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.3'; // Bumped Version
+const VERSION = 'v1.3.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -2208,7 +2208,7 @@ function updateResourceDisplay() {
         
         // --- POSITIONING ---
         resContainer.style.position = 'fixed'; 
-        resContainer.style.top = '14%'; // Positioned under the Top HUD bars
+        resContainer.style.top = '9%'; // Positioned under the Top HUD bars
         resContainer.style.left = '50%';
         resContainer.style.transform = 'translateX(-50%)';
         
