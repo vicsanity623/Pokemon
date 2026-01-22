@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.5'; // Bumped Version
+const VERSION = 'v1.3.6'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -26,7 +26,7 @@ let isPartyOpen = true; // Default to open
 // --- AUTO HARVEST VARIABLES ---
 let autoHarvestTarget = null;
 let lastAutoAttackTime = 0;
-const TILE_SIZE_VISUAL = 32; // Adjust to 32 or 64 if clicks are slightly offset
+const TILE_SIZE_VISUAL = 64; // Adjust to 32 or 64 if clicks are slightly offset
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -2208,7 +2208,7 @@ function updateResourceDisplay() {
         
         // --- POSITIONING ---
         resContainer.style.position = 'fixed'; 
-        resContainer.style.top = '6%'; // Positioned under the Top HUD bars
+        resContainer.style.top = '7%'; // Positioned under the Top HUD bars
         resContainer.style.left = '50%';
         resContainer.style.transform = 'translateX(-50%)';
         
