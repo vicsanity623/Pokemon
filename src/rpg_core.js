@@ -195,6 +195,49 @@ class RPGSystem {
         this.updateHUD();
     }
 
+    // Equip by Item ID string (e.g., 'sword_iron')
+    equipById(itemId) {
+        // Find item data from CraftingSystem recipes
+        // We need access to craftingSystem instance or static data
+        if (typeof craftingSystem === 'undefined') return;
+        
+        const itemData = craftingSystem.RECIPES.find(r => r.id === itemId);
+        if (!itemData) return;
+
+        // 1. If slot is full, unequip current first
+        if (this.equipment[itemData.type]) {
+            this.unequip(itemData.type);
+        }
+
+        // 2. Equip new item
+        this.equipment[itemData.type] = itemData;
+
+        // 3. Remove from Bag
+        if (this.player.bag[itemId] > 0) {
+            this.player.bag[itemId]--;
+            if (this.player.bag[itemId] <= 0) delete this.player.bag[itemId];
+        }
+
+        showDialog(`Equipped ${itemData.name}!`, 1000);
+        this.updateHUD();
+    }
+
+    // Unequip slot ('weapon', 'armor', 'accessory')
+    unequip(slotType) {
+        const item = this.equipment[slotType];
+        if (!item) return;
+
+        // 1. Add back to Bag
+        if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
+        this.player.bag[item.id]++;
+
+        // 2. Clear Slot
+        this.equipment[slotType] = null;
+        
+        showDialog(`Unequipped ${item.name}.`, 1000);
+        this.updateHUD();
+    }
+
     getSaveData() {
         return { hp: this.hp, maxHp: this.maxHp, xp: this.xp, level: this.level, equipment: this.equipment };
     }
