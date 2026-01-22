@@ -92,25 +92,30 @@ class RPGSystem {
 
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        // --- NEW: CALCULATE HIT BOX ---
-        // Determine tile in front of player
-        let dx = 0; 
-        let dy = 0;
-        if (this.player.dir === 'left') dx = -1;
-        if (this.player.dir === 'right') dx = 1;
-        if (this.player.dir === 'up') dy = -1;
-        if (this.player.dir === 'down') dy = 1;
+        // --- WIDE SWEEP HIT DETECTION ---
+        // Check 3 tiles in front of player (Left, Center, Right relative to facing)
+        
+        const targets = [];
+        const px = Math.round(this.player.x);
+        const py = Math.round(this.player.y);
 
-        const targetX = this.player.x + dx * this.weaponRange;
-        const targetY = this.player.y + dy * this.weaponRange;
-
-        // Check Resource Hit
-        if (typeof resourceSystem !== 'undefined') {
-            const hit = resourceSystem.checkHit(targetX, targetY, 1); // 1 Damage (Basic)
-            if (hit) return; // Stop if we hit a tree/rock
+        if (this.player.dir === 'left') {
+            targets.push({x: px-1, y: py}, {x: px-1, y: py-1}, {x: px-1, y: py+1});
+        } else if (this.player.dir === 'right') {
+            targets.push({x: px+1, y: py}, {x: px+1, y: py-1}, {x: px+1, y: py+1});
+        } else if (this.player.dir === 'up') {
+            targets.push({x: px, y: py-1}, {x: px-1, y: py-1}, {x: px+1, y: py-1});
+        } else if (this.player.dir === 'down') {
+            targets.push({x: px, y: py+1}, {x: px-1, y: py+1}, {x: px+1, y: py+1});
         }
 
-        // TODO (Phase 4): Check Skeleton Hit
+        // Check Resources
+        if (typeof resourceSystem !== 'undefined') {
+            for (let t of targets) {
+                const hit = resourceSystem.checkHit(t.x, t.y, 1);
+                if (hit) break; // Hit one thing per swing
+            }
+        }
     }
 
     updateHUD() {
