@@ -236,21 +236,51 @@ class RPGSystem {
 
     equipById(itemId) {
         if (typeof craftingSystem === 'undefined') return;
-        const itemData = craftingSystem.RECIPES.find(r => r.id === itemId);
+
+        // --- NEW SUFFIX LOGIC ---
+        let baseId = itemId;
+        let suffix = null;
+
+        if (itemId.endsWith('_legendary')) {
+            baseId = itemId.replace('_legendary', '');
+            suffix = 'legendary';
+        } else if (itemId.endsWith('_rare')) {
+            baseId = itemId.replace('_rare', '');
+            suffix = 'rare';
+        }
+
+        const itemData = craftingSystem.RECIPES.find(r => r.id === baseId);
         if (!itemData) return;
+
+        // Create a Copy to modify stats without affecting global recipe
+        const equippedItem = { ...itemData };
+        equippedItem.id = itemId; // Store the full ID (e.g. sword_iron_rare)
+
+        // Apply Boosts
+        if (suffix === 'rare') {
+            equippedItem.name = `Rare ${itemData.name}`;
+            equippedItem.color = '#3498db'; // Rare Blue
+            if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 1.25);
+            if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 1.25);
+        } else if (suffix === 'legendary') {
+            equippedItem.name = `Legendary ${itemData.name}`;
+            equippedItem.color = '#f1c40f'; // Gold
+            if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 2.0);
+            if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 2.0);
+        }
 
         if (this.equipment[itemData.type]) {
             this.unequip(itemData.type);
         }
 
-        this.equipment[itemData.type] = itemData;
+        this.equipment[itemData.type] = equippedItem;
 
         if (this.player.bag[itemId] > 0) {
             this.player.bag[itemId]--;
             if (this.player.bag[itemId] <= 0) delete this.player.bag[itemId];
         }
 
-        showDialog(`Equipped ${itemData.name}!`, 1000);
+        showDialog(`Equipped ${equippedItem.name}!`, 1000);
         this.updateHUD();
     }
 

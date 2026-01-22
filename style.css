@@ -54,12 +54,14 @@ canvas {
     position: absolute;
     /* We can remove top/bottom here because JS now handles it, 
        but keeping a fallback is fine. */
-    bottom: 25%; 
+    bottom: 25%;
     left: 50%;
     transform: translateX(-50%);
     width: 60%;
     min-width: 300px;
-    height: 100px;
+    min-width: 300px;
+    min-height: 100px;
+    height: auto;
     background: var(--ui-bg);
     border: var(--ui-border);
     border-radius: 5px;
@@ -71,7 +73,7 @@ canvas {
     color: #000;
 
     /* CHANGED: Increased to 30000 to beat EVERYTHING */
-    z-index: 30000 !important; 
+    z-index: 30000 !important;
 
     display: flex;
     align-items: center;
@@ -224,10 +226,10 @@ canvas {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.9);
-    
+
     /* CHANGED: Lowered from 20000 to 9000 so Dialog (10000+) can sit on top */
-    z-index: 9000; 
-    
+    z-index: 9000;
+
     display: flex;
     flex-direction: column;
     padding: 20px;
@@ -2081,7 +2083,7 @@ body {
         top: 5px !important;
         left: 5px !important;
     }
-    
+
     #player-party-container {
         width: 100% !important;
         height: 100% !important;
@@ -2091,14 +2093,16 @@ body {
 
     /* Make the Pokemon wrappers smaller so 4 fit in a row */
     .party-member-wrapper {
-        width: 80px !important;  /* Reduced from 200px */
+        width: 80px !important;
+        /* Reduced from 200px */
         height: 80px !important;
     }
 
     /* Adjust HP/XP bars to fit the smaller 80px sprite */
     .sprite-hp-bar {
         width: 60px !important;
-        top: -20px !important; /* Move closer to sprite */
+        top: -20px !important;
+        /* Move closer to sprite */
         height: 6px !important;
     }
 
@@ -2112,7 +2116,7 @@ body {
         font-size: 8px !important;
         top: -30px !important;
     }
-    
+
     /* Active Turn Circle - Scale down */
     .party-member-wrapper.active-turn::after {
         width: 60px !important;
@@ -2706,23 +2710,29 @@ body {
 
 #player-party-container {
     position: absolute;
-    left: 0; /* Changed from 20px to 0 to allow full screen use */
-    top: 0;  /* Changed from 100px to 0 */
-    width: 100%; /* Changed to 100% to use whole screen */
-    height: 100%; /* Changed to 100% */
-    
+    left: 0;
+    /* Changed from 20px to 0 to allow full screen use */
+    top: 0;
+    /* Changed from 100px to 0 */
+    width: 100%;
+    /* Changed to 100% to use whole screen */
+    height: 100%;
+    /* Changed to 100% */
+
     /* Removed flexbox so absolute positioning works better */
-    display: block; 
-    
+    display: block;
+
     z-index: 10;
     pointer-events: none;
 }
 
 .party-member-wrapper {
-    position: absolute; /* Enforce absolute */
+    position: absolute;
+    /* Enforce absolute */
     width: 200px;
     height: 200px;
-    transition: transform 1.3s ease, top 0.5s, left 0.5s; /* Added transition for smooth movement */
+    transition: transform 1.3s ease, top 0.5s, left 0.5s;
+    /* Added transition for smooth movement */
 }
 
 .party-sprite {
@@ -2902,8 +2912,10 @@ body {
         /* Use padding to clear home bar */
         height: 120px !important;
         /* Ensure height fits */
-        border-bottom: 4px solid gold; /* Visual border */
-        box-sizing: border-box; /* Ensure padding doesn't affect total height calculation negatively */
+        border-bottom: 4px solid gold;
+        /* Visual border */
+        box-sizing: border-box;
+        /* Ensure padding doesn't affect total height calculation negatively */
     }
 
     /* Lift Action Buttons (A/B) if they exist */
@@ -2916,10 +2928,11 @@ body {
     #mobile-controls {
         bottom: 40px !important;
     }
-    
+
     /* Ensure Bottom HUD is visible */
     #bottom-hud {
-        bottom: 130px !important; /* Above the lifted menu */
+        bottom: 130px !important;
+        /* Above the lifted menu */
     }
 
     /* Adjust battle text area to not be squashed */
@@ -2928,7 +2941,8 @@ body {
         font-size: 10px !important;
     }
 
-    .battle-options button, #move-selector button {
+    .battle-options button,
+    #move-selector button {
         font-size: 9px !important;
         padding: 5px !important;
     }
@@ -2938,19 +2952,20 @@ body {
 #rival-sprite {
     position: absolute;
     /* Default size - JS might resize or move this */
-    width: 64px; 
+    width: 64px;
     height: 64px;
-    
+
     /* Center by default, JS usually overrides top/left */
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
-    
-    z-index: 80; /* Higher than map (canvas), lower than UI (100+) */
+
+    z-index: 80;
+    /* Higher than map (canvas), lower than UI (100+) */
     image-rendering: pixelated;
-    
+
     /* Smooth movement if the JS animates him walking */
-    transition: top 0.5s linear, left 0.5s linear; 
+    transition: top 0.5s linear, left 0.5s linear;
 }
 
 /* Optional: Add a "Slide In" animation class if your JS uses it */
@@ -2959,8 +2974,15 @@ body {
 }
 
 @keyframes slideInRight {
-    from { transform: translate(200%, -50%); opacity: 0; }
-    to { transform: translate(-50%, -50%); opacity: 1; }
+    from {
+        transform: translate(200%, -50%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+    }
 }
 
 /* --- ANIME XP BAR EFFECTS --- */
@@ -2969,17 +2991,17 @@ body {
 .anime-xp-active {
     /* Force the transition to take 3 seconds */
     transition: width 2.0s cubic-bezier(0.25, 1, 0.5, 1) !important;
-    
+
     /* Explosive Gradient: Blue -> Cyan -> White -> Transparent */
     background: linear-gradient(90deg, #2980b9 0%, #3498db 50%, #00ffff 90%, #ffffff 100%) !important;
     background-size: 200% 100% !important;
-    
+
     /* Glowing Aura */
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 30px rgba(52, 152, 219, 0.6) !important;
-    
+
     /* Make the texture move rapidly */
     animation: xp-sizzle 0.2s linear infinite !important;
-    
+
     position: relative;
     z-index: 100;
 }
@@ -2992,7 +3014,8 @@ body {
     right: 0;
     transform: translate(50%, -50%);
     width: 10px;
-    height: 15px; /* Taller than the bar for flare effect */
+    height: 15px;
+    /* Taller than the bar for flare effect */
     background: #fff;
     border-radius: 50%;
     box-shadow: 0 0 10px #fff, 0 0 20px #00ffff;
@@ -3001,6 +3024,11 @@ body {
 
 /* Sizzling animation for the bar texture */
 @keyframes xp-sizzle {
-    0% { background-position: 100% 0; }
-    100% { background-position: -100% 0; }
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: -100% 0;
+    }
 }

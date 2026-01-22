@@ -6,19 +6,19 @@ class CraftingSystem {
 
         this.RECIPES = [
             // WEAPONS
-            { id: 'sword_wood', name: 'Wooden Sword', type: 'weapon', damage: 5, cost: { 'Wood': 5 }, color: '#fff' },
-            { id: 'sword_stone', name: 'Stone Sword', type: 'weapon', damage: 10, cost: { 'Wood': 2, 'Stone': 10 }, color: '#2ecc71' },
-            { id: 'sword_iron', name: 'Iron Sword', type: 'weapon', damage: 20, cost: { 'Wood': 5, 'Iron Ore': 5 }, color: '#3498db' },
-            { id: 'sword_obsidian', name: 'Obsidian Blade', type: 'weapon', damage: 45, cost: { 'Obsidian': 10, 'Shadow Essence': 5 }, color: '#9b59b6' },
-            { id: 'sword_master', name: 'Master Sword', type: 'weapon', damage: 100, cost: { 'Gold Ore': 50, 'Obsidian': 50, 'Bone': 100 }, color: '#f1c40f' },
+            { id: 'sword_wood', name: 'Wooden Sword', uiName: 'Craft Weapon (Wood)', type: 'weapon', damage: 5, cost: { 'Wood': 5 }, color: '#fff' },
+            { id: 'sword_stone', name: 'Stone Sword', uiName: 'Craft Weapon (Stone)', type: 'weapon', damage: 10, cost: { 'Wood': 2, 'Stone': 10 }, color: '#2ecc71' },
+            { id: 'sword_iron', name: 'Iron Sword', uiName: 'Craft Weapon (Iron)', type: 'weapon', damage: 20, cost: { 'Wood': 5, 'Iron Ore': 5 }, color: '#3498db' },
+            { id: 'sword_obsidian', name: 'Obsidian Blade', uiName: 'Craft Weapon (Obsidian)', type: 'weapon', damage: 45, cost: { 'Obsidian': 10, 'Shadow Essence': 5 }, color: '#9b59b6' },
+            { id: 'sword_master', name: 'Master Sword', uiName: 'Craft Weapon (Master)', type: 'weapon', damage: 100, cost: { 'Gold Ore': 50, 'Obsidian': 50, 'Bone': 100 }, color: '#f1c40f' },
 
             // ARMOR
-            { id: 'armor_leather', name: 'Leather Vest', type: 'armor', defense: 10, cost: { 'Wood': 10, 'Bone': 5 }, color: '#2ecc71' },
-            { id: 'armor_iron', name: 'Iron Plate', type: 'armor', defense: 30, cost: { 'Iron Ore': 20 }, color: '#3498db' },
-            { id: 'armor_shadow', name: 'Shadow Armor', type: 'armor', defense: 60, cost: { 'Obsidian': 20, 'Shadow Essence': 10 }, color: '#9b59b6' },
+            { id: 'armor_leather', name: 'Leather Vest', uiName: 'Craft Armor (Leather)', type: 'armor', defense: 10, cost: { 'Wood': 10, 'Bone': 5 }, color: '#2ecc71' },
+            { id: 'armor_iron', name: 'Iron Plate', uiName: 'Craft Armor (Iron)', type: 'armor', defense: 30, cost: { 'Iron Ore': 20 }, color: '#3498db' },
+            { id: 'armor_shadow', name: 'Shadow Armor', uiName: 'Craft Armor (Shadow)', type: 'armor', defense: 60, cost: { 'Obsidian': 20, 'Shadow Essence': 10 }, color: '#9b59b6' },
 
             // ACCESSORY
-            { id: 'acc_goggles', name: 'Night Vision Goggles', type: 'accessory', effect: 'vision', cost: { 'Iron Ore': 5, 'Gold Ore': 2, 'Shadow Essence': 5 }, color: '#3498db' }
+            { id: 'acc_goggles', name: 'Night Vision Goggles', uiName: 'Craft Goggles', type: 'accessory', effect: 'vision', cost: { 'Iron Ore': 5, 'Gold Ore': 2, 'Shadow Essence': 5 }, color: '#3498db' }
         ];
 
         this.GUARDIAN_UPGRADES = [
@@ -47,6 +47,21 @@ class CraftingSystem {
         const box = document.getElementById('dialog-box');
         if (box) box.style.zIndex = "10001"; // NUCLEAR OPTION: Above everything
         showDialog(text, 2000);
+    }
+
+    triggerFlash(color) {
+        const flash = document.createElement('div');
+        flash.style.position = 'fixed';
+        flash.style.top = '0';
+        flash.style.left = '0';
+        flash.style.width = '100%';
+        flash.style.height = '100%';
+        flash.style.backgroundColor = color;
+        flash.style.zIndex = '20000';
+        flash.style.pointerEvents = 'none';
+        flash.style.animation = 'flash-white 0.5s'; // reusing the keyframes
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 500);
     }
 
     openMenu() {
@@ -154,18 +169,27 @@ class CraftingSystem {
         invList.innerHTML = '';
 
         this.RECIPES.forEach(recipe => {
-            if (this.player.bag[recipe.id]) {
-                const count = this.player.bag[recipe.id];
-                const div = document.createElement('div');
-                div.style.borderBottom = '1px solid #333';
-                div.style.padding = '5px';
-                div.style.fontSize = '10px';
-                div.innerHTML = `
-                    <span style="color:${recipe.color}">${recipe.name}</span> x${count}
-                    <button style="float:right; font-size:8px;" onpointerdown="event.stopPropagation(); rpgSystem.equipById('${recipe.id}'); craftingSystem.updateEquipmentUI();">EQUIP</button>
-                `;
-                invList.appendChild(div);
-            }
+            // Check for Base, Rare, and Legendary versions in bag
+            const variants = [
+                { id: recipe.id, name: recipe.name, color: recipe.color },
+                { id: recipe.id + '_rare', name: `Rare ${recipe.name}`, color: '#3498db' },
+                { id: recipe.id + '_legendary', name: `LEGENDARY ${recipe.name}`, color: '#f1c40f' }
+            ];
+
+            variants.forEach(variant => {
+                if (this.player.bag[variant.id]) {
+                    const count = this.player.bag[variant.id];
+                    const div = document.createElement('div');
+                    div.style.borderBottom = '1px solid #333';
+                    div.style.padding = '5px';
+                    div.style.fontSize = '10px';
+                    div.innerHTML = `
+                        <span style="color:${variant.color}">${variant.name}</span> x${count}
+                        <button style="float:right; font-size:8px;" onpointerdown="event.stopPropagation(); rpgSystem.equipById('${variant.id}'); craftingSystem.updateEquipmentUI();">EQUIP</button>
+                    `;
+                    invList.appendChild(div);
+                }
+            });
         });
     }
 
@@ -278,15 +302,41 @@ class CraftingSystem {
             if (this.player.bag[res] <= 0) delete this.player.bag[res];
         }
 
-        // 3. GRANT ITEM
-        if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
-        this.player.bag[item.id]++;
+        // 3. RNG ROLL (Loot Beams)
+        const roll = Math.random();
+        let craftedId = item.id;
+        let qualityName = item.name;
+        let qualityColor = item.color;
+
+        if (roll > 0.90) {
+            // 10% Legendary
+            craftedId += '_legendary';
+            qualityName = `LEGENDARY ${item.name}`;
+            qualityColor = '#f1c40f'; // Gold
+            this.forceDialogTop(`Creating... LEGENDARY ITEM!!!`);
+            this.triggerFlash('gold');
+            playSFX('sfx-legendary'); // Assuming this exists or falls back
+        } else if (roll > 0.60) {
+            // 30% Rare
+            craftedId += '_rare';
+            qualityName = `Rare ${item.name}`;
+            qualityColor = '#3498db'; // Blue
+            this.forceDialogTop(`Creating... Rare Item!`);
+            this.triggerFlash('#3498db');
+        }
+
+        // 4. GRANT ITEM
+        if (!this.player.bag[craftedId]) this.player.bag[craftedId] = 0;
+        this.player.bag[craftedId]++;
 
         playSFX('sfx-pickup');
-        this.forceDialogTop(`Crafted ${item.name}!`); // Feedback also on top
 
-        this.showTab('craft');
-        this.updateEquipmentUI();
+        // visual delay for "beam" effect
+        setTimeout(() => {
+            this.forceDialogTop(`Crafted ${qualityName}!`);
+            this.showTab('craft');
+            this.updateEquipmentUI();
+        }, 800);
     }
 
     upgradeGuardian(upg) {

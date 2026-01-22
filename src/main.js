@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.7'; // Bumped Version
+const VERSION = 'v1.3.9'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1209,7 +1209,7 @@ window.onload = async () => {
         runIntro();
         resourceSystem.generate();
     } else {
-        showDialog('Welcome back!', 2000);
+        // Welcomes are now handled inside loadGame internally
     }
 
     // Spawn player's house near starting location
@@ -1261,8 +1261,8 @@ window.onload = async () => {
     // Auto-Save every 30s
     setInterval(saveGame, 30000);
 
-    // Register Service Worker with AUTO-UPDATE Logic
-    if ('serviceWorker' in navigator) {
+    // Register Service Worker with AUTO-UPDATE Logic (HTTPS/HTTP Only)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
         navigator.serviceWorker.register('./sw.js').then(registration => {
             console.log('Service Worker Registered');
 
@@ -1321,7 +1321,8 @@ function saveGame() {
             bag: player.bag,
             storage: player.storage,
             seen: player.seen,
-            seenShiny: player.seenShiny
+            seenShiny: player.seenShiny,
+            lastLogin: Date.now() // <--- ADD THIS LINE
         },
         world: {
             seed: world.rng.seed,
@@ -1524,6 +1525,104 @@ function loadGame() {
         }
 
         updateHUD();
+
+        // --- OFFLINE PROGRESS CALCULATION ---
+        if (data.player.lastLogin) {
+            const now = Date.now();
+            const diffMs = now - data.player.lastLogin;
+            const diffMinutes = Math.floor(diffMs / 60000); // Convert to minutes
+
+            // 1. Cap time at 12 hours (720 minutes) to encourage daily logins
+            const effectiveMinutes = Math.min(diffMinutes, 720);
+
+            if (effectiveMinutes > 10) { // Only trigger if gone for > 10 mins
+
+                // 2. Count Pokemon in Storage (The Workforce)
+                let workerCount = 0;
+                player.storage.forEach(box => {
+                    box.forEach(p => {
+                        if (p) workerCount++;
+                    });
+                });
+
+                // 3. Calculate Rewards
+                // Base: $1 per minute. Bonus: +$1 per minute for every 5 workers.
+                const moneyRate = 1 + Math.floor(workerCount / 5);
+                const earnings = effectiveMinutes * moneyRate;
+
+                // 4. Give Reward
+                player.money += earnings;
+
+                // 5. XP Reward for Party (Passive Training) & Level Up Loop
+                const xpGain = Math.floor(effectiveMinutes * 5);
+                let leveledUpCount = 0;
+
+                player.team.forEach(p => {
+                    if (p.hp > 0) {
+                        p.exp += xpGain;
+                        // Level Up Loop
+                        while (p.exp >= p.level * 100) {
+                            p.exp -= p.level * 100;
+                            p.level++;
+                            leveledUpCount++; // Track total level ups
+
+                            // Boost Stats
+                            if (p.stats) {
+                                p.maxHp = p.level * 5 + p.stats.hp;
+                                p.hp = p.maxHp;
+                            }
+                        }
+                    }
+                });
+
+                // 6. Resource Scavenging (New)
+                let resourceMsg = "";
+                if (workerCount > 0) {
+                    const resourceRolls = Math.floor(effectiveMinutes / 30) + Math.floor(workerCount / 2);
+                    const resources = {};
+
+                    for (let i = 0; i < resourceRolls; i++) {
+                        const rand = Math.random();
+                        let type = 'Wood';
+                        if (rand > 0.95) type = 'Gold Ore';
+                        else if (rand > 0.85) type = 'Iron Ore';
+                        else if (rand > 0.60) type = 'Stone';
+
+                        if (!resources[type]) resources[type] = 0;
+                        resources[type]++;
+
+                        if (!player.bag[type]) player.bag[type] = 0;
+                        player.bag[type]++;
+                    }
+
+                    // Format Resource Message: "Wood x5, Stone x2"
+                    if (Object.keys(resources).length > 0) {
+                        const resList = Object.entries(resources).map(([k, v]) => `${k} x${v}`).join(', ');
+                        resourceMsg = `, ${resList}`;
+                    } else {
+                        resourceMsg = "";
+                    }
+                }
+
+                // 7. Show "Welcome Back" Screen (Sweet and Simple Format)
+                setTimeout(() => {
+                    const hours = Math.floor(effectiveMinutes / 60);
+                    const minutes = effectiveMinutes % 60;
+
+                    showDialog(
+                        `OFFLINE REWARDS: ${hours}h ${minutes}m\n($${earnings}, +${xpGain} XP${resourceMsg})\n${leveledUpCount > 0 ? `PARTY GREW ${leveledUpCount} LEVELS!` : ''}`,
+                        8000
+                    );
+                    updateHUD();
+                }, 2000); // Delay slightly so the game renders first
+            } else {
+                // < 10 mins offline, just show generic welcome
+                showDialog('Welcome back!', 2000);
+            }
+        } else {
+            // First time loading with this version (or no previous login time)
+            showDialog('Welcome back!', 2000);
+        }
 
         return true;
     } catch (e) {

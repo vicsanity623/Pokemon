@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v1.5.3';
+const GAME_VERSION = 'v1.5.5';
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
