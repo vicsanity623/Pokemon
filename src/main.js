@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.0'; // Bumped Version
+const VERSION = 'v1.3.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -22,6 +22,11 @@ const craftingSystem = new CraftingSystem(player);
 const mapSystem = new MapSystem(player, world);
 world.init(); 
 let isPartyOpen = true; // Default to open
+
+// --- AUTO HARVEST VARIABLES ---
+let autoHarvestTarget = null;
+let lastAutoAttackTime = 0;
+const TILE_SIZE_VISUAL = 48; // Adjust to 32 or 64 if clicks are slightly offset
 
 // Music System
 const mainMusic = document.getElementById('main-music');
@@ -94,6 +99,50 @@ window.addEventListener('keyup', (e) => {
     if (e.key === 'z' || e.key === 'Z') input.release('a');
     if (e.key === 'x' || e.key === 'X') input.release('b');
     if (e.key === 'Enter') input.release('start');
+});
+
+// --- TAP TO HARVEST INPUT ---
+const gameCanvas = document.getElementById('gameCanvas');
+gameCanvas.addEventListener('pointerdown', (e) => {
+    // 1. Ignore clicks if menus are open
+    if (storeSystem.isOpen || isPaused || document.getElementById('crafting-ui')) return;
+
+    // 2. Calculate World Coordinates
+    const rect = gameCanvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const worldClickX = player.x + (clickX - centerX) / TILE_SIZE_VISUAL;
+    const worldClickY = player.y + (clickY - centerY) / TILE_SIZE_VISUAL;
+
+    // 3. Find Resource Node
+    const tx = Math.round(worldClickX);
+    const ty = Math.round(worldClickY);
+    
+    // Check exact tile and neighbors (for easier mobile tapping)
+    const candidates = [
+        `${tx},${ty}`, 
+        `${tx+1},${ty}`, `${tx-1},${ty}`, 
+        `${tx},${ty+1}`, `${tx},${ty-1}`
+    ];
+
+    let found = null;
+    for(let key of candidates) {
+        if (resourceSystem.nodes[key]) {
+            const parts = key.split(',');
+            found = { x: parseInt(parts[0]), y: parseInt(parts[1]), key: key };
+            break;
+        }
+    }
+
+    if (found) {
+        autoHarvestTarget = found;
+        showDialog("Moving to harvest...", 500);
+    } else {
+        autoHarvestTarget = null; // Tap empty ground to stop
+    }
 });
 
 // Intro Story
@@ -180,6 +229,59 @@ function gameLoop(timestamp) {
         }
 
         if (rivalSystem.isPlayerFrozen()) { dx = 0; dy = 0; }
+
+        // --- AUTO HARVEST LOGIC ---
+        // If manual input exists, cancel auto-harvest
+        if (dx !== 0 || dy !== 0) {
+            autoHarvestTarget = null; 
+        }
+        // If no manual input, process auto-harvest
+        else if (autoHarvestTarget) {
+            // 1. Check if node still exists
+            if (!resourceSystem.nodes[autoHarvestTarget.key]) {
+                autoHarvestTarget = null; // Done!
+                player.moving = false;
+            } else {
+                // 2. Distance Check
+                const dist = Math.sqrt(Math.pow(autoHarvestTarget.x - player.x, 2) + Math.pow(autoHarvestTarget.y - player.y, 2));
+                
+                if (dist > 1.2) {
+                    // WALK TOWARDS
+                    const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
+                    const speed = player.speed * (dt * 60);
+                    player.x += Math.cos(angle) * speed;
+                    player.y += Math.sin(angle) * speed;
+                    player.moving = true;
+                    player.steps += speed; // Count steps
+
+                    // Direction
+                    if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+                        player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+                    } else {
+                        player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+                    }
+                } else {
+                    // ATTACK
+                    player.moving = false;
+                    
+                    // Face target
+                    const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
+                    if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+                        player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+                    } else {
+                        player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+                    }
+
+                    // Auto-Swing Timer (Every 250ms)
+                    if (timestamp - lastAutoAttackTime > 250) {
+                        lastAutoAttackTime = timestamp;
+                        let dmg = 1;
+                        if (typeof rpgSystem !== 'undefined') dmg = rpgSystem.getDamage();
+                        resourceSystem.checkHit(autoHarvestTarget.x, autoHarvestTarget.y, dmg);
+                    }
+                }
+            }
+        }
 
         if (dx !== 0 || dy !== 0) {
             let length = Math.sqrt(dx * dx + dy * dy);
