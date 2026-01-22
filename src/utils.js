@@ -260,12 +260,19 @@ class GameClock {
 function showDialog(text, duration = 0) {
     const box = document.getElementById('dialog-box');
     const p = document.getElementById('dialog-text');
+    
+    // --- FIX: Force High Z-Index ---
+    box.style.zIndex = "10000"; 
+    // -------------------------------
+
     box.classList.remove('hidden');
     p.innerText = text;
+    
     if (duration > 0) {
         setTimeout(() => box.classList.add('hidden'), duration);
     }
 }
+
 function hideDialog() {
     document.getElementById('dialog-box').classList.add('hidden');
 }
