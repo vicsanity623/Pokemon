@@ -69,46 +69,67 @@ class RPGSystem {
     }
 
     createHUD() {
-        // ... (Keep existing HUD code) ...
+        // Remove existing if any (prevents duplicates on reload)
+        const existing = document.getElementById('rpg-hud');
+        if (existing) existing.remove();
+
         const hud = document.createElement('div');
         hud.id = 'rpg-hud';
         hud.style.position = 'absolute';
+        
+        // --- UPDATED POSITIONING (CENTER TOP) ---
         hud.style.top = '10px';
-        hud.style.left = '10px';
-        hud.style.width = '200px';
+        hud.style.left = '50%';
+        hud.style.transform = 'translateX(-50%)'; // Centers the element
+        // ----------------------------------------
+        
+        hud.style.width = '250px'; // Made slightly wider for better visibility
         hud.style.zIndex = '500';
         hud.style.fontFamily = 'monospace';
         hud.style.pointerEvents = 'none';
 
         hud.innerHTML = `
-            <div style="margin-bottom:5px; color:white; text-shadow:1px 1px 0 #000;">
+            <div style="margin-bottom:5px; color:white; text-shadow:1px 1px 0 #000; text-align:center;">
                 <span id="rpg-name">SURVIVOR</span> Lv.<span id="rpg-level">1</span>
             </div>
-            <div style="width:100%; height:15px; background:#333; border:2px solid #000; margin-bottom:2px;">
+            
+            <!-- HP BAR (Red) -->
+            <div style="width:100%; height:12px; background:#333; border:2px solid #000; margin-bottom:2px; position:relative;">
                 <div id="rpg-hp-bar" style="width:100%; height:100%; background:#e74c3c; transition:width 0.2s;"></div>
             </div>
+
+            <!-- NEW: XP BAR (Blue) -->
+            <div style="width:100%; height:6px; background:#333; border:2px solid #000; margin-bottom:2px; position:relative;">
+                <div id="rpg-xp-bar" style="width:0%; height:100%; background:#3498db; transition:width 0.2s;"></div>
+            </div>
+
+            <!-- STAMINA BAR (Yellow) -->
             <div style="width:100%; height:8px; background:#333; border:2px solid #000;">
                 <div id="rpg-stamina-bar" style="width:100%; height:100%; background:#f1c40f; transition:width 0.2s;"></div>
             </div>
+            
             <!-- Gear Display -->
-            <div id="rpg-gear" style="font-size:10px; color:#aaa; margin-top:5px;">
+            <div id="rpg-gear" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">
                 Wpn: Fists | Arm: None
             </div>
         `;
         document.body.appendChild(hud);
 
-        const btn = document.createElement('div');
-        btn.id = 'btn-attack';
-        btn.className = 'action-btn';
-        btn.style.bottom = '120px';
-        btn.style.right = '20px';
-        btn.style.backgroundColor = '#7f8c8d';
-        btn.innerText = '⚔️';
-        btn.onpointerdown = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            this.triggerAttack();
-        };
-        document.getElementById('action-btns').appendChild(btn);
+        // Check if button exists before adding (prevent duplicates)
+        if (!document.getElementById('btn-attack')) {
+            const btn = document.createElement('div');
+            btn.id = 'btn-attack';
+            btn.className = 'action-btn';
+            btn.style.bottom = '120px';
+            btn.style.right = '20px';
+            btn.style.backgroundColor = '#7f8c8d';
+            btn.innerText = '⚔️';
+            btn.onpointerdown = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                this.triggerAttack();
+            };
+            document.getElementById('action-btns').appendChild(btn);
+        }
     }
 
     update(dt) {
@@ -131,7 +152,7 @@ class RPGSystem {
         setTimeout(() => canvas.style.transform = 'none', 100);
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        // HIT DETECTION
+        // HIT DETECTION (Wide Sweep)
         const targets = [];
         const px = Math.round(this.player.x);
         const py = Math.round(this.player.y);
@@ -141,15 +162,12 @@ class RPGSystem {
         else if (this.player.dir === 'up') { targets.push({x: px, y: py-1}, {x: px-1, y: py-1}, {x: px+1, y: py-1}); } 
         else if (this.player.dir === 'down') { targets.push({x: px, y: py+1}, {x: px-1, y: py+1}, {x: px+1, y: py+1}); }
 
-        const damage = this.getDamage(); // Dynamic damage based on gear
+        const damage = this.getDamage(); 
 
         // 1. Resources
         if (typeof resourceSystem !== 'undefined') {
             for (let t of targets) {
-                // Determine tool bonus (e.g. Pickaxe does more to rocks)
-                let bonus = 1;
-                // Simple check: if weapon name contains "Pickaxe" vs Rock, etc.
-                const hit = resourceSystem.checkHit(t.x, t.y, damage * bonus);
+                const hit = resourceSystem.checkHit(t.x, t.y, damage);
                 if (hit) return; 
             }
         }
@@ -166,15 +184,28 @@ class RPGSystem {
     updateHUD() {
         const hpPct = Math.max(0, (this.hp / this.maxHp) * 100);
         const stamPct = Math.max(0, (this.stamina / this.maxStamina) * 100);
-        document.getElementById('rpg-hp-bar').style.width = `${hpPct}%`;
-        document.getElementById('rpg-stamina-bar').style.width = `${stamPct}%`;
-        document.getElementById('rpg-level').innerText = this.level;
         
-        // Update Gear Text
-        const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
-        const aName = this.equipment.armor ? this.equipment.armor.name : "None";
-        const gearEl = document.getElementById('rpg-gear');
-        if(gearEl) gearEl.innerText = `Wpn: ${wName} | Arm: ${aName}`;
+        // --- XP CALCULATION ---
+        const xpNeeded = this.level * 100;
+        const xpPct = Math.min(100, Math.max(0, (this.xp / xpNeeded) * 100));
+
+        const hpBar = document.getElementById('rpg-hp-bar');
+        const xpBar = document.getElementById('rpg-xp-bar');
+        const stamBar = document.getElementById('rpg-stamina-bar');
+        const lvlText = document.getElementById('rpg-level');
+        const gearText = document.getElementById('rpg-gear');
+
+        // Safety check if HUD exists
+        if (hpBar) hpBar.style.width = `${hpPct}%`;
+        if (xpBar) xpBar.style.width = `${xpPct}%`;
+        if (stamBar) stamBar.style.width = `${stamPct}%`;
+        if (lvlText) lvlText.innerText = this.level;
+        
+        if (gearText) {
+            const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
+            const aName = this.equipment.armor ? this.equipment.armor.name : "None";
+            gearText.innerText = `Wpn: ${wName} | Arm: ${aName}`;
+        }
     }
 
     gainXP(amount) {
@@ -186,6 +217,7 @@ class RPGSystem {
             this.hp = this.maxHp;
             showDialog(`Survivor Level Up! (Lv.${this.level})`, 2000);
         }
+        this.updateHUD(); // Ensure bar updates immediately
     }
 
     // --- EQUIPMENT METHODS ---
@@ -195,24 +227,17 @@ class RPGSystem {
         this.updateHUD();
     }
 
-    // Equip by Item ID string (e.g., 'sword_iron')
     equipById(itemId) {
-        // Find item data from CraftingSystem recipes
-        // We need access to craftingSystem instance or static data
         if (typeof craftingSystem === 'undefined') return;
-        
         const itemData = craftingSystem.RECIPES.find(r => r.id === itemId);
         if (!itemData) return;
 
-        // 1. If slot is full, unequip current first
         if (this.equipment[itemData.type]) {
             this.unequip(itemData.type);
         }
 
-        // 2. Equip new item
         this.equipment[itemData.type] = itemData;
 
-        // 3. Remove from Bag
         if (this.player.bag[itemId] > 0) {
             this.player.bag[itemId]--;
             if (this.player.bag[itemId] <= 0) delete this.player.bag[itemId];
@@ -222,16 +247,13 @@ class RPGSystem {
         this.updateHUD();
     }
 
-    // Unequip slot ('weapon', 'armor', 'accessory')
     unequip(slotType) {
         const item = this.equipment[slotType];
         if (!item) return;
 
-        // 1. Add back to Bag
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
 
-        // 2. Clear Slot
         this.equipment[slotType] = null;
         
         showDialog(`Unequipped ${item.name}.`, 1000);
