@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.3.1'; // Bumped Version
+const VERSION = 'v1.3.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -1557,6 +1557,10 @@ function updateHUD() {
     if (typeof updatePartySidebar === 'function') {
         updatePartySidebar();
     }
+    
+    if (typeof updateResourceDisplay === 'function') {
+        updateResourceDisplay();
+    }
 }
 
 // --- Main Menu System ---
@@ -2188,4 +2192,65 @@ function updatePartySidebar() {
     });
 
     sb.appendChild(listContainer);
+}
+
+// --- RESOURCE HUD DISPLAY ---
+function updateResourceDisplay() {
+    // 1. Find the Top HUD Box
+    const hudBox = document.getElementById('player-stat-box');
+    if (!hudBox) return;
+
+    // 2. Create the Resource Container if it doesn't exist yet
+    let resContainer = document.getElementById('hud-resource-row');
+    if (!resContainer) {
+        resContainer = document.createElement('div');
+        resContainer.id = 'hud-resource-row';
+        
+        // Styling to make it look nice
+        resContainer.style.marginTop = '6px';
+        resContainer.style.paddingTop = '4px';
+        resContainer.style.borderTop = '1px dashed #555'; // Separator line
+        resContainer.style.fontSize = '8px'; // Small text to fit
+        resContainer.style.color = '#ddd';
+        resContainer.style.display = 'flex';
+        resContainer.style.justifyContent = 'center';
+        resContainer.style.flexWrap = 'wrap'; // Wrap to next line if too many
+        resContainer.style.gap = '8px'; // Space between items
+        
+        hudBox.appendChild(resContainer);
+    }
+
+    // 3. Define Resources to track and their Icons
+    const trackList = {
+        'Wood': '🌲',
+        'Stone': '🪨',
+        'Coal': '⚫',
+        'Iron Ore': '🔩',
+        'Gold Ore': '🧈',
+        'Obsidian': '🔮',
+        'Bone': '🦴',
+        'Shadow Essence': '👻',
+        'Berry': '🍒'
+    };
+
+    // 4. Build the HTML string
+    let html = '';
+    let hasResources = false;
+
+    for (let [item, icon] of Object.entries(trackList)) {
+        const count = player.bag[item] || 0;
+        // Only show if you have at least 1
+        if (count > 0) {
+            html += `<span>${icon} ${count}</span>`;
+            hasResources = true;
+        }
+    }
+
+    // 5. Render
+    if (hasResources) {
+        resContainer.innerHTML = html;
+        resContainer.style.display = 'flex'; // Show it
+    } else {
+        resContainer.style.display = 'none'; // Hide if bag is empty
+    }
 }
