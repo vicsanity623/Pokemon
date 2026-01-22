@@ -677,6 +677,11 @@ class Renderer {
             // @ts-ignore
             renderList.push({ type: 'rival', y: rivalSystem.y, data: rivalSystem });
         }
+        
+        // 4.5. ADD GUARDIAN
+        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
+            renderList.push({ type: 'guardian', y: guardianSystem.entity.y, data: guardianSystem });
+        }
 
         // 5. Sort by Y
         renderList.sort((a, b) => a.y - b.y);
@@ -687,6 +692,8 @@ class Renderer {
             else if (item.type === 'npc') this.drawNPC(item.data);
             else if (item.type === 'player') this.drawPlayer(item.data);
             else if (item.type === 'rival') item.data.draw(this.ctx, this.canvas, this.world, this.player);
+            // NEW:
+            else if (item.type === 'guardian') item.data.draw(this.ctx, TILE_SIZE, this.canvas.width/2, this.canvas.height/2);
         });
 
         // 7. Draw Weather/Overlays (Foreground)
