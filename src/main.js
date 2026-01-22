@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.3'; // Bumped Version
+const VERSION = 'v1.2.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -379,7 +379,6 @@ function gameLoop(timestamp) {
 }
 
 // Interaction Handler (A Button)
-// Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
 
@@ -387,23 +386,9 @@ input.press = (key) => {
     if (storeSystem.isOpen || isPaused) return;
 
     if (key === 'Enter') {
-        // --- 0. CHECK LIMINAL INTERACTIONS (Lockers / Exit) ---
-        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
-            if (liminalSystem.tryInteract()) return;
-        }
+        // 'A' button mapped to Enter
 
-        // --- 0.5 CHECK GUARDIAN MENU ---
-        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
-            const gx = guardianSystem.entity.x;
-            const gy = guardianSystem.entity.y;
-            const dist = Math.sqrt(Math.pow(gx - player.x, 2) + Math.pow(gy - player.y, 2));
-            if (dist < 2.0) {
-                guardianSystem.openMenu();
-                return;
-            }
-        }
-        
-        // 1. Check for nearby Poke Center
+        // 1. Check for nearby Poke Center (PRIORITY)
         let nearbyPokeCenter = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
@@ -417,7 +402,19 @@ input.press = (key) => {
             return;
         }
 
-        // 2. Check for nearby Arena
+        // 2. Check for nearby Home (PRIORITY)
+        if (homeSystem.isNearHome(player.x, player.y)) {
+            // Heal Player RPG Stats too
+            if (typeof rpgSystem !== 'undefined') {
+                rpgSystem.hp = rpgSystem.maxHp;
+                rpgSystem.stamina = rpgSystem.maxStamina;
+                rpgSystem.updateHUD();
+            }
+            homeSystem.interact(); // Existing function heals Pokemon + Saves
+            return;
+        }
+
+        // 3. Check for nearby Arena
         let nearbyArena = world.buildings.find((building) => {
             let dist = Math.sqrt(
                 Math.pow(building.x - player.x, 2) +
@@ -431,22 +428,18 @@ input.press = (key) => {
             return;
         }
         
-        // 3. Check Liminal Trigger (The Red Phone)
+        // 4. Check Liminal Trigger (The Red Phone)
         if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
             const doorY = homeSystem.houseLocation.y + 666;
-            
             const dist = Math.sqrt(Math.pow(doorX - player.x, 2) + Math.pow(doorY - player.y, 2));
-            
             if (dist < 1.5) {
-                if (confirm("Answer the call?")) {
-                    liminalSystem.enter();
-                }
+                if (confirm("Answer the call?")) liminalSystem.enter();
                 return;
             }
         }
 
-        // 4. Check for nearby NPC
+        // 5. Check for nearby NPC
         let nearbyNPC = world.npcs.find(
             (npc) =>
                 Math.abs(npc.x - player.x) < 1.5 &&
@@ -454,12 +447,6 @@ input.press = (key) => {
         );
         if (nearbyNPC) {
             handleNPCInteraction(nearbyNPC);
-            return;
-        }
-
-        // 5. Check for nearby Home
-        if (homeSystem.isNearHome(player.x, player.y)) {
-            homeSystem.interact();
             return;
         }
 
@@ -471,6 +458,18 @@ input.press = (key) => {
             );
             if (dist < 1.5) {
                 storeSystem.interact();
+                return;
+            }
+        }
+
+        // 7. Check Guardian Interaction (LAST PRIORITY)
+        // Only opens menu if nothing else was clicked
+        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
+            const gx = guardianSystem.entity.x;
+            const gy = guardianSystem.entity.y;
+            const dist = Math.sqrt(Math.pow(gx - player.x, 2) + Math.pow(gy - player.y, 2));
+            if (dist < 2.0) {
+                guardianSystem.openMenu();
                 return;
             }
         }
