@@ -262,7 +262,7 @@ function showDialog(text, duration = 0) {
     const p = document.getElementById('dialog-text');
     
     // --- FIX: Force High Z-Index ---
-    box.style.zIndex = "10000"; 
+    box.style.zIndex = "100000"; 
     // -------------------------------
 
     box.classList.remove('hidden');
