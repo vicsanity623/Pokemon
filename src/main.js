@@ -2194,33 +2194,48 @@ function updatePartySidebar() {
     sb.appendChild(listContainer);
 }
 
-// --- RESOURCE HUD DISPLAY ---
+// --- RESOURCE HUD DISPLAY (FIXED) ---
 function updateResourceDisplay() {
-    // 1. Find the Top HUD Box
-    const hudBox = document.getElementById('player-stat-box');
-    if (!hudBox) return;
+    // 1. Target the Game Container or Body
+    // We use document.body to ensure it floats over everything
+    const uiLayer = document.body;
 
-    // 2. Create the Resource Container if it doesn't exist yet
-    let resContainer = document.getElementById('hud-resource-row');
+    // 2. Create the Container if it doesn't exist
+    let resContainer = document.getElementById('resource-hud-overlay');
     if (!resContainer) {
         resContainer = document.createElement('div');
-        resContainer.id = 'hud-resource-row';
+        resContainer.id = 'resource-hud-overlay';
         
-        // Styling to make it look nice
-        resContainer.style.marginTop = '6px';
-        resContainer.style.paddingTop = '4px';
-        resContainer.style.borderTop = '1px dashed #555'; // Separator line
-        resContainer.style.fontSize = '8px'; // Small text to fit
-        resContainer.style.color = '#ddd';
+        // --- POSITIONING ---
+        resContainer.style.position = 'fixed'; 
+        resContainer.style.top = '14%'; // Positioned under the Top HUD bars
+        resContainer.style.left = '50%';
+        resContainer.style.transform = 'translateX(-50%)';
+        
+        // --- STYLING ---
         resContainer.style.display = 'flex';
         resContainer.style.justifyContent = 'center';
-        resContainer.style.flexWrap = 'wrap'; // Wrap to next line if too many
-        resContainer.style.gap = '8px'; // Space between items
+        resContainer.style.gap = '10px';
+        resContainer.style.zIndex = '900'; // Visible but below menus
+        resContainer.style.pointerEvents = 'none'; // Click-through
+        resContainer.style.fontSize = '10px';
+        resContainer.style.color = '#fff';
+        resContainer.style.textShadow = '1px 1px 0 #000';
+        resContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'; // Dark background for readability
+        resContainer.style.padding = '4px 10px';
+        resContainer.style.borderRadius = '12px';
+        resContainer.style.whiteSpace = 'nowrap'; // Keep on one line if possible
         
-        hudBox.appendChild(resContainer);
+        uiLayer.appendChild(resContainer);
     }
 
-    // 3. Define Resources to track and their Icons
+    // 3. Hide if in Battle (Optional cleanup)
+    if (typeof battleSystem !== 'undefined' && battleSystem.isActive) {
+        resContainer.style.display = 'none';
+        return;
+    }
+
+    // 4. Define Resources to track
     const trackList = {
         'Wood': '🌲',
         'Stone': '🪨',
@@ -2233,24 +2248,23 @@ function updateResourceDisplay() {
         'Berry': '🍒'
     };
 
-    // 4. Build the HTML string
+    // 5. Build the HTML
     let html = '';
     let hasResources = false;
 
     for (let [item, icon] of Object.entries(trackList)) {
         const count = player.bag[item] || 0;
-        // Only show if you have at least 1
         if (count > 0) {
-            html += `<span>${icon} ${count}</span>`;
+            html += `<span style="margin-right:2px;">${icon} ${count}</span>`;
             hasResources = true;
         }
     }
 
-    // 5. Render
+    // 6. Render or Hide
     if (hasResources) {
         resContainer.innerHTML = html;
-        resContainer.style.display = 'flex'; // Show it
+        resContainer.style.display = 'flex';
     } else {
-        resContainer.style.display = 'none'; // Hide if bag is empty
+        resContainer.style.display = 'none';
     }
 }
