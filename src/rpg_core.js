@@ -83,20 +83,34 @@ class RPGSystem {
 
         this.isAttacking = true;
         this.stamina -= 10;
-        this.attackCooldown = 0.4; // 400ms swing
+        this.attackCooldown = 0.4; 
 
-        // Visual Feedback (Shake Screen slightly)
+        // Visual Feedback
         const canvas = document.getElementById('gameCanvas');
         canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
         setTimeout(() => canvas.style.transform = 'none', 100);
 
-        // Play Sound (Reuse attack sound for now)
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        console.log("Player swings weapon!");
-        
-        // TODO (Phase 3): Check collision with Trees/Rocks
-        // TODO (Phase 4): Check collision with Skeletons
+        // --- NEW: CALCULATE HIT BOX ---
+        // Determine tile in front of player
+        let dx = 0; 
+        let dy = 0;
+        if (this.player.dir === 'left') dx = -1;
+        if (this.player.dir === 'right') dx = 1;
+        if (this.player.dir === 'up') dy = -1;
+        if (this.player.dir === 'down') dy = 1;
+
+        const targetX = this.player.x + dx * this.weaponRange;
+        const targetY = this.player.y + dy * this.weaponRange;
+
+        // Check Resource Hit
+        if (typeof resourceSystem !== 'undefined') {
+            const hit = resourceSystem.checkHit(targetX, targetY, 1); // 1 Damage (Basic)
+            if (hit) return; // Stop if we hit a tree/rock
+        }
+
+        // TODO (Phase 4): Check Skeleton Hit
     }
 
     updateHUD() {
