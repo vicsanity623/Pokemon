@@ -456,10 +456,36 @@ class BattleSystem {
         const container = document.getElementById('player-party-container');
         container.innerHTML = '';
 
+        // 1. Ensure the container allows absolute positioning of children
+        // (You might already have this in CSS, but this guarantees it)
+        container.style.position = 'relative'; 
+        container.style.width = '100%';
+        container.style.height = '100%';
+
         this.player.team.forEach((p, index) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'party-member-wrapper';
             wrapper.id = `party-wrapper-${index}`;
+
+            // --- NEW LAYOUT LOGIC ---
+            wrapper.style.position = 'absolute';
+
+            // Calculate Grid Position
+            const row = Math.floor(index / 4); // 0 for first 4, 1 for next 2
+            const col = index % 4;             // 0, 1, 2, 3
+            
+            // Adjust these numbers to fit your sprite sizes:
+            const startY = 38;  // Row 0 starts 38% down the screen
+            const rowGap = 16;  // Row 1 starts 16% lower (at 54%)
+            const startX = 2;   // Start 2% from the left edge
+            const colGap = 24;  // Each column is 24% wide
+            
+            // Apply coordinates
+            // Row 0 Y = 38%, Row 1 Y = 54% 
+            // (Leaves room for Dialog at 75%)
+            wrapper.style.top = `${startY + (row * rowGap)}%`;
+            wrapper.style.left = `${startX + (col * colGap)}%`;
+            // ------------------------
 
             const hpBar = document.createElement('div');
             hpBar.className = 'sprite-hp-bar';
@@ -467,7 +493,9 @@ class BattleSystem {
 
             const expBar = document.createElement('div');
             expBar.className = 'sprite-exp-bar';
-            const expPct = (p.exp / (p.level * 100)) * 100;
+            // Safety check for level to prevent divide by zero
+            const level = p.level || 1; 
+            const expPct = (p.exp / (level * 100)) * 100;
             expBar.innerHTML = `<div class="sprite-exp-fill" id="squad-exp-${index}" style="width: ${expPct}%"></div>`;
 
             const levelText = document.createElement('div');
@@ -477,7 +505,12 @@ class BattleSystem {
             const img = document.createElement('img');
             img.src = p.backSprite || p.sprite;
             img.className = 'party-sprite';
-            if (p.hp <= 0) wrapper.classList.add('fainted-member');
+            
+            // Visual feedback for fainted pokemon
+            if (p.hp <= 0) {
+                wrapper.classList.add('fainted-member');
+                img.style.filter = 'grayscale(100%) opacity(0.5)';
+            }
 
             wrapper.appendChild(hpBar);
             wrapper.appendChild(expBar);
