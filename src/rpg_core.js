@@ -116,6 +116,10 @@ class RPGSystem {
                 if (hit) break; // Hit one thing per swing
             }
         }
+        if (typeof enemySystem !== 'undefined') {
+            const hitEnemy = enemySystem.checkHit(targetX, targetY, 10); // 10 Damage
+            if (hitEnemy) return; 
+        }
     }
 
     updateHUD() {
