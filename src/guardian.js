@@ -50,7 +50,6 @@ class GuardianSystem {
         let targetY = this.player.y;
 
         // Basic Lerp (Smooth Follow)
-        // Moves 5% of the distance per frame
         const dx = targetX - this.entity.x;
         const dy = targetY - this.entity.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
@@ -61,11 +60,52 @@ class GuardianSystem {
         }
 
         // --- SKILL LOGIC (Auto-Heal) ---
-        // Simple example: Heal player every 10 seconds
-        if (Math.random() < 0.001) { // Random tick
+        if (Math.random() < 0.001) { 
             if (typeof rpgSystem !== 'undefined' && rpgSystem.hp < rpgSystem.maxHp) {
                 rpgSystem.hp = Math.min(rpgSystem.maxHp, rpgSystem.hp + 5);
                 showDialog(`${this.activeGuardian.name} cast Heal Pulse!`, 1000);
+            }
+        }
+
+        // --- COMBAT LOGIC (Auto-Attack) ---
+        if (typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
+            
+            // Initialize cooldown if missing
+            if (typeof this.attackCooldown === 'undefined') this.attackCooldown = 0;
+            
+            if (this.attackCooldown > 0) {
+                this.attackCooldown -= dt;
+            } else {
+                // Find closest enemy within range
+                let closest = null;
+                let minDist = 8.0; // Attack Range
+
+                for(let e of enemySystem.enemies) {
+                    let d = Math.sqrt(Math.pow(e.x - this.entity.x, 2) + Math.pow(e.y - this.entity.y, 2));
+                    if(d < minDist) { 
+                        minDist = d; 
+                        closest = e; 
+                    }
+                }
+
+                if (closest) {
+                    // Attack!
+                    // Damage scales with Guardian Level
+                    let damage = 10 + Math.floor(this.activeGuardian.level * 0.5);
+                    
+                    closest.hp -= damage;
+                    this.attackCooldown = 1.5; // Fire every 1.5 seconds
+
+                    // Visual Feedback (Add Projectile to EnemySystem to render)
+                    enemySystem.projectiles.push({
+                        x: this.entity.x,
+                        y: this.entity.y,
+                        vx: (closest.x - this.entity.x) / minDist * 6.0,
+                        vy: (closest.y - this.entity.y) / minDist * 6.0,
+                        life: 1.0,
+                        color: '#f1c40f' // Guardian shots are Gold
+                    });
+                }
             }
         }
     }
