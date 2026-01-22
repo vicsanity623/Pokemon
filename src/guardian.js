@@ -67,18 +67,17 @@ class GuardianSystem {
             }
         }
 
-        // --- COMBAT LOGIC (Auto-Attack) ---
+        // --- COMBAT LOGIC (Auto-Attack with Prediction) ---
         if (typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
             
-            // Initialize cooldown if missing
             if (typeof this.attackCooldown === 'undefined') this.attackCooldown = 0;
             
             if (this.attackCooldown > 0) {
                 this.attackCooldown -= dt;
             } else {
-                // Find closest enemy within range
+                // Find closest enemy
                 let closest = null;
-                let minDist = 8.0; // Attack Range
+                let minDist = 10.0; // Range
 
                 for(let e of enemySystem.enemies) {
                     let d = Math.sqrt(Math.pow(e.x - this.entity.x, 2) + Math.pow(e.y - this.entity.y, 2));
@@ -89,21 +88,35 @@ class GuardianSystem {
                 }
 
                 if (closest) {
-                    // Attack!
-                    // Damage scales with Guardian Level
-                    let damage = 10 + Math.floor(this.activeGuardian.level * 0.5);
-                    
-                    closest.hp -= damage;
-                    this.attackCooldown = 1.5; // Fire every 1.5 seconds
+                    const bulletSpeed = 7.0;
 
-                    // Visual Feedback (Add Projectile to EnemySystem to render)
+                    // --- PREDICTIVE AIMING ---
+                    // Calculate time for bullet to reach current enemy position
+                    const timeToHit = minDist / bulletSpeed;
+
+                    // Predict where enemy will be in that time
+                    // We use the vx/vy stored in EnemySystem
+                    const predX = closest.x + (closest.vx || 0) * timeToHit;
+                    const predY = closest.y + (closest.vy || 0) * timeToHit;
+
+                    // Calculate firing vector towards Predicted Position
+                    const dx = predX - this.entity.x;
+                    const dy = predY - this.entity.y;
+                    const aimDist = Math.sqrt(dx*dx + dy*dy);
+
+                    // Shoot
+                    let damage = 10 + Math.floor(this.activeGuardian.level * 0.5);
+                    this.attackCooldown = 1.2; 
+
                     enemySystem.projectiles.push({
                         x: this.entity.x,
                         y: this.entity.y,
-                        vx: (closest.x - this.entity.x) / minDist * 6.0,
-                        vy: (closest.y - this.entity.y) / minDist * 6.0,
-                        life: 1.0,
-                        color: '#f1c40f' // Guardian shots are Gold
+                        vx: (dx / aimDist) * bulletSpeed,
+                        vy: (dy / aimDist) * bulletSpeed,
+                        life: 1.5,
+                        color: '#f1c40f',
+                        source: 'guardian', // Important for collision
+                        damage: damage
                     });
                 }
             }
