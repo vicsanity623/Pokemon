@@ -742,7 +742,8 @@ class Renderer {
         this.ctx.textAlign = 'center';
         this.ctx.fillText(resourceSystem.TYPES[node.type].icon, drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
 
-        // Draw Health Bar if damaged
+        // Draw Health Bar (ALWAYS DRAW FOR DEBUGGING IF NEEDED)
+        // Only draw if < max to avoid clutter, or always if you want to see stats
         if (node.hp < node.maxHp) {
             let hpPct = node.hp / node.maxHp;
             this.ctx.fillStyle = 'red';
@@ -756,17 +757,15 @@ class Renderer {
         let drawX = (crop.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
         let drawY = (crop.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
 
-        // Draw Dirt Patch
-        this.ctx.fillStyle = '#795548'; // Brown
+        this.ctx.fillStyle = '#795548'; // Brown Dirt
         this.ctx.fillRect(drawX + 10, drawY + 10, TILE_SIZE - 20, TILE_SIZE - 20);
 
-        // Draw Plant
         this.ctx.font = '40px Arial';
         this.ctx.textAlign = 'center';
         if (crop.ready) {
-            this.ctx.fillText('🍓', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5); // Ripe
+            this.ctx.fillText('🍓', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
         } else {
-            this.ctx.fillText('🌱', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5); // Growing
+            this.ctx.fillText('🌱', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
         }
     }
 
