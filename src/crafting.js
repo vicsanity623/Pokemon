@@ -49,17 +49,14 @@ class CraftingSystem {
         modal.style.display = 'flex';
         modal.style.flexDirection = 'column';
         
-        // --- LAYOUT ---
-        // Top: Tabs & Recipe List
-        // Bottom: Split View (Equipment | Inventory)
-        
+        // FIXED: Using onpointerdown and event.stopPropagation() for mobile
         modal.innerHTML = `
             <div class="menu-header">WORKBENCH</div>
             
             <!-- TABS -->
             <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <button class="tab-btn active" id="btn-tab-craft" onclick="craftingSystem.showTab('craft')">CRAFT</button>
-                <button class="tab-btn" id="btn-tab-guardian" onclick="craftingSystem.showTab('guardian')">GUARDIAN</button>
+                <button class="tab-btn active" id="btn-tab-craft" onpointerdown="event.stopPropagation(); craftingSystem.showTab('craft')">CRAFT</button>
+                <button class="tab-btn" id="btn-tab-guardian" onpointerdown="event.stopPropagation(); craftingSystem.showTab('guardian')">GUARDIAN</button>
             </div>
 
             <!-- RECIPE LIST (Scrollable) -->
@@ -90,7 +87,7 @@ class CraftingSystem {
                 </div>
             </div>
 
-            <button class="back-btn" onclick="craftingSystem.closeMenu()">CLOSE</button>
+            <button class="back-btn" onpointerdown="event.stopPropagation(); craftingSystem.closeMenu()">CLOSE</button>
         `;
         document.body.appendChild(modal);
         this.showTab('craft');
@@ -111,7 +108,7 @@ class CraftingSystem {
         
         const wSlot = document.getElementById('slot-weapon');
         if (eq.weapon) {
-            wSlot.innerHTML = `<span style="color:${eq.weapon.color}">${eq.weapon.name}</span> <button onclick="rpgSystem.unequip('weapon'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            wSlot.innerHTML = `<span style="color:${eq.weapon.color}">${eq.weapon.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('weapon'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
             wSlot.style.borderColor = eq.weapon.color;
         } else {
             wSlot.innerHTML = "Weapon: Empty";
@@ -120,7 +117,7 @@ class CraftingSystem {
 
         const aSlot = document.getElementById('slot-armor');
         if (eq.armor) {
-            aSlot.innerHTML = `<span style="color:${eq.armor.color}">${eq.armor.name}</span> <button onclick="rpgSystem.unequip('armor'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            aSlot.innerHTML = `<span style="color:${eq.armor.color}">${eq.armor.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('armor'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
             aSlot.style.borderColor = eq.armor.color;
         } else {
             aSlot.innerHTML = "Armor: Empty";
@@ -129,7 +126,7 @@ class CraftingSystem {
 
         const acSlot = document.getElementById('slot-accessory');
         if (eq.accessory) {
-            acSlot.innerHTML = `<span style="color:${eq.accessory.color}">${eq.accessory.name}</span> <button onclick="rpgSystem.unequip('accessory'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            acSlot.innerHTML = `<span style="color:${eq.accessory.color}">${eq.accessory.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('accessory'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
             acSlot.style.borderColor = eq.accessory.color;
         } else {
             acSlot.innerHTML = "Accessory: Empty";
@@ -150,7 +147,7 @@ class CraftingSystem {
                 div.style.fontSize = '10px';
                 div.innerHTML = `
                     <span style="color:${recipe.color}">${recipe.name}</span> x${count}
-                    <button style="float:right; font-size:8px;" onclick="rpgSystem.equipById('${recipe.id}'); craftingSystem.updateEquipmentUI();">EQUIP</button>
+                    <button style="float:right; font-size:8px;" onpointerdown="event.stopPropagation(); rpgSystem.equipById('${recipe.id}'); craftingSystem.updateEquipmentUI();">EQUIP</button>
                 `;
                 invList.appendChild(div);
             }
@@ -191,7 +188,12 @@ class CraftingSystem {
                 btn.style.float = 'right';
                 btn.style.marginTop = '-30px';
                 btn.disabled = !canCraft;
-                btn.onclick = () => this.craftItem(item);
+                
+                // FIXED: Mobile touch
+                btn.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    this.craftItem(item);
+                };
 
                 div.appendChild(btn);
                 container.appendChild(div);
@@ -221,7 +223,12 @@ class CraftingSystem {
                 btn.innerText = 'UPGRADE';
                 btn.style.float = 'right';
                 btn.disabled = !canBuy;
-                btn.onclick = () => this.upgradeGuardian(upg);
+                
+                // FIXED: Mobile touch
+                btn.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    this.upgradeGuardian(upg);
+                };
                 
                 div.appendChild(btn);
                 container.appendChild(div);
