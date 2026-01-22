@@ -49,38 +49,38 @@ class CraftingSystem {
         modal.style.display = 'flex';
         modal.style.flexDirection = 'column';
         
-        // FIXED: Using onpointerdown and event.stopPropagation() for mobile
         modal.innerHTML = `
             <div class="menu-header">WORKBENCH</div>
             
-            <!-- TABS -->
             <div style="display:flex; gap:10px; margin-bottom:10px;">
                 <button class="tab-btn active" id="btn-tab-craft" onpointerdown="event.stopPropagation(); craftingSystem.showTab('craft')">CRAFT</button>
                 <button class="tab-btn" id="btn-tab-guardian" onpointerdown="event.stopPropagation(); craftingSystem.showTab('guardian')">GUARDIAN</button>
             </div>
 
-            <!-- RECIPE LIST (Scrollable) -->
             <div id="crafting-content" style="flex:1; overflow-y:auto; border-bottom: 2px solid #555; margin-bottom:10px;"></div>
 
-            <!-- EQUIPMENT & INVENTORY PANEL -->
-            <div style="height: 180px; display: flex; gap: 10px;">
+            <!-- SPLIT VIEW: STATS & EQUIPMENT | INVENTORY -->
+            <div style="height: 200px; display: flex; gap: 10px;">
                 
-                <!-- LEFT: EQUIPMENT SLOTS -->
-                <div style="flex: 1; background: #222; border: 1px solid #444; padding: 5px; display: flex; flex-direction: column; justify-content: space-around;">
-                    <div style="text-align: center; color: gold; font-size: 10px; margin-bottom: 5px;">EQUIPPED</div>
+                <!-- LEFT: STATS & EQUIPMENT -->
+                <div style="flex: 1; background: #222; border: 1px solid #444; padding: 5px; display: flex; flex-direction: column;">
                     
-                    <div id="slot-weapon" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888;">
-                        Weapon: Empty
+                    <!-- NEW: STATS PANEL -->
+                    <div id="player-stats-panel" style="background:#111; padding:5px; margin-bottom:5px; font-size:10px; color:#ddd; display:grid; grid-template-columns: 1fr 1fr; gap:2px;">
+                        <div>HP: <span id="stat-hp" style="color:#e74c3c">100</span></div>
+                        <div>STAM: <span id="stat-stam" style="color:#f1c40f">100</span></div>
+                        <div>DMG: <span id="stat-dmg" style="color:#e74c3c">5</span></div>
+                        <div>DEF: <span id="stat-def" style="color:#3498db">0%</span></div>
                     </div>
-                    <div id="slot-armor" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888;">
-                        Armor: Empty
-                    </div>
-                    <div id="slot-accessory" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888;">
-                        Accessory: Empty
-                    </div>
+
+                    <div style="text-align: center; color: gold; font-size: 10px; margin-bottom: 5px; border-top:1px solid #444; paddingTop:5px;">EQUIPPED</div>
+                    
+                    <div id="slot-weapon" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888; margin-bottom:2px;">Weapon: Empty</div>
+                    <div id="slot-armor" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888; margin-bottom:2px;">Armor: Empty</div>
+                    <div id="slot-accessory" class="equip-slot" style="border: 1px dashed #555; padding: 5px; text-align: center; font-size: 10px; color: #888;">Accessory: Empty</div>
                 </div>
 
-                <!-- RIGHT: CRAFTED INVENTORY -->
+                <!-- RIGHT: INVENTORY -->
                 <div style="flex: 1; background: #222; border: 1px solid #444; padding: 5px; overflow-y: auto;">
                     <div style="text-align: center; color: gold; font-size: 10px; margin-bottom: 5px;">INVENTORY</div>
                     <div id="craft-inventory-list"></div>
@@ -99,16 +99,21 @@ class CraftingSystem {
         if (el) el.remove();
     }
 
-    // --- REFRESH EQUIPMENT & INVENTORY UI ---
     updateEquipmentUI() {
         if (typeof rpgSystem === 'undefined') return;
 
-        // 1. Update Slots
         const eq = rpgSystem.equipment;
-        
+
+        // --- UPDATE STATS ---
+        document.getElementById('stat-hp').innerText = rpgSystem.maxHp;
+        document.getElementById('stat-stam').innerText = rpgSystem.maxStamina;
+        document.getElementById('stat-dmg').innerText = rpgSystem.getDamage();
+        document.getElementById('stat-def').innerText = rpgSystem.getDefense() + '%';
+
+        // --- UPDATE SLOTS ---
         const wSlot = document.getElementById('slot-weapon');
         if (eq.weapon) {
-            wSlot.innerHTML = `<span style="color:${eq.weapon.color}">${eq.weapon.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('weapon'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            wSlot.innerHTML = `<span style="color:${eq.weapon.color}">${eq.weapon.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('weapon'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right; background:#c0392b; color:white; border:none;">X</button>`;
             wSlot.style.borderColor = eq.weapon.color;
         } else {
             wSlot.innerHTML = "Weapon: Empty";
@@ -117,7 +122,7 @@ class CraftingSystem {
 
         const aSlot = document.getElementById('slot-armor');
         if (eq.armor) {
-            aSlot.innerHTML = `<span style="color:${eq.armor.color}">${eq.armor.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('armor'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            aSlot.innerHTML = `<span style="color:${eq.armor.color}">${eq.armor.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('armor'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right; background:#c0392b; color:white; border:none;">X</button>`;
             aSlot.style.borderColor = eq.armor.color;
         } else {
             aSlot.innerHTML = "Armor: Empty";
@@ -126,20 +131,19 @@ class CraftingSystem {
 
         const acSlot = document.getElementById('slot-accessory');
         if (eq.accessory) {
-            acSlot.innerHTML = `<span style="color:${eq.accessory.color}">${eq.accessory.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('accessory'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right;">X</button>`;
+            acSlot.innerHTML = `<span style="color:${eq.accessory.color}">${eq.accessory.name}</span> <button onpointerdown="event.stopPropagation(); rpgSystem.unequip('accessory'); craftingSystem.updateEquipmentUI();" style="font-size:8px; float:right; background:#c0392b; color:white; border:none;">X</button>`;
             acSlot.style.borderColor = eq.accessory.color;
         } else {
             acSlot.innerHTML = "Accessory: Empty";
             acSlot.style.borderColor = "#555";
         }
 
-        // 2. Update Inventory List (Items crafted but not equipped)
+        // --- UPDATE INVENTORY ---
         const invList = document.getElementById('craft-inventory-list');
         invList.innerHTML = '';
 
-        // We check player.bag for items that match RECIPE IDs
         this.RECIPES.forEach(recipe => {
-            if (this.player.bag[recipe.id]) { // If we own this crafted item
+            if (this.player.bag[recipe.id]) { 
                 const count = this.player.bag[recipe.id];
                 const div = document.createElement('div');
                 div.style.borderBottom = '1px solid #333';
@@ -158,7 +162,6 @@ class CraftingSystem {
         const container = document.getElementById('crafting-content');
         container.innerHTML = '';
         
-        // Toggle Active Class
         document.getElementById('btn-tab-craft').classList.toggle('active', tab === 'craft');
         document.getElementById('btn-tab-guardian').classList.toggle('active', tab === 'guardian');
 
@@ -189,7 +192,6 @@ class CraftingSystem {
                 btn.style.marginTop = '-30px';
                 btn.disabled = !canCraft;
                 
-                // FIXED: Mobile touch
                 btn.onpointerdown = (e) => {
                     e.stopPropagation();
                     this.craftItem(item);
@@ -224,7 +226,6 @@ class CraftingSystem {
                 btn.style.float = 'right';
                 btn.disabled = !canBuy;
                 
-                // FIXED: Mobile touch
                 btn.onpointerdown = (e) => {
                     e.stopPropagation();
                     this.upgradeGuardian(upg);
@@ -237,22 +238,19 @@ class CraftingSystem {
     }
 
     craftItem(item) {
-        // Deduct Resources
         for (let [res, qty] of Object.entries(item.cost)) {
             this.player.bag[res] -= qty;
             if (this.player.bag[res] <= 0) delete this.player.bag[res];
         }
 
-        // Add Crafted Item to Inventory (Bag)
-        // We use the ID as the key now (e.g. 'sword_wood')
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
 
         playSFX('sfx-pickup'); 
         showDialog(`Crafted ${item.name}!`, 1000);
         
-        this.showTab('craft'); // Refresh list
-        this.updateEquipmentUI(); // Refresh inventory panel
+        this.showTab('craft'); 
+        this.updateEquipmentUI(); 
     }
 
     upgradeGuardian(upg) {
