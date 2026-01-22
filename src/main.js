@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.4'; // Bumped Version
+const VERSION = 'v1.2.5'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -18,6 +18,7 @@ const rpgSystem = new RPGSystem(player);
 const guardianSystem = new GuardianSystem(player);
 const resourceSystem = new ResourceSystem(player, world);
 const enemySystem = new EnemySystem(player, world);
+const craftingSystem = new CraftingSystem(player);
 world.init(); 
 let isPartyOpen = true; // Default to open
 
@@ -126,7 +127,6 @@ function gameLoop(timestamp) {
     }
 
     if (storeSystem && storeSystem.isOpen) {
-        // Just render and update HUD, skip movement logic
         renderer.draw();
         updateHUD();
         lastTime = timestamp;
@@ -136,7 +136,6 @@ function gameLoop(timestamp) {
 
     // Force Render Battle Screen Logic
     if (battleSystem.isActive) {
-        // Clear screen to black to prevent transparency issues
         const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000';
@@ -151,9 +150,9 @@ function gameLoop(timestamp) {
         // Smooth Movement Logic
         let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
         lastTime = timestamp;
-        if (dt > 0.1) dt = 0.1; // Cap dt for lag spikes
+        if (dt > 0.1) dt = 0.1; 
 
-        // --- NEW SYSTEMS UPDATES ---
+        // --- PHASE 1-4 SYSTEMS UPDATES ---
         if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
         if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
         if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
@@ -164,21 +163,14 @@ function gameLoop(timestamp) {
         let dx = 0;
         let dy = 0;
 
-        // Analog Input Priority
-        if (
-            input.active &&
-            (input.joystickVector.x !== 0 || input.joystickVector.y !== 0)
-        ) {
+        if (input.active && (input.joystickVector.x !== 0 || input.joystickVector.y !== 0)) {
             dx = input.joystickVector.x;
             dy = input.joystickVector.y;
         } else {
-            // Keyboard Fallback (8-way)
             if (input.isDown('ArrowUp')) dy -= 1;
             if (input.isDown('ArrowDown')) dy += 1;
             if (input.isDown('ArrowLeft')) dx -= 1;
             if (input.isDown('ArrowRight')) dx += 1;
-
-            // Normalize Keyboard
             if (dx !== 0 || dy !== 0) {
                 let len = Math.sqrt(dx * dx + dy * dy);
                 dx /= len;
@@ -186,77 +178,45 @@ function gameLoop(timestamp) {
             }
         }
 
-        // Check if player is frozen by rival
-        if (rivalSystem.isPlayerFrozen()) {
-            dx = 0;
-            dy = 0;
-        }
+        if (rivalSystem.isPlayerFrozen()) { dx = 0; dy = 0; }
 
         if (dx !== 0 || dy !== 0) {
-            // STRICT Normalization
             let length = Math.sqrt(dx * dx + dy * dy);
-            if (length > 0) {
-                dx /= length;
-                dy /= length;
-            }
+            if (length > 0) { dx /= length; dy /= length; }
 
-            // Calculate potential new position
             let moveSpeed = player.speed * (dt * 60); 
             let nextX = player.x + dx * moveSpeed;
             let nextY = player.y + dy * moveSpeed;
 
-            // Collision Check (Center point)
-            let targetTile = world.getTile(
-                Math.round(nextX),
-                Math.round(nextY)
-            );
+            let targetTile = world.getTile(Math.round(nextX), Math.round(nextY));
 
             if (!world.isBlocked(Math.round(nextX), Math.round(nextY))) {
                 player.x = nextX;
                 player.y = nextY;
-                player.steps += moveSpeed; // Approximate steps
+                player.steps += moveSpeed;
                 player.moving = true;
 
-                // Item Pickup
-                let item = world.getItem(
-                    Math.round(player.x),
-                    Math.round(player.y)
-                );
+                let item = world.getItem(Math.round(player.x), Math.round(player.y));
                 if (item) {
-                    world.removeItem(
-                        Math.round(player.x),
-                        Math.round(player.y)
-                    );
-                    playSFX('sfx-pickup'); // Play pickup sound
-                    
-                    // UNIFIED BAG LOGIC
+                    world.removeItem(Math.round(player.x), Math.round(player.y));
+                    playSFX('sfx-pickup'); 
                     if (player.bag[item]) player.bag[item]++;
                     else player.bag[item] = 1;
-                    
                     showDialog(`Found a ${item}! (Total: ${player.bag[item]})`, 2000);
                 }
 
-                // Update Direction
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    player.dir = dx > 0 ? 'right' : 'left';
-                } else {
-                    player.dir = dy > 0 ? 'down' : 'up';
-                }
+                if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? 'right' : 'left';
+                else player.dir = dy > 0 ? 'down' : 'up';
 
-                // Quest Update
-                if (Math.floor(player.steps) % 10 === 0)
-                    questSystem.update('walk');
+                if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
 
-                // Encounter Logic
                 const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
-
                 if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
                     const canFight = player.team.length > 0 && player.team.some(p => p.hp > 0);
                     if (canFight) {
                         let biomeType = 'grass';
                         if (targetTile === 'snow_tall') biomeType = 'snow';
                         if (targetTile === 'sand_tall') biomeType = 'desert';
-
                         battleSystem.startBattle(false, 0, false, null, biomeType);
                     } else {
                         if (Math.floor(player.steps) % 50 === 0) {
@@ -270,15 +230,13 @@ function gameLoop(timestamp) {
         }
 
         clock.update(player);
-        world.updateNPCs(); // Update NPC movement
+        world.updateNPCs(); 
         renderer.draw();
         updateHUD();
 
         // Check NPC proximity
         let nearbyNPC = world.npcs.find((npc) => {
-            let dist = Math.sqrt(
-                Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2)
-            );
+            let dist = Math.sqrt(Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2));
             return dist < 1;
         });
 
@@ -290,10 +248,7 @@ function gameLoop(timestamp) {
 
         // Check Poke Center proximity
         let nearbyPokeCenter = world.buildings.find((building) => {
-            let dist = Math.sqrt(
-                Math.pow(building.x - player.x, 2) +
-                Math.pow(building.y - player.y, 2)
-            );
+            let dist = Math.sqrt(Math.pow(building.x - player.x, 2) + Math.pow(building.y - player.y, 2));
             return dist < 1.5 && building.type === 'pokecenter';
         });
 
@@ -303,12 +258,9 @@ function gameLoop(timestamp) {
             prompt.classList.remove('hidden');
         }
 
-        // Poke Center Spawning (every 300 steps)
-        if (
-            Math.floor(player.steps) % 300 === 0 &&
-            player.steps > player.lastPokeCenterStep + 250 &&
-            !world.buildings.some(b => b.type === 'pokecenter') // Only one center at a time
-        ) {
+        // --- SPAWNING LOGIC ---
+        // Poke Center Spawning
+        if (Math.floor(player.steps) % 300 === 0 && player.steps > player.lastPokeCenterStep + 250 && !world.buildings.some(b => b.type === 'pokecenter')) {
             let centerX = Math.round(player.x + (Math.random() * 40 - 20));
             let centerY = Math.round(player.y + (Math.random() * 40 - 20));
             world.spawnPokeCenter(centerX, centerY);
@@ -316,21 +268,24 @@ function gameLoop(timestamp) {
             showDialog('A Poke Center appeared nearby!', 3000);
         }
 
-        // Check Arena Pyramid Spawn (Day 2 or later)
+        // Check Arena Spawn
         arenaSystem.checkSpawn(world, clock.gameDays);
-
         // Check Store Spawn
         storeSystem.checkSpawn(world, arenaSystem);
+        
+        // --- PHASE 5: WORKBENCH SPAWN ---
+        if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
+        // --------------------------------
 
-        // Rival Trainer Encounters (intro + battles)
+        // Rival Encounters
         const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
-        // --- BLOOD MOON RAID LOGIC (SAFE WRAPPER) ---
+        // Blood Moon Logic
         if (clock.gameDays > 0 && clock.gameDays % 2 === 0 && !defenseSystem.active) {
             if (defenseSystem.lastRaidDay !== clock.gameDays) {
                 defenseSystem.startRaid();
-                defenseSystem.lastRaidDay = clock.gameDays; // Mark this day as done immediately
+                defenseSystem.lastRaidDay = clock.gameDays;
             }
         }
 
@@ -339,36 +294,23 @@ function gameLoop(timestamp) {
                 defenseSystem.update(dt);
             } catch (e) {
                 console.error("Defense Update Crash:", e);
-                // Emergency shutoff
                 defenseSystem.active = false;
                 document.getElementById('raid-hud').classList.add('hidden');
                 document.getElementById('flash-overlay').classList.remove('blood-moon');
             }
         }
 
-        // Egg Hatching Logic
+        // Egg Hatching
         player.team.forEach(p => {
             if (p.isEgg) {
                 p.eggSteps--;
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
-                    p.name = p.species; // Hatch!
-
-                    // Restore the sprite we saved when the egg was created
-                    if (p.storedSprite) {
-                        p.backSprite = p.storedSprite;
-                    } else {
-                        p.backSprite = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
-                    }
-
-                    // Stat Logic
-                    if (!p.stats) {
-                        p.stats = generatePokemonStats();
-                    }
-
+                    p.name = p.species;
+                    p.backSprite = p.storedSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+                    if (!p.stats) p.stats = generatePokemonStats();
                     p.maxHp = p.level * 5 + p.stats.hp;
                     p.hp = p.maxHp;
-
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
                     updateHUD();
                 }
@@ -412,6 +354,15 @@ input.press = (key) => {
             }
             homeSystem.interact(); // Existing function heals Pokemon + Saves
             return;
+        }
+
+        // Check Workbench
+        if (craftingSystem.workbenchLocation) {
+             const dist = Math.sqrt(Math.pow(craftingSystem.workbenchLocation.x - player.x, 2) + Math.pow(craftingSystem.workbenchLocation.y - player.y, 2));
+             if (dist < 1.5) {
+                 craftingSystem.interact();
+                 return;
+             }
         }
 
         // 3. Check for nearby Arena
