@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.1'; // Bumped Version
+const VERSION = 'v1.2.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -16,6 +16,7 @@ const defenseSystem = new DefenseSystem(player, world);
 const liminalSystem = new LiminalSystem(player, world);
 const rpgSystem = new RPGSystem(player);
 const guardianSystem = new GuardianSystem(player);
+const resourceSystem = new ResourceSystem(player, world);
 world.init(); 
 let isPartyOpen = true; // Default to open
 
@@ -155,6 +156,7 @@ function gameLoop(timestamp) {
         if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
         if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
         if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
+        if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt);
         // ---------------------------
 
         let dx = 0;
@@ -1135,6 +1137,7 @@ window.onload = async () => {
         });
 
         runIntro();
+        resourceSystem.generate();
     } else {
         showDialog('Welcome back!', 2000);
     }
@@ -1218,6 +1221,7 @@ window.onload = async () => {
             window.location.reload();
         });
     }
+    
     // --- ITEM RESPAWN TIMER ---
     // Runs every 2 minutes (120,000 ms)
     setInterval(() => {
@@ -1233,13 +1237,12 @@ window.onload = async () => {
 };
 
 // Save System
-// Save System
 function saveGame() {
     const data = {
         player: {
             x: player.x,
             y: player.y,
-            money: player.money,
+            money: player.money, // Saved Money
             stats: {
                 level: player.pLevel,
                 steps: player.steps
@@ -1274,6 +1277,7 @@ function saveGame() {
         // --- NEW RPG & GUARDIAN DATA ---
         rpg: (typeof rpgSystem !== 'undefined') ? rpgSystem.getSaveData() : null,
         guardian: (typeof guardianSystem !== 'undefined') ? guardianSystem.getSaveData() : null,
+        resources: (typeof resourceSystem !== 'undefined') ? resourceSystem.getSaveData() : null, // Added Comma!
         // -------------------------------
 
         time: clock.elapsedTime + (Date.now() - clock.startTime),
@@ -1403,15 +1407,18 @@ function loadGame() {
             liminalSystem.loadSaveData(data.liminal);
         }
 
-        // --- 8. RESTORE RPG & GUARDIAN ---
+        // --- 8. RESTORE RPG & GUARDIAN & RESOURCES ---
         if (data.rpg && typeof rpgSystem !== 'undefined') {
             rpgSystem.loadSaveData(data.rpg);
-            rpgSystem.updateHUD(); // Force update UI immediately
+            rpgSystem.updateHUD(); 
         }
         if (data.guardian && typeof guardianSystem !== 'undefined') {
             guardianSystem.loadSaveData(data.guardian);
         }
-        // ---------------------------------
+        if (data.resources && typeof resourceSystem !== 'undefined') {
+            resourceSystem.loadSaveData(data.resources);
+        }
+        // ---------------------------------------------
 
         // 9. Restore Time
         if (typeof data.gameDays !== 'undefined') {
@@ -1436,7 +1443,6 @@ function loadGame() {
         // Safe spawn check
         if (world.isBlocked(Math.round(player.x), Math.round(player.y))) {
             console.log("Player stuck in wall/water! Teleporting to safety...");
-            
             if (homeSystem.houseLocation) {
                 player.x = homeSystem.houseLocation.x;
                 player.y = homeSystem.houseLocation.y + 4; 
