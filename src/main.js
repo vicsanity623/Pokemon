@@ -2087,3 +2087,50 @@ function updatePartySidebar() {
 
     sb.appendChild(listContainer);
 }
+
+// --- DIALOG SYSTEM ---
+function showDialog(text, duration = 3000) {
+    // 1. Remove existing dialog if any (prevents stacking)
+    const existing = document.getElementById('game-dialog');
+    if (existing) existing.remove();
+
+    // 2. Create the element
+    const div = document.createElement('div');
+    div.id = 'game-dialog';
+    div.innerText = text;
+
+    // 3. Apply Styles
+    div.style.position = 'fixed';        // 'fixed' keeps it on screen relative to window
+    div.style.bottom = '15%';            // Positioned near bottom center
+    div.style.left = '50%';
+    div.style.transform = 'translateX(-50%)'; // Centers it perfectly
+    
+    div.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; // Dark background
+    div.style.color = 'white';
+    div.style.padding = '12px 24px';
+    div.style.borderRadius = '8px';
+    div.style.border = '2px solid #fff'; // White border
+    div.style.fontFamily = 'monospace';
+    div.style.fontSize = '14px';
+    div.style.textAlign = 'center';
+    div.style.pointerEvents = 'none';    // Allows clicking through it if needed
+    
+    // --- THE FIX: HIGH Z-INDEX ---
+    div.style.zIndex = '10000'; 
+    // -----------------------------
+
+    document.body.appendChild(div);
+
+    // 4. Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            // Check if it's still the same dialog before removing
+            if (div.parentNode) div.parentNode.removeChild(div);
+        }, duration);
+    }
+}
+
+function hideDialog() {
+    const existing = document.getElementById('game-dialog');
+    if (existing) existing.remove();
+}
