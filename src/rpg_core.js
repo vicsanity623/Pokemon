@@ -204,7 +204,13 @@ class RPGSystem {
         if (gearText) {
             const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
             const aName = this.equipment.armor ? this.equipment.armor.name : "None";
-            gearText.innerText = `Wpn: ${wName} | Arm: ${aName}`;
+            
+            // We use innerHTML to create a colored background box
+            gearText.innerHTML = `
+                <div style="background-color: rgba(0, 0, 0, 0.7); padding: 2px 8px; border-radius: 4px; display: inline-block; color: #fff;">
+                    Wpn: <span style="color:#e74c3c">${wName}</span> | Arm: <span style="color:#3498db">${aName}</span>
+                </div>
+            `;
         }
     }
 
