@@ -6,6 +6,9 @@ class ResourceSystem {
         // Storage format: "x,y" => { type, hp, maxHp, state }
         this.nodes = {}; 
         this.crops = {}; 
+        
+        // NEW: Stores nodes waiting to respawn
+        this.respawnQueue = []; 
 
         this.TYPES = {
             'tree': { hp: 3, loot: 'Wood', color: '#2ecc71', icon: '🌲', xp: 5 },
@@ -22,8 +25,8 @@ class ResourceSystem {
         console.log("Generating Resources...");
         let count = 0;
         
-        // Attempt to spawn 200 resource nodes
-        for(let i=0; i<200; i++) {
+        // UPDATED: Increased from 200 to 2000 for 10x Density
+        for(let i=0; i<2000; i++) {
             let x = Math.floor(Math.random() * 200) - 100;
             let y = Math.floor(Math.random() * 200) - 100;
             const key = `${x},${y}`;
@@ -102,23 +105,51 @@ class ResourceSystem {
 
         showDialog(`Harvested 1 ${data.loot}! (+${data.xp} XP)`, 1000);
         
-        // Remove Node
+        // UPDATED: Respawn Logic
+        // 1. Add to respawn queue
+        this.respawnQueue.push({
+            key: key,
+            type: node.type,
+            timer: 30.0 // 30 Seconds
+        });
+
+        // 2. Remove Node from map (so it disappears)
         delete this.nodes[key];
-        
-        // Respawn logic could go here later
     }
 
-    // Farming Logic
+    // Farming & Respawn Logic
     update(dt) {
-        // Grow Crops
+        // 1. Grow Crops
         for (let key in this.crops) {
             let crop = this.crops[key];
             if (!crop.ready) {
                 crop.timer += dt;
                 if (crop.timer >= crop.growthTime) {
                     crop.ready = true;
-                    // Visual notification?
                 }
+            }
+        }
+
+        // 2. UPDATED: Handle Respawning Nodes
+        // Iterate backwards so we can remove items safely
+        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+            let item = this.respawnQueue[i];
+            item.timer -= dt;
+
+            // If timer is up, respawn it
+            if (item.timer <= 0) {
+                // Restore the node to the map
+                this.nodes[item.key] = {
+                    type: item.type,
+                    hp: this.TYPES[item.type].hp,
+                    maxHp: this.TYPES[item.type].hp
+                };
+                
+                // Remove from queue
+                this.respawnQueue.splice(i, 1);
+                
+                // Optional: Play a sound or effect when it pops back?
+                // playSFX('sfx-pop'); 
             }
         }
     }
@@ -157,11 +188,16 @@ class ResourceSystem {
 
     // Save/Load
     getSaveData() {
-        return { nodes: this.nodes, crops: this.crops };
+        return { 
+            nodes: this.nodes, 
+            crops: this.crops,
+            respawnQueue: this.respawnQueue // Save the queue so timers don't reset on reload
+        };
     }
 
     loadSaveData(data) {
         this.nodes = data.nodes || {};
         this.crops = data.crops || {};
+        this.respawnQueue = data.respawnQueue || [];
     }
 }
