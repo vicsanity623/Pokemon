@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.0'; // Bumped Version
+const VERSION = 'v1.2.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -14,6 +14,8 @@ const homeSystem = new HomeSystem(player);
 const storeSystem = new StoreSystem(player);
 const defenseSystem = new DefenseSystem(player, world);
 const liminalSystem = new LiminalSystem(player, world);
+const rpgSystem = new RPGSystem(player);
+const guardianSystem = new GuardianSystem(player);
 world.init(); 
 let isPartyOpen = true; // Default to open
 
@@ -149,9 +151,11 @@ function gameLoop(timestamp) {
         lastTime = timestamp;
         if (dt > 0.1) dt = 0.1; // Cap dt for lag spikes
 
-        // --- LIMINAL SYSTEM UPDATE (Safe Placement) ---
+        // --- NEW SYSTEMS UPDATES ---
         if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
-        // ----------------------------------------------
+        if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
+        if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
+        // ---------------------------
 
         let dx = 0;
         let dy = 0;
@@ -185,8 +189,7 @@ function gameLoop(timestamp) {
         }
 
         if (dx !== 0 || dy !== 0) {
-            // STRICT Normalization to fix diagonal speed bug
-            // Ensure vector length is exactly 1
+            // STRICT Normalization
             let length = Math.sqrt(dx * dx + dy * dy);
             if (length > 0) {
                 dx /= length;
@@ -194,12 +197,11 @@ function gameLoop(timestamp) {
             }
 
             // Calculate potential new position
-            let moveSpeed = player.speed * (dt * 60); // Speed relative to 60fps
+            let moveSpeed = player.speed * (dt * 60); 
             let nextX = player.x + dx * moveSpeed;
             let nextY = player.y + dy * moveSpeed;
 
             // Collision Check (Center point)
-            // We check the tile we are moving INTO
             let targetTile = world.getTile(
                 Math.round(nextX),
                 Math.round(nextY)
@@ -230,33 +232,29 @@ function gameLoop(timestamp) {
                     showDialog(`Found a ${item}! (Total: ${player.bag[item]})`, 2000);
                 }
 
-                // Update Direction for sprites (if we had them)
+                // Update Direction
                 if (Math.abs(dx) > Math.abs(dy)) {
                     player.dir = dx > 0 ? 'right' : 'left';
                 } else {
                     player.dir = dy > 0 ? 'down' : 'up';
                 }
 
-                // Quest Update (throttled)
+                // Quest Update
                 if (Math.floor(player.steps) % 10 === 0)
                     questSystem.update('walk');
 
-                // Encounter Logic with Biomes
+                // Encounter Logic
                 const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
 
                 if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
-                    // ONLY start a battle if at least one Pokemon has HP
-                    const canFight = player.team.some(p => p.hp > 0);
+                    const canFight = player.team.length > 0 && player.team.some(p => p.hp > 0);
                     if (canFight) {
-                        // Determine Biome Type based on Tile
                         let biomeType = 'grass';
                         if (targetTile === 'snow_tall') biomeType = 'snow';
                         if (targetTile === 'sand_tall') biomeType = 'desert';
 
-                        // Pass this biome to the battle system
                         battleSystem.startBattle(false, 0, false, null, biomeType);
                     } else {
-                        // Optional: Show a message reminding them to heal
                         if (Math.floor(player.steps) % 50 === 0) {
                             showDialog("Your team is exhausted! Find a Poke Center!", 2000);
                         }
@@ -296,7 +294,6 @@ function gameLoop(timestamp) {
         });
 
         if (nearbyPokeCenter && !battleSystem.isActive) {
-            // Show different prompt for Poke Center
             let prompt = document.getElementById('npc-prompt');
             prompt.innerText = 'Press A to heal';
             prompt.classList.remove('hidden');
@@ -619,6 +616,7 @@ function showBagTab(tab) {
                 <div class="pokemon-actions">
                     ${index > 0 ? `<button onpointerdown="event.stopPropagation(); swapPokemon(${index}, ${index - 1})">↑</button>` : ''}
                     ${index < player.team.length - 1 ? `<button onpointerdown="event.stopPropagation(); swapPokemon(${index}, ${index + 1})">↓</button>` : ''}
+                    <button onpointerdown="event.stopPropagation(); guardianSystem.assignGuardian(${index})" style="background:#f1c40f; color:black;">★</button>
                 </div>
             `;
             // FIXED: Mobile touch support
@@ -1235,12 +1233,13 @@ window.onload = async () => {
 };
 
 // Save System
+// Save System
 function saveGame() {
     const data = {
         player: {
             x: player.x,
             y: player.y,
-            money: player.money, // Saved Money
+            money: player.money,
             stats: {
                 level: player.pLevel,
                 steps: player.steps
@@ -1271,6 +1270,11 @@ function saveGame() {
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
         defense: { lastRaidDay: defenseSystem.lastRaidDay },
         liminal: (typeof liminalSystem !== 'undefined') ? liminalSystem.getSaveData() : null,
+        
+        // --- NEW RPG & GUARDIAN DATA ---
+        rpg: (typeof rpgSystem !== 'undefined') ? rpgSystem.getSaveData() : null,
+        guardian: (typeof guardianSystem !== 'undefined') ? guardianSystem.getSaveData() : null,
+        // -------------------------------
 
         time: clock.elapsedTime + (Date.now() - clock.startTime),
         gameDays: clock.gameDays,
@@ -1354,11 +1358,9 @@ function loadGame() {
             }
         }
 
-        // 3. Restore Arena System (And ensure Pyramid exists)
+        // 3. Restore Arena System
         if (data.arena && typeof arenaSystem !== 'undefined') {
             arenaSystem.loadSaveData(data.arena);
-
-            // Critical: Ensure the building exists in the world array if the system thinks it spawned
             if (arenaSystem.pyramidLocation && arenaSystem.hasSpawned) {
                 const hasArena = world.buildings.some(b => b.type === 'arena');
                 if (!hasArena) {
@@ -1379,7 +1381,6 @@ function loadGame() {
         // 5. Restore Home System
         if (data.home && typeof homeSystem !== 'undefined') {
             homeSystem.loadSaveData(data.home);
-
             if (homeSystem.houseLocation && homeSystem.hasSpawned) {
                 const hasHome = world.buildings.some(b => b.type === 'home');
                 if (!hasHome) {
@@ -1392,16 +1393,27 @@ function loadGame() {
             }
         }
 
-        // 5.5 Restore Merge System (Fix for lost pokemon)
+        // 6. Restore Merge System
         if (data.merge && typeof mergeSystem !== 'undefined') {
             mergeSystem.loadSaveData(data.merge);
         }
 
+        // 7. Restore Liminal System
         if (data.liminal && typeof liminalSystem !== 'undefined') {
             liminalSystem.loadSaveData(data.liminal);
         }
 
-        // 6. Restore Time
+        // --- 8. RESTORE RPG & GUARDIAN ---
+        if (data.rpg && typeof rpgSystem !== 'undefined') {
+            rpgSystem.loadSaveData(data.rpg);
+            rpgSystem.updateHUD(); // Force update UI immediately
+        }
+        if (data.guardian && typeof guardianSystem !== 'undefined') {
+            guardianSystem.loadSaveData(data.guardian);
+        }
+        // ---------------------------------
+
+        // 9. Restore Time
         if (typeof data.gameDays !== 'undefined') {
             clock.elapsedTime = data.time;
             clock.gameDays = data.gameDays;
@@ -1410,7 +1422,7 @@ function loadGame() {
             clock.elapsedTime = clock.gameDays * 3600000;
         }
 
-        // 7. Restore Quest
+        // 10. Restore Quest
         if (data.quest) {
             questSystem.activeQuest = data.quest;
             questSystem.updateUI();
@@ -1418,14 +1430,21 @@ function loadGame() {
             questSystem.generate();
         }
 
-        // 8. Validate Positions & UI
+        // 11. Validate Positions & UI
         world.validatePositions();
 
-        if (world.getTile(Math.round(player.x), Math.round(player.y)) === 'water') {
-            let safe = world.findSafeNear(player.x, player.y);
-            player.x = safe.x;
-            player.y = safe.y;
-            console.log('Player moved to safe ground:', player.x, player.y);
+        // Safe spawn check
+        if (world.isBlocked(Math.round(player.x), Math.round(player.y))) {
+            console.log("Player stuck in wall/water! Teleporting to safety...");
+            
+            if (homeSystem.houseLocation) {
+                player.x = homeSystem.houseLocation.x;
+                player.y = homeSystem.houseLocation.y + 4; 
+            } else {
+                let safe = world.findSafeNear(player.x, player.y);
+                player.x = safe.x;
+                player.y = safe.y;
+            }
         }
 
         updateHUD();
@@ -1436,7 +1455,6 @@ function loadGame() {
         return false;
     }
 }
-
 function updateHUD() {
     // Money
     document.getElementById('hud-money').innerText = `$${player.money}`;
