@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.4.1'; // Bumped Version
+const VERSION = 'v1.4.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -433,6 +433,11 @@ input.press = (key) => {
     if (key === 'Enter') {
         // 'A' button mapped to Enter
 
+        // --- 0. CHECK LIMINAL INTERACTIONS (Priority) ---
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            if (liminalSystem.tryInteract()) return;
+        }
+
         // 1. Check for nearby Poke Center (PRIORITY)
         let nearbyPokeCenter = world.buildings.find((building) => {
             let dist = Math.sqrt(
@@ -455,17 +460,8 @@ input.press = (key) => {
                 rpgSystem.stamina = rpgSystem.maxStamina;
                 rpgSystem.updateHUD();
             }
-            homeSystem.interact(); // Existing function heals Pokemon + Saves
+            homeSystem.interact(); 
             return;
-        }
-
-        // Check Workbench
-        if (craftingSystem.workbenchLocation) {
-            const dist = Math.sqrt(Math.pow(craftingSystem.workbenchLocation.x - player.x, 2) + Math.pow(craftingSystem.workbenchLocation.y - player.y, 2));
-            if (dist < 1.5) {
-                craftingSystem.interact();
-                return;
-            }
         }
 
         // 3. Check for nearby Arena
@@ -492,6 +488,16 @@ input.press = (key) => {
                 return;
             }
         }
+        
+        // 4.5 Check Dungeon Entrance (Phase 6)
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.hasSpawned) {
+             const dx = dungeonSystem.entrance.x - player.x;
+             const dy = dungeonSystem.entrance.y - player.y;
+             if (Math.sqrt(dx*dx + dy*dy) < 1.5) {
+                 if (confirm("Enter the Dungeon? High Level Recommended!")) dungeonSystem.enter();
+                 return;
+             }
+        }
 
         // 5. Check for nearby NPC
         let nearbyNPC = world.npcs.find(
@@ -512,18 +518,6 @@ input.press = (key) => {
             );
             if (dist < 1.5) {
                 storeSystem.interact();
-                return;
-            }
-        }
-
-        // 7. Check Guardian Interaction (LAST PRIORITY)
-        // Only opens menu if nothing else was clicked
-        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
-            const gx = guardianSystem.entity.x;
-            const gy = guardianSystem.entity.y;
-            const dist = Math.sqrt(Math.pow(gx - player.x, 2) + Math.pow(gy - player.y, 2));
-            if (dist < 2.0) {
-                guardianSystem.openMenu();
                 return;
             }
         }
@@ -2334,3 +2328,59 @@ function updateResourceDisplay() {
         resContainer.style.display = 'none'; // Keep hidden if empty
     }
 }
+
+function setupTouchInteractions() {
+    const canvas = document.getElementById('gameCanvas');
+    
+    canvas.addEventListener('pointerdown', (e) => {
+        // Ignore if touching buttons
+        if (e.target.closest('.action-btn')) return;
+
+        // Calculate Click World Coordinates
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // TILE_SIZE is global const (80)
+        const worldX = player.x + (clickX - centerX) / TILE_SIZE;
+        const worldY = player.y + (clickY - centerY) / TILE_SIZE;
+
+        // 1. CHECK WORKBENCH TOUCH
+        if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
+            const wb = craftingSystem.workbenchLocation;
+            // Hitbox: 1.5 tiles around the center of the workbench
+            if (Math.abs(worldX - wb.x) < 1.5 && Math.abs(worldY - wb.y) < 1.5) {
+                // Check distance to player
+                const dist = Math.sqrt((wb.x - player.x)**2 + (wb.y - player.y)**2);
+                if (dist < 3.0) {
+                    // Prevent joystick from activating if we tapped the object
+                    e.stopPropagation(); 
+                    craftingSystem.interact();
+                    return;
+                } else {
+                    showDialog("Too far away!", 1000);
+                }
+            }
+        }
+
+        // 2. CHECK GUARDIAN TOUCH
+        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
+            const g = guardianSystem.entity;
+            // Hitbox: 1 tile around guardian
+            if (Math.abs(worldX - g.x) < 1.0 && Math.abs(worldY - g.y) < 1.0) {
+                const dist = Math.sqrt((g.x - player.x)**2 + (g.y - player.y)**2);
+                if (dist < 3.0) {
+                    e.stopPropagation();
+                    guardianSystem.openMenu();
+                    return;
+                }
+            }
+        }
+    });
+}
+
+// Call this initialization function
+setupTouchInteractions();
