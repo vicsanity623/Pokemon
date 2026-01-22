@@ -682,24 +682,87 @@ class Renderer {
         if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
             renderList.push({ type: 'guardian', y: guardianSystem.entity.y, data: guardianSystem });
         }
+        
+        if (typeof resourceSystem !== 'undefined') {
+            for (let key in resourceSystem.nodes) {
+                const node = resourceSystem.nodes[key];
+                const [nx, ny] = key.split(',').map(Number);
+                // Only render if on screen (optimization)
+                if (Math.abs(nx - this.player.x) < VIEW_W && Math.abs(ny - this.player.y) < VIEW_H) {
+                    renderList.push({ type: 'resource', y: ny, data: { ...node, x: nx, y: ny } });
+                }
+            }
+            // Add Crops
+            for (let key in resourceSystem.crops) {
+                const crop = resourceSystem.crops[key];
+                const [cx, cy] = key.split(',').map(Number);
+                renderList.push({ type: 'crop', y: cy, data: { ...crop, x: cx, y: cy } });
+            }
+        }
 
-        // 5. Sort by Y
+        // 7. Sort by Y
         renderList.sort((a, b) => a.y - b.y);
 
-        // 6. Draw Sorted Entities
+        // 8. Draw Sorted Entities
         renderList.forEach(item => {
             if (item.type === 'building') this.drawBuilding(item.data);
             else if (item.type === 'npc') this.drawNPC(item.data);
             else if (item.type === 'player') this.drawPlayer(item.data);
             else if (item.type === 'rival') item.data.draw(this.ctx, this.canvas, this.world, this.player);
-            // NEW:
             else if (item.type === 'guardian') item.data.draw(this.ctx, TILE_SIZE, this.canvas.width/2, this.canvas.height/2);
+            
+            // --- NEW DRAW CALLS ---
+            else if (item.type === 'resource') this.drawResource(item.data);
+            else if (item.type === 'crop') this.drawCrop(item.data);
         });
 
         // 7. Draw Weather/Overlays (Foreground)
         this.drawOverlays();
 
         this.ctx.restore();
+    }
+    
+    drawResource(node) {
+        let drawX = (node.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+        let drawY = (node.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+        // Draw Base
+        this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(drawX + TILE_SIZE/2, drawY + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI*2);
+        this.ctx.fill();
+
+        // Draw Emoji Icon as Sprite
+        this.ctx.font = '50px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(resourceSystem.TYPES[node.type].icon, drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
+
+        // Draw Health Bar if damaged
+        if (node.hp < node.maxHp) {
+            let hpPct = node.hp / node.maxHp;
+            this.ctx.fillStyle = 'red';
+            this.ctx.fillRect(drawX + 10, drawY, TILE_SIZE - 20, 5);
+            this.ctx.fillStyle = '#2ecc71';
+            this.ctx.fillRect(drawX + 10, drawY, (TILE_SIZE - 20) * hpPct, 5);
+        }
+    }
+
+    drawCrop(crop) {
+        let drawX = (crop.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+        let drawY = (crop.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+        // Draw Dirt Patch
+        this.ctx.fillStyle = '#795548'; // Brown
+        this.ctx.fillRect(drawX + 10, drawY + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+
+        // Draw Plant
+        this.ctx.font = '40px Arial';
+        this.ctx.textAlign = 'center';
+        if (crop.ready) {
+            this.ctx.fillText('🍓', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5); // Ripe
+        } else {
+            this.ctx.fillText('🌱', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5); // Growing
+        }
     }
 
     drawBuilding(building) {
