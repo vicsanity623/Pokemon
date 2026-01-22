@@ -700,6 +700,30 @@ class BattleSystem {
 
     async enemyTurn() {
         if (this.enemy.hp <= 0 || !this.isActive) return;
+
+        // --- STATUS CHECK (Added) ---
+        // 79% Chance to skip if Paralyzed. Always skip if Sleep/Freeze.
+        if (this.enemy.status === 'SLP' || this.enemy.status === 'FRZ' || (this.enemy.status === 'PAR' && Math.random() < 0.79)) {
+            const enemyEl = document.getElementById('enemy-sprite');
+            if (enemyEl) {
+                enemyEl.classList.remove('anim-shake');
+                void enemyEl.offsetWidth;
+                enemyEl.classList.add('anim-shake');
+            }
+            
+            let msg = "is fully paralyzed!";
+            if (this.enemy.status === 'SLP') msg = "is fast asleep.";
+            if (this.enemy.status === 'FRZ') msg = "is frozen solid!";
+            
+            showDialog(`${this.enemy.name} ${msg}`);
+            await this.delay(1000);
+            
+            this.queueIndex++;
+            this.nextTurn();
+            return;
+        }
+        // ----------------------------
+
         const targets = this.player.team.map((p, i) => ({ p, i })).filter(o => o.p.hp > 0);
         if (targets.length === 0) return;
         const targetObj = targets[Math.floor(Math.random() * targets.length)];
