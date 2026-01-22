@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v1.3.3';
+const GAME_VERSION = 'v1.3.4';
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
@@ -6,6 +6,7 @@ const ASSETS = [
     './index.html',
     './style.css',
     './src/main.js',
+    './src/map.js',
     './src/crafting.js',
     './src/enemies.js',
     './src/resources.js',
