@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.4.2'; // Bumped Version
+const VERSION = 'v1.4.5'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -2329,6 +2329,7 @@ function updateResourceDisplay() {
     }
 }
 
+// --- NEW: TOUCH INTERACTION HANDLER ---
 function setupTouchInteractions() {
     const canvas = document.getElementById('gameCanvas');
     
@@ -2344,38 +2345,20 @@ function setupTouchInteractions() {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        // TILE_SIZE is global const (80)
         const worldX = player.x + (clickX - centerX) / TILE_SIZE;
         const worldY = player.y + (clickY - centerY) / TILE_SIZE;
 
-        // 1. CHECK WORKBENCH TOUCH
+        // 1. CHECK WORKBENCH TOUCH ONLY
         if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
             const wb = craftingSystem.workbenchLocation;
-            // Hitbox: 1.5 tiles around the center of the workbench
             if (Math.abs(worldX - wb.x) < 1.5 && Math.abs(worldY - wb.y) < 1.5) {
-                // Check distance to player
                 const dist = Math.sqrt((wb.x - player.x)**2 + (wb.y - player.y)**2);
                 if (dist < 3.0) {
-                    // Prevent joystick from activating if we tapped the object
                     e.stopPropagation(); 
                     craftingSystem.interact();
                     return;
                 } else {
                     showDialog("Too far away!", 1000);
-                }
-            }
-        }
-
-        // 2. CHECK GUARDIAN TOUCH
-        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
-            const g = guardianSystem.entity;
-            // Hitbox: 1 tile around guardian
-            if (Math.abs(worldX - g.x) < 1.0 && Math.abs(worldY - g.y) < 1.0) {
-                const dist = Math.sqrt((g.x - player.x)**2 + (g.y - player.y)**2);
-                if (dist < 3.0) {
-                    e.stopPropagation();
-                    guardianSystem.openMenu();
-                    return;
                 }
             }
         }
