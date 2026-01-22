@@ -92,13 +92,12 @@ class RPGSystem {
 
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        // --- WIDE SWEEP HIT DETECTION ---
-        // Check 3 tiles in front of player (Left, Center, Right relative to facing)
-        
+        // --- WIDE SWEEP HIT DETECTION (3 Tiles) ---
         const targets = [];
         const px = Math.round(this.player.x);
         const py = Math.round(this.player.y);
 
+        // Add tiles based on facing direction
         if (this.player.dir === 'left') {
             targets.push({x: px-1, y: py}, {x: px-1, y: py-1}, {x: px-1, y: py+1});
         } else if (this.player.dir === 'right') {
@@ -109,16 +108,21 @@ class RPGSystem {
             targets.push({x: px, y: py+1}, {x: px-1, y: py+1}, {x: px+1, y: py+1});
         }
 
-        // Check Resources
+        // 1. Check Resources
         if (typeof resourceSystem !== 'undefined') {
             for (let t of targets) {
                 const hit = resourceSystem.checkHit(t.x, t.y, 1);
-                if (hit) break; // Hit one thing per swing
+                if (hit) return; // Stop if we hit a resource (don't hit enemy through tree)
             }
         }
+
+        // 2. Check Enemies (Phase 4 Fix)
         if (typeof enemySystem !== 'undefined') {
-            const hitEnemy = enemySystem.checkHit(targetX, targetY, 10); // 10 Damage
-            if (hitEnemy) return; 
+            for (let t of targets) {
+                // Pass the target tile to checkHit
+                const hitEnemy = enemySystem.checkHit(t.x, t.y, 10); // 10 Damage
+                if (hitEnemy) return; 
+            }
         }
     }
 
