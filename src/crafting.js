@@ -209,6 +209,23 @@ class CraftingSystem {
             this.GUARDIAN_UPGRADES.forEach(upg => {
                 const div = document.createElement('div');
                 div.className = 'menu-item';
+                
+                // --- DYNAMIC TEXT LOGIC ---
+                let displayName = upg.name;
+                let displayDesc = upg.desc;
+                let isMaxed = false;
+
+                if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
+                    displayName = `Fireball (Lvl ${guardianSystem.skills.fireball.level})`;
+                    displayDesc = "Increases damage/range (Coming Soon)";
+                    // Logic to change cost for leveling up could go here
+                }
+                if (upg.id === 'asteroid' && guardianSystem.skills.asteroid.unlocked) {
+                    displayName = `Asteroid (Lvl ${guardianSystem.skills.asteroid.level})`;
+                    displayDesc = "Increases rotation speed (Coming Soon)";
+                }
+                // --------------------------
+
                 let costStr = Object.entries(upg.cost).map(([k, v]) => `${k} x${v}`).join(', ');
                 let canBuy = true;
                 for (let [res, qty] of Object.entries(upg.cost)) {
@@ -216,8 +233,8 @@ class CraftingSystem {
                 }
 
                 div.innerHTML = `
-                    <div style="color:gold;">${upg.name}</div>
-                    <div style="font-size:10px;">${upg.desc}</div>
+                    <div style="color:gold;">${displayName}</div>
+                    <div style="font-size:10px;">${displayDesc}</div>
                     <div style="font-size:10px; color:#aaa;">Cost: ${costStr}</div>
                 `;
 
@@ -254,14 +271,48 @@ class CraftingSystem {
     }
 
     upgradeGuardian(upg) {
+        // 1. CHECK AFFORDABILITY FIRST
+        for (let [res, qty] of Object.entries(upg.cost)) {
+            if ((this.player.bag[res] || 0) < qty) {
+                showDialog(`Not enough ${res}! Need ${qty}.`, 2000);
+                return; // Stop here, do not upgrade
+            }
+        }
+
+        // 2. PREVENT DUPLICATE UNLOCKS
+        if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
+            showDialog("Fireball is already unlocked!", 2000);
+            return;
+        }
+        if (upg.id === 'asteroid' && guardianSystem.skills.asteroid.unlocked) {
+            showDialog("Asteroid is already unlocked!", 2000);
+            return;
+        }
+
+        // 3. DEDUCT RESOURCES
         for (let [res, qty] of Object.entries(upg.cost)) {
             this.player.bag[res] -= qty;
             if (this.player.bag[res] <= 0) delete this.player.bag[res];
         }
-        if (upg.id === 'heal') guardianSystem.skills.heal.level++;
-        if (upg.id === 'fireball') guardianSystem.skills.fireball.unlocked = true;
-        if (upg.id === 'asteroid') guardianSystem.skills.asteroid.unlocked = true;
-        showDialog("Guardian Upgraded!", 1500);
+
+        // 4. APPLY UPGRADE
+        if (upg.id === 'heal') {
+            guardianSystem.skills.heal.level++;
+            showDialog(`Heal Pulse upgraded to Level ${guardianSystem.skills.heal.level}!`, 2000);
+        }
+        if (upg.id === 'fireball') {
+            guardianSystem.skills.fireball.unlocked = true;
+            guardianSystem.skills.fireball.level = 1; // Set base level
+            // Change recipe text for future (Optional logic, see step 5)
+            showDialog("Fireball Unlocked!", 2000);
+        }
+        if (upg.id === 'asteroid') {
+            guardianSystem.skills.asteroid.unlocked = true;
+            guardianSystem.skills.asteroid.level = 1;
+            showDialog("Asteroids Unlocked!", 2000);
+        }
+
+        // 5. REFRESH UI
         this.showTab('guardian');
     }
     
