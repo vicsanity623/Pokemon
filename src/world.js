@@ -301,6 +301,11 @@ class World {
         // 1. Water Check
         if (this.getTile(x, y) === 'water') return true;
 
+        // RESOURCE COLLISION
+        if (typeof resourceSystem !== 'undefined' && resourceSystem.nodes[`${x},${y}`]) {
+            return true;
+        }
+        
         // 2. Building Collision
         for (let b of this.buildings) {
             if (b.type === 'home') {
