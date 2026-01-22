@@ -6,9 +6,11 @@ class ResourceSystem {
         // Storage format: "x,y" => { type, hp, maxHp, state }
         this.nodes = {}; 
         this.crops = {}; 
-        
-        // NEW: Stores nodes waiting to respawn
         this.respawnQueue = []; 
+
+        // NEW: Tracks which areas we have already populated
+        this.generatedChunks = new Set(); 
+        this.CHUNK_SIZE = 16; // 16x16 tiles per chunk
 
         this.TYPES = {
             'tree': { hp: 3, loot: 'Wood', color: '#2ecc71', icon: '🌲', xp: 5 },
@@ -20,138 +22,143 @@ class ResourceSystem {
         };
     }
 
-    // Called once on new game to populate world
+    // This is now handled by updateChunks(), but we keep it empty/legacy to prevent crashes
     generate() {
-        console.log("Generating Resources...");
-        let count = 0;
-        
-        // UPDATED: Increased from 200 to 2000 for 10x Density
-        for(let i=0; i<2000; i++) {
-            let x = Math.floor(Math.random() * 200) - 100;
-            let y = Math.floor(Math.random() * 200) - 100;
-            const key = `${x},${y}`;
-
-            // Don't spawn on top of existing stuff
-            if (this.nodes[key] || this.world.isBlocked(x, y)) continue;
-
-            const tile = this.world.getTile(x, y);
-            let type = null;
-
-            // Biome Specific Spawning
-            if (tile === 'grass' || tile === 'grass_tall') {
-                if (Math.random() < 0.7) type = 'tree';
-                else type = 'rock';
-            } 
-            else if (tile === 'sand') {
-                if (Math.random() < 0.5) type = 'rock';
-                else type = 'ore_coal'; // Coal in desert
-            }
-            else if (tile === 'snow') {
-                if (Math.random() < 0.6) type = 'tree'; // Snowy trees
-                else type = 'ore_iron'; // Iron in snow
-            }
-
-            // Rare Ores (Anywhere)
-            if (Math.random() < 0.05) type = 'ore_gold';
-            if (Math.random() < 0.01) type = 'ore_obsidian';
-
-            if (type) {
-                this.nodes[key] = {
-                    type: type,
-                    hp: this.TYPES[type].hp,
-                    maxHp: this.TYPES[type].hp
-                };
-                count++;
-            }
-        }
-        console.log(`Spawned ${count} resources.`);
+        this.updateChunks();
     }
 
-    // Called by RPGSystem when player attacks
+    // Called every frame
+    update(dt) {
+        // 1. Farming Logic
+        for (let key in this.crops) {
+            let crop = this.crops[key];
+            if (!crop.ready) {
+                crop.timer += dt;
+                if (crop.timer >= crop.growthTime) crop.ready = true;
+            }
+        }
+
+        // 2. Respawn Logic (30s Timer)
+        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+            let item = this.respawnQueue[i];
+            item.timer -= dt;
+            if (item.timer <= 0) {
+                this.nodes[item.key] = {
+                    type: item.type,
+                    hp: this.TYPES[item.type].hp,
+                    maxHp: this.TYPES[item.type].hp
+                };
+                this.respawnQueue.splice(i, 1);
+            }
+        }
+
+        // 3. NEW: Infinite World Generation
+        this.updateChunks();
+    }
+
+    // Checks player position and generates resources nearby
+    updateChunks() {
+        if (!this.player) return;
+
+        // Calculate which chunk the player is in
+        const cx = Math.floor(this.player.x / this.CHUNK_SIZE);
+        const cy = Math.floor(this.player.y / this.CHUNK_SIZE);
+
+        // Check a 3x3 grid of chunks around the player
+        // This ensures resources appear BEFORE you walk onto the screen
+        for (let x = cx - 1; x <= cx + 1; x++) {
+            for (let y = cy - 1; y <= cy + 1; y++) {
+                this.generateChunk(x, y);
+            }
+        }
+    }
+
+    generateChunk(cx, cy) {
+        const chunkKey = `${cx},${cy}`;
+        
+        // If we already generated this chunk, skip it
+        if (this.generatedChunks.has(chunkKey)) return;
+
+        // Loop through every tile in this 16x16 chunk
+        for (let i = 0; i < this.CHUNK_SIZE; i++) {
+            for (let j = 0; j < this.CHUNK_SIZE; j++) {
+                // Calculate actual World Coordinates
+                let wx = cx * this.CHUNK_SIZE + i;
+                let wy = cy * this.CHUNK_SIZE + j;
+                const key = `${wx},${wy}`;
+
+                // Safety: Don't spawn if something is already there
+                if (this.nodes[key] || this.world.isBlocked(wx, wy)) continue;
+
+                // DENSITY CHECK: 15% Chance per tile to have a resource
+                if (Math.random() > 0.15) continue;
+
+                const tile = this.world.getTile(wx, wy);
+                let type = null;
+                const rand = Math.random();
+
+                // --- BIOME SPECIFIC LOGIC ---
+                
+                if (tile === 'snow' || tile === 'snow_tall') {
+                    // SNOW BIOME: High Iron, Low Stone
+                    if (rand < 0.60) type = 'ore_iron';  // 60% Iron
+                    else if (rand < 0.90) type = 'tree'; // 30% Trees (Snowy)
+                    else type = 'rock';                  // 10% Stone
+                } 
+                else if (tile === 'sand' || tile === 'sand_tall') {
+                    // DESERT BIOME: High Obsidian, Coal, Stone
+                    if (rand < 0.10) type = 'ore_obsidian'; // 10% Obsidian (High!)
+                    else if (rand < 0.50) type = 'ore_coal'; // 40% Coal
+                    else type = 'rock';                      // 50% Stone
+                } 
+                else {
+                    // GRASS / DEFAULT
+                    if (rand < 0.60) type = 'tree';
+                    else type = 'rock';
+                }
+
+                // Global Rare Spawn (Overwrites the above)
+                // 1% Chance for Gold anywhere (except water)
+                if (Math.random() < 0.01) type = 'ore_gold';
+
+                if (type) {
+                    this.nodes[key] = {
+                        type: type,
+                        hp: this.TYPES[type].hp,
+                        maxHp: this.TYPES[type].hp
+                    };
+                }
+            }
+        }
+
+        // Mark chunk as done so we don't re-calculate it
+        this.generatedChunks.add(chunkKey);
+    }
+
     checkHit(x, y, damage) {
         const key = `${Math.round(x)},${Math.round(y)}`;
         const node = this.nodes[key];
-
         if (node) {
-            // Damage the node
             node.hp -= damage;
-            
-            // Visual feedback
-            if (typeof renderer !== 'undefined') {
-                renderer.addParticle(x, y); 
-            }
-            playSFX('sfx-attack2'); // Hit sound
-
-            // Check destruction
-            if (node.hp <= 0) {
-                this.harvest(key, node);
-            }
-            return true; // Hit successful
+            if (typeof renderer !== 'undefined') renderer.addParticle(x, y); 
+            playSFX('sfx-attack2'); 
+            if (node.hp <= 0) this.harvest(key, node);
+            return true; 
         }
         return false;
     }
 
     harvest(key, node) {
         const data = this.TYPES[node.type];
-        
-        // Give Loot
         if (!this.player.bag[data.loot]) this.player.bag[data.loot] = 0;
         this.player.bag[data.loot]++;
-
-        // Give XP (RPG System)
-        if (typeof rpgSystem !== 'undefined') {
-            rpgSystem.gainXP(data.xp);
-        }
-
+        if (typeof rpgSystem !== 'undefined') rpgSystem.gainXP(data.xp);
+        
         showDialog(`Harvested 1 ${data.loot}! (+${data.xp} XP)`, 1000);
         
-        // UPDATED: Respawn Logic
-        // 1. Add to respawn queue
-        this.respawnQueue.push({
-            key: key,
-            type: node.type,
-            timer: 30.0 // 30 Seconds
-        });
-
-        // 2. Remove Node from map (so it disappears)
+        // Add to respawn queue (30s)
+        this.respawnQueue.push({ key: key, type: node.type, timer: 30.0 });
         delete this.nodes[key];
-    }
-
-    // Farming & Respawn Logic
-    update(dt) {
-        // 1. Grow Crops
-        for (let key in this.crops) {
-            let crop = this.crops[key];
-            if (!crop.ready) {
-                crop.timer += dt;
-                if (crop.timer >= crop.growthTime) {
-                    crop.ready = true;
-                }
-            }
-        }
-
-        // 2. UPDATED: Handle Respawning Nodes
-        // Iterate backwards so we can remove items safely
-        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-            let item = this.respawnQueue[i];
-            item.timer -= dt;
-
-            // If timer is up, respawn it
-            if (item.timer <= 0) {
-                // Restore the node to the map
-                this.nodes[item.key] = {
-                    type: item.type,
-                    hp: this.TYPES[item.type].hp,
-                    maxHp: this.TYPES[item.type].hp
-                };
-                
-                // Remove from queue
-                this.respawnQueue.splice(i, 1);
-                
-                // Optional: Play a sound or effect when it pops back?
-                // playSFX('sfx-pop'); 
-            }
-        }
     }
 
     plant(x, y, seedType) {
@@ -160,25 +167,16 @@ class ResourceSystem {
             showDialog("Something is already here!", 1000);
             return;
         }
-
-        // Logic for planting (Basic Berry for now)
-        this.crops[key] = {
-            type: 'Berry',
-            timer: 0,
-            growthTime: 60, // 60 Seconds to grow
-            ready: false
-        };
+        this.crops[key] = { type: 'Berry', timer: 0, growthTime: 60, ready: false };
         showDialog("Planted a Berry Seed!", 2000);
     }
 
     harvestCrop(x, y) {
         const key = `${x},${y}`;
         const crop = this.crops[key];
-        
         if (crop && crop.ready) {
             if (!this.player.bag['Berry']) this.player.bag['Berry'] = 0;
-            this.player.bag['Berry'] += 3; // Yield 3
-            
+            this.player.bag['Berry'] += 3; 
             delete this.crops[key];
             showDialog("Harvested 3 Berries!", 2000);
             return true;
@@ -186,12 +184,13 @@ class ResourceSystem {
         return false;
     }
 
-    // Save/Load
     getSaveData() {
         return { 
             nodes: this.nodes, 
-            crops: this.crops,
-            respawnQueue: this.respawnQueue // Save the queue so timers don't reset on reload
+            crops: this.crops, 
+            respawnQueue: this.respawnQueue,
+            // Convert Set to Array for JSON saving
+            generatedChunks: Array.from(this.generatedChunks) 
         };
     }
 
@@ -199,22 +198,17 @@ class ResourceSystem {
         this.nodes = data.nodes || {};
         this.crops = data.crops || {};
         this.respawnQueue = data.respawnQueue || [];
-
-        // --- AUTO-FIX FOR OLD SAVES ---
-        // Check how many nodes exist. If it's low (like the old 200 limit),
-        // we run generate() again to "top up" the world to the new 2000 limit.
-        const currentCount = Object.keys(this.nodes).length;
         
-        if (currentCount < 500) { 
-            console.log("Old save detected (Low Density). Injecting more resources...");
-            this.generate(); // This attempts to add 2000 more nodes, filling empty spots
-            
-            // Show a message so you know it worked
-            setTimeout(() => {
-                if (typeof showDialog === 'function') {
-                    showDialog("World Resources Replenished!", 3000);
-                }
-            }, 1000);
+        // Load generated chunks list to prevent re-spawning in old areas
+        if (data.generatedChunks) {
+            this.generatedChunks = new Set(data.generatedChunks);
+        } else {
+            // BACKWARDS COMPATIBILITY:
+            // If loading an old save without chunk data, we assume
+            // nothing is "officially" generated, which lets the
+            // updateChunks() function run and fill in the world
+            // around the player immediately.
+            this.generatedChunks = new Set();
         }
     }
 }
