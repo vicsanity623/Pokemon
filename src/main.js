@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.5'; // Bumped Version
+const VERSION = 'v1.2.6'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -19,6 +19,7 @@ const guardianSystem = new GuardianSystem(player);
 const resourceSystem = new ResourceSystem(player, world);
 const enemySystem = new EnemySystem(player, world);
 const craftingSystem = new CraftingSystem(player);
+const mapSystem = new MapSystem(player, world);
 world.init(); 
 let isPartyOpen = true; // Default to open
 
