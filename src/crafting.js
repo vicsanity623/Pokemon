@@ -42,12 +42,23 @@ class CraftingSystem {
         this.openMenu();
     }
 
+    // Helper to force Dialog Z-Index
+    forceDialogTop(text) {
+        const box = document.getElementById('dialog-box');
+        if (box) box.style.zIndex = "10001"; // NUCLEAR OPTION: Above everything
+        showDialog(text, 2000);
+    }
+
     openMenu() {
         const modal = document.createElement('div');
         modal.id = 'crafting-ui';
         modal.className = 'battle-sub-menu';
+        
+        // --- VISUAL FIXES ---
         modal.style.display = 'flex';
         modal.style.flexDirection = 'column';
+        modal.style.zIndex = '9000'; // Set Menu lower than the dialog
+        // --------------------
         
         modal.innerHTML = `
             <div class="menu-header">WORKBENCH</div>
@@ -251,13 +262,13 @@ class CraftingSystem {
         }
     }
 
-    // FIXED: Checks affordability before crafting
     craftItem(item) {
         // 1. CHECK AFFORDABILITY FIRST
         for (let [res, qty] of Object.entries(item.cost)) {
             if ((this.player.bag[res] || 0) < qty) {
-                showDialog(`Not enough ${res}! Need ${qty}.`, 2000);
-                return; // Stop here, do not craft
+                // HARD CODE FIX: Force Dialog above everything
+                this.forceDialogTop(`Not enough ${res}! Need ${qty}.`);
+                return; 
             }
         }
 
@@ -271,9 +282,8 @@ class CraftingSystem {
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
 
-        // 4. FEEDBACK & REFRESH
         playSFX('sfx-pickup'); 
-        showDialog(`Crafted ${item.name}!`, 1000);
+        this.forceDialogTop(`Crafted ${item.name}!`); // Feedback also on top
         
         this.showTab('craft'); 
         this.updateEquipmentUI(); 
@@ -283,18 +293,18 @@ class CraftingSystem {
         // 1. CHECK AFFORDABILITY FIRST
         for (let [res, qty] of Object.entries(upg.cost)) {
             if ((this.player.bag[res] || 0) < qty) {
-                showDialog(`Not enough ${res}! Need ${qty}.`, 2000);
+                this.forceDialogTop(`Not enough ${res}! Need ${qty}.`);
                 return; 
             }
         }
 
         // 2. PREVENT DUPLICATE UNLOCKS
         if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
-            showDialog("Fireball is already unlocked!", 2000);
+            this.forceDialogTop("Fireball is already unlocked!");
             return;
         }
         if (upg.id === 'asteroid' && guardianSystem.skills.asteroid.unlocked) {
-            showDialog("Asteroid is already unlocked!", 2000);
+            this.forceDialogTop("Asteroid is already unlocked!");
             return;
         }
 
@@ -307,17 +317,17 @@ class CraftingSystem {
         // 4. APPLY UPGRADE
         if (upg.id === 'heal') {
             guardianSystem.skills.heal.level++;
-            showDialog(`Heal Pulse upgraded to Level ${guardianSystem.skills.heal.level}!`, 2000);
+            this.forceDialogTop(`Heal Pulse upgraded to Level ${guardianSystem.skills.heal.level}!`);
         }
         if (upg.id === 'fireball') {
             guardianSystem.skills.fireball.unlocked = true;
             guardianSystem.skills.fireball.level = 1; 
-            showDialog("Fireball Unlocked!", 2000);
+            this.forceDialogTop("Fireball Unlocked!");
         }
         if (upg.id === 'asteroid') {
             guardianSystem.skills.asteroid.unlocked = true;
             guardianSystem.skills.asteroid.level = 1;
-            showDialog("Asteroids Unlocked!", 2000);
+            this.forceDialogTop("Asteroids Unlocked!");
         }
 
         // 5. REFRESH UI
