@@ -17,6 +17,7 @@ const liminalSystem = new LiminalSystem(player, world);
 const rpgSystem = new RPGSystem(player);
 const guardianSystem = new GuardianSystem(player);
 const resourceSystem = new ResourceSystem(player, world);
+const enemySystem = new EnemySystem(player, world);
 world.init(); 
 let isPartyOpen = true; // Default to open
 
@@ -157,6 +158,7 @@ function gameLoop(timestamp) {
         if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
         if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
         if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt);
+        if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
         // ---------------------------
 
         let dx = 0;
