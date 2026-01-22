@@ -199,5 +199,22 @@ class ResourceSystem {
         this.nodes = data.nodes || {};
         this.crops = data.crops || {};
         this.respawnQueue = data.respawnQueue || [];
+
+        // --- AUTO-FIX FOR OLD SAVES ---
+        // Check how many nodes exist. If it's low (like the old 200 limit),
+        // we run generate() again to "top up" the world to the new 2000 limit.
+        const currentCount = Object.keys(this.nodes).length;
+        
+        if (currentCount < 500) { 
+            console.log("Old save detected (Low Density). Injecting more resources...");
+            this.generate(); // This attempts to add 2000 more nodes, filling empty spots
+            
+            // Show a message so you know it worked
+            setTimeout(() => {
+                if (typeof showDialog === 'function') {
+                    showDialog("World Resources Replenished!", 3000);
+                }
+            }, 1000);
+        }
     }
 }
