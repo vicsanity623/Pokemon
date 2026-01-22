@@ -887,6 +887,24 @@ class Renderer {
                 TILE_SIZE * 4
             );
         }
+            else if (building.type === 'workbench') {
+            let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
+            let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
+
+            // Draw Table
+            this.ctx.fillStyle = '#8e44ad'; // Purple table
+            this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY) + 20, TILE_SIZE, TILE_SIZE - 20);
+            
+            // Draw Hammer Icon
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '30px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('⚒️', Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + 20);
+            
+            // Label
+            this.ctx.font = '10px Arial';
+            this.ctx.fillText('CRAFT', Math.floor(drawX) + TILE_SIZE/2, Math.floor(drawY) + 50);
+        }
         else if (building.type === 'store') {
             let drawX = (building.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
             let drawY = (building.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
