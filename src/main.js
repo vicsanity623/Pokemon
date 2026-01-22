@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.2.2'; // Bumped Version
+const VERSION = 'v1.2.3'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -377,6 +377,7 @@ function gameLoop(timestamp) {
 }
 
 // Interaction Handler (A Button)
+// Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
 
@@ -384,7 +385,21 @@ input.press = (key) => {
     if (storeSystem.isOpen || isPaused) return;
 
     if (key === 'Enter') {
-        // 'A' button mapped to Enter
+        // --- 0. CHECK LIMINAL INTERACTIONS (Lockers / Exit) ---
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+            if (liminalSystem.tryInteract()) return;
+        }
+
+        // --- 0.5 CHECK GUARDIAN MENU ---
+        if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
+            const gx = guardianSystem.entity.x;
+            const gy = guardianSystem.entity.y;
+            const dist = Math.sqrt(Math.pow(gx - player.x, 2) + Math.pow(gy - player.y, 2));
+            if (dist < 2.0) {
+                guardianSystem.openMenu();
+                return;
+            }
+        }
         
         // 1. Check for nearby Poke Center
         let nearbyPokeCenter = world.buildings.find((building) => {
