@@ -298,39 +298,50 @@ class CraftingSystem {
             }
         }
 
-        // 2. PREVENT DUPLICATE UNLOCKS
-        if (upg.id === 'fireball' && guardianSystem.skills.fireball.unlocked) {
-            this.forceDialogTop("Fireball is already unlocked!");
-            return;
-        }
-        if (upg.id === 'asteroid' && guardianSystem.skills.asteroid.unlocked) {
-            this.forceDialogTop("Asteroid is already unlocked!");
-            return;
-        }
-
-        // 3. DEDUCT RESOURCES
+        // 2. DEDUCT RESOURCES
+        // We do this immediately now, because we are allowing the upgrade to proceed
         for (let [res, qty] of Object.entries(upg.cost)) {
             this.player.bag[res] -= qty;
             if (this.player.bag[res] <= 0) delete this.player.bag[res];
         }
 
-        // 4. APPLY UPGRADE
+        // 3. APPLY UPGRADE (Unlock OR Level Up)
+        
+        // --- HEAL PULSE ---
         if (upg.id === 'heal') {
             guardianSystem.skills.heal.level++;
             this.forceDialogTop(`Heal Pulse upgraded to Level ${guardianSystem.skills.heal.level}!`);
         }
+
+        // --- FIREBALL ---
         if (upg.id === 'fireball') {
-            guardianSystem.skills.fireball.unlocked = true;
-            guardianSystem.skills.fireball.level = 1; 
-            this.forceDialogTop("Fireball Unlocked!");
-        }
-        if (upg.id === 'asteroid') {
-            guardianSystem.skills.asteroid.unlocked = true;
-            guardianSystem.skills.asteroid.level = 1;
-            this.forceDialogTop("Asteroids Unlocked!");
+            if (!guardianSystem.skills.fireball.unlocked) {
+                // Not unlocked yet? Unlock it.
+                guardianSystem.skills.fireball.unlocked = true;
+                guardianSystem.skills.fireball.level = 1; 
+                this.forceDialogTop("Fireball Unlocked!");
+            } else {
+                // Already unlocked? Level it up!
+                guardianSystem.skills.fireball.level++;
+                this.forceDialogTop(`Fireball upgraded to Lvl ${guardianSystem.skills.fireball.level}!`);
+            }
         }
 
-        // 5. REFRESH UI
+        // --- ASTEROID ---
+        if (upg.id === 'asteroid') {
+            if (!guardianSystem.skills.asteroid.unlocked) {
+                // Not unlocked yet? Unlock it.
+                guardianSystem.skills.asteroid.unlocked = true;
+                guardianSystem.skills.asteroid.level = 1;
+                this.forceDialogTop("Asteroids Unlocked!");
+            } else {
+                // Already unlocked? Level it up!
+                guardianSystem.skills.asteroid.level++;
+                this.forceDialogTop(`Asteroids upgraded to Lvl ${guardianSystem.skills.asteroid.level}!`);
+            }
+        }
+
+        // 4. REFRESH UI
         this.showTab('guardian');
     }
     
