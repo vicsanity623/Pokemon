@@ -542,7 +542,6 @@ class Renderer {
             renderList.push({ type: 'rival', y: rivalSystem.y, data: rivalSystem });
         }
         
-        // 4.5. ADD GUARDIAN
         if (typeof guardianSystem !== 'undefined' && guardianSystem.activeGuardian) {
             renderList.push({ type: 'guardian', y: guardianSystem.entity.y, data: guardianSystem });
         }
@@ -588,7 +587,6 @@ class Renderer {
         this.ctx.restore();
     }
     
-    // --- NEW PHASE 3 & 4 DRAW METHODS ---
     drawResource(node) {
         let drawX = (node.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
         let drawY = (node.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
@@ -602,7 +600,7 @@ class Renderer {
         this.ctx.textAlign = 'center';
         this.ctx.fillText(resourceSystem.TYPES[node.type].icon, drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
 
-        // ALWAYS Draw HP Bar for testing/clarity
+        // ALWAYS Draw HP Bar for testing
         if (node.hp < node.maxHp) {
             let hpPct = node.hp / node.maxHp;
             this.ctx.fillStyle = 'red';
@@ -632,19 +630,16 @@ class Renderer {
         let drawX = (e.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
         let drawY = (e.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
 
-        // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
         this.ctx.beginPath();
         this.ctx.ellipse(drawX + TILE_SIZE/2, drawY + TILE_SIZE - 5, 15, 5, 0, 0, Math.PI*2);
         this.ctx.fill();
 
-        // Sprite
         if (e.type === 'skeleton') {
             this.ctx.font = '40px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.fillText('💀', drawX + TILE_SIZE/2, drawY + TILE_SIZE/1.5);
         } else {
-            // Shadow Pokemon
             this.ctx.fillStyle = 'rgba(75, 0, 130, 0.8)';
             this.ctx.beginPath();
             this.ctx.arc(drawX + TILE_SIZE/2, drawY + TILE_SIZE/2, 20, 0, Math.PI*2);
@@ -654,14 +649,12 @@ class Renderer {
             this.ctx.fillRect(drawX + TILE_SIZE/2 + 5, drawY + TILE_SIZE/2 - 5, 5, 2);
         }
 
-        // HP Bar
         let hpPct = e.hp / e.maxHp;
         this.ctx.fillStyle = 'red';
         this.ctx.fillRect(drawX + 10, drawY - 10, TILE_SIZE - 20, 5);
         this.ctx.fillStyle = '#e74c3c';
         this.ctx.fillRect(drawX + 10, drawY - 10, (TILE_SIZE - 20) * hpPct, 5);
     }
-    // ---------------------------------
 
     drawBuilding(building) {
         // Draw Poke Center
@@ -797,20 +790,16 @@ class Renderer {
             const hx = homeSystem.houseLocation.x;
             const hy = homeSystem.houseLocation.y;
             
-            // Trigger Location: House Y + 666
             const trigX = hx;
             const trigY = hy + 666;
     
             const drawX = (trigX - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
             const drawY = (trigY - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
     
-            // Only draw if on screen
             if (drawX > -TILE_SIZE && drawX < this.canvas.width && drawY > -TILE_SIZE && drawY < this.canvas.height) {
-                // Draw a Red Telephone Booth / Door
                 this.ctx.fillStyle = '#c0392b'; // Dark Red
                 this.ctx.fillRect(Math.floor(drawX) + 20, Math.floor(drawY) + 10, 40, 60);
                 
-                // Glow
                 this.ctx.shadowBlur = 20;
                 this.ctx.shadowColor = 'red';
                 this.ctx.fillStyle = '#fff';
@@ -863,7 +852,6 @@ class Renderer {
                         let tx = hx + offset.x * TILE_SIZE;
                         let ty = hy + offset.y * TILE_SIZE;
 
-                        // Draw Platform
                         this.ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
                         this.ctx.beginPath();
                         this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
@@ -873,10 +861,8 @@ class Renderer {
                         this.ctx.stroke();
 
                         if (t && t.hp > 0) {
-                            // Safe Color Check
                             let typeColor = '#fff';
                             if (typeof defenseSystem.getTypeColor === 'function') {
-                                // Ensure type is lowercase to match dictionary keys
                                 let typeKey = t.type ? t.type.toLowerCase() : 'normal';
                                 typeColor = defenseSystem.getTypeColor(typeKey);
                             }
@@ -886,7 +872,6 @@ class Renderer {
                             this.ctx.arc(tx + TILE_SIZE / 2, ty + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
                             this.ctx.fill();
 
-                            // Draw Turret HP Bar
                             let max = t.maxHp || 100;
                             let cur = t.hp || 0;
                             let hpPct = cur / max;
@@ -896,7 +881,6 @@ class Renderer {
                             this.ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
                             this.ctx.fillRect(tx + 5, ty - 12, (TILE_SIZE - 10) * Math.max(0, hpPct), 6);
                         } else {
-                            // Empty/Broken Slot
                             this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                             this.ctx.fill();
                             this.ctx.strokeStyle = 'red';
@@ -946,7 +930,6 @@ class Renderer {
                     });
                 }
             } catch (e) {
-                // If drawing fails, Log it but DO NOT CRASH the game loop
                 console.error("Raid Render Error (Suppressed):", e);
             }
         }
