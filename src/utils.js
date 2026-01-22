@@ -261,9 +261,17 @@ function showDialog(text, duration = 0) {
     const box = document.getElementById('dialog-box');
     const p = document.getElementById('dialog-text');
     
-    // --- FIX: Force High Z-Index ---
+    // 1. Force High Z-Index (So it's on top of everything)
     box.style.zIndex = "100000"; 
-    // -------------------------------
+
+    // 2. Force Position Lower (The Fix)
+    // 'fixed' ensures it ignores scrolling/containers
+    box.style.position = 'fixed'; 
+    // 75% pushes it down to the bottom quarter of the screen
+    box.style.top = "75%"; 
+    // Keeps it perfectly centered horizontally
+    box.style.left = "50%"; 
+    box.style.transform = "translate(-50%, -50%)"; 
 
     box.classList.remove('hidden');
     p.innerText = text;
