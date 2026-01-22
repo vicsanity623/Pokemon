@@ -2208,8 +2208,8 @@ function updateResourceDisplay() {
         
         // --- POSITIONING ---
         resContainer.style.position = 'fixed'; 
-        resContainer.style.top = '9%'; // Positioned under the Top HUD bars
-        resContainer.style.left = '50%';
+        resContainer.style.top = '5%'; // Positioned under the Top HUD bars
+        resContainer.style.left = '15%';
         resContainer.style.transform = 'translateX(-50%)';
         
         // --- STYLING ---
