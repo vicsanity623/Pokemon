@@ -6,6 +6,7 @@ const ASSETS = [
     './index.html',
     './style.css',
     './src/main.js',
+    './src/resources.js',
     './src/rpg_core.js',
     './src/guardian.js',
     './src/utils.js',
