@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.4.5'; // Bumped Version
+const VERSION = 'v1.4.6'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -2367,3 +2367,16 @@ function setupTouchInteractions() {
 
 // Call this initialization function
 setupTouchInteractions();
+
+function teleportToLiminal() {
+    if (homeSystem && homeSystem.houseLocation) {
+        player.x = homeSystem.houseLocation.x;
+        player.y = homeSystem.houseLocation.y + 666;
+        
+        closeOptions();
+        toggleMainMenu(); // Close pause menu
+        showDialog("... Signal Detected ...", 2000);
+    } else {
+        showDialog("No House Found!", 1000);
+    }
+}
