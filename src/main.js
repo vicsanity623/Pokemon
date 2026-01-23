@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.0.0'; // Bumped Version
+const VERSION = 'v2.0.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -346,16 +346,37 @@ function gameLoop(timestamp) {
         // Egg Hatching
         player.team.forEach(p => {
             if (p.isEgg) {
+                // 1. Check for NaN or Undefined (Fixes broken eggs from old saves)
+                if (typeof p.eggSteps !== 'number' || isNaN(p.eggSteps)) {
+                    p.eggSteps = 500; // Reset to a default value if broken
+                }
+
+                // 2. Decrement steps
                 p.eggSteps--;
+
+                // 3. Hatching Trigger
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
-                    p.name = p.species;
+                    
+                    // Restore Name and Species
+                    p.name = p.species || "PIKACHU"; 
+                    
+                    // Setup Sprites
                     p.backSprite = p.storedSprite ||
-                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png';
+                    
+                    // Initialize Stats if they don't exist
                     if (!p.stats) p.stats = generatePokemonStats();
-                    p.maxHp = p.level * 5 + p.stats.hp;
+                    
+                    // Ensure Level is set for HP calculation
+                    p.level = p.level || 5; 
+                    p.maxHp = p.level * 5 + (p.stats.hp || 10);
                     p.hp = p.maxHp;
+
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
+                    
+                    // Trigger a UI refresh
+                    if (typeof needsUIUpdate !== 'undefined') needsUIUpdate = true;
                     updateHUD();
                 }
             }
