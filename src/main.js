@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.4.9'; // Bumped Version
+const VERSION = 'v2.0.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -197,22 +197,15 @@ let lastTime = 0;
 const TARGET_FPS = 30; // 30 is ideal for battery saver, 60 for smoothness
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let timeAccumulator = 0;
-// --- OPTIMIZATION VARIABLES ---
-// We use these to throttle heavy logic (AI, HUD updates)
-// so they run 10 times a second instead of 60.
-let lastSlowUpdate = 0; 
-const SLOW_UPDATE_INTERVAL = 100; // 100ms = 10 FPS for logic
-let isTabActive = true;
 
 // --- NEW BATTERY SAVER VARIABLES ---
 const TARGET_FPS = 30; // Cap at 30 FPS for mobile battery saving
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let timeAccumulator = 0;
-
 function gameLoop(timestamp) {
 
     // ============================================================
-    // 1. PAUSE / TAB HIDDEN (Battery Saver)
+    // 1. PAUSE / TAB HIDDEN
     // ============================================================
     if (isPaused || !isTabActive) {
         lastTime = timestamp;
@@ -220,132 +213,114 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // Calculate Delta Time since last frame
+    // Calculate Delta Time
     let deltaTime = timestamp - lastTime;
     lastTime = timestamp;
 
-    // Cap huge lag spikes (e.g. switching tabs/backgrounding)
+    // Cap huge lag spikes (prevent teleporting through walls)
     if (deltaTime > 1000) deltaTime = FRAME_INTERVAL;
 
     // Add to accumulator
     timeAccumulator += deltaTime;
 
     // ============================================================
-    // 2. STORE MODE (Minimal Updates - Throttled)
+    // 2. STORE MODE (Throttled)
     // ============================================================
     if (storeSystem && storeSystem.isOpen) {
-        // Only draw if enough time passed for a frame
         if (timeAccumulator >= FRAME_INTERVAL) {
             renderer.draw();
-            
             if (timestamp - lastSlowUpdate > SLOW_UPDATE_INTERVAL) {
                 updateHUD();
                 lastSlowUpdate = timestamp;
             }
-            
-            // Consume time from accumulator (prevent spiral)
             timeAccumulator -= FRAME_INTERVAL;
-            if (timeAccumulator > FRAME_INTERVAL) timeAccumulator = 0; 
+            if (timeAccumulator > FRAME_INTERVAL) timeAccumulator = 0;
         }
-        
         requestAnimationFrame(gameLoop);
         return;
     }
 
     // ============================================================
-    // 3. BATTLE MODE (Battle System Owns Rendering - Throttled)
+    // 3. BATTLE MODE (Throttled)
     // ============================================================
     if (battleSystem.isActive) {
-        // Only draw if enough time passed for a frame
         if (timeAccumulator >= FRAME_INTERVAL) {
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             timeAccumulator -= FRAME_INTERVAL;
             if (timeAccumulator > FRAME_INTERVAL) timeAccumulator = 0;
         }
-
         requestAnimationFrame(gameLoop);
         return;
     }
 
     // ============================================================
-    // MAIN GAME LOOP (Throttled to TARGET_FPS)
+    // MAIN LOOP - WAIT FOR ACCUMULATOR
     // ============================================================
-    
-    // If we haven't accumulated enough time for a frame, skip logic/render
-    // This allows the CPU/GPU to idle between frames.
     if (timeAccumulator < FRAME_INTERVAL) {
         requestAnimationFrame(gameLoop);
         return;
     }
 
     // ============================================================
-    // 4. DELTA TIME (For Logic)
+    // 4. CALCULATE DT (For 30 FPS Logic)
     // ============================================================
-    // We use the accumulated time as dt, capped at 0.1s
+    // dt will be roughly 0.033s
     let dt = (timeAccumulator / 1000) * gameSpeed;
-    if (dt > 0.1) dt = 0.1;
+    if (dt > 0.1) dt = 0.1; // Safety cap
 
-    // Consume the time
+    // Consume time
     timeAccumulator -= FRAME_INTERVAL;
-    // Safety clamp: if device is VERY slow, don't try to catch up infinitely
     if (timeAccumulator > FRAME_INTERVAL) timeAccumulator = 0;
 
     // ============================================================
-    // PART A: SLOW LOGIC (10 FPS)
+    // PART A: FAST LOGIC (30 FPS)
+    // MOVED COMBAT/MOVEMENT SYSTEMS HERE SO THEY MATCH PLAYER SPEED
+    // ============================================================
+    
+    // 1. Update Player Movement (Calculations moved below)
+    
+    // 2. Update Systems that need smooth movement/projectiles
+    if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
+    if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
+    if (typeof defenseSystem !== 'undefined' && defenseSystem.active) {
+        try {
+            defenseSystem.update(dt);
+        } catch (e) {
+            defenseSystem.active = false;
+            document.getElementById('raid-hud').classList.add('hidden');
+            document.getElementById('flash-overlay').classList.remove('blood-moon');
+        }
+    }
+    if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
+
+    // ============================================================
+    // PART B: SLOW LOGIC (10 FPS)
+    // ONLY BACKGROUND STATS/RESOURCES REMAIN HERE
     // ============================================================
     if (timestamp - lastSlowUpdate > SLOW_UPDATE_INTERVAL) {
 
-        // Heavy Systems
-        if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
-        if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
-        if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
-        if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt);
-        if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
+        // Light Systems (Stats, Time, Resources)
+        if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt); // Regen HP/Stamina
+        if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt); // Respawn trees
 
         // World / Time
         clock.update(player);
-        world.updateNPCs();
+        world.updateNPCs(); // Walking NPCs don't need high precision
 
-        // HUD
+        // HUD Updates
         updateHUD();
 
-        // NPC Prompt (Optimized Math)
-        let npcPrompt = document.getElementById('npc-prompt');
-        
-        // Simple box check is faster than circle check for NPCs, kept as is
-        let nearbyNPC = world.npcs.find(npc => {
-            let dx = npc.x - player.x;
-            let dy = npc.y - player.y;
-            return (Math.abs(dx) < 1 && Math.abs(dy) < 1);
-        });
+        // Proximity Checks (Optimized)
+        checkProximityPrompts();
 
-        // Optimization: Squared Distance for PokeCenter (Avoids Sqrt)
-        // 1.5 distance squared = 2.25
-        let nearbyPokeCenter = world.buildings.find(b => {
-            if (b.type !== 'pokecenter') return false;
-            let dx = b.x - player.x;
-            let dy = b.y - player.y;
-            return (dx * dx + dy * dy) < 2.25;
-        });
-
-        if (nearbyPokeCenter) {
-            npcPrompt.innerText = 'Press A to heal';
-            npcPrompt.classList.remove('hidden');
-        } else if (nearbyNPC) {
-            npcPrompt.innerText = '';
-            npcPrompt.classList.remove('hidden');
-        } else {
-            npcPrompt.classList.add('hidden');
-        }
-
-        // Spawning
+        // Spawning Logic
         arenaSystem.checkSpawn(world, clock.gameDays);
         storeSystem.checkSpawn(world, arenaSystem);
         if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
 
+        // Random PokeCenter Spawn
         if (
             Math.floor(player.steps) % 300 === 0 &&
             player.steps > player.lastPokeCenterStep + 250 &&
@@ -364,21 +339,11 @@ function gameLoop(timestamp) {
         );
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
-        // Blood Moon / Defense
+        // Blood Moon Trigger
         if (clock.gameDays > 0 && clock.gameDays % 2 === 0 && !defenseSystem.active) {
             if (defenseSystem.lastRaidDay !== clock.gameDays) {
                 defenseSystem.startRaid();
                 defenseSystem.lastRaidDay = clock.gameDays;
-            }
-        }
-
-        if (defenseSystem.active) {
-            try {
-                defenseSystem.update(dt);
-            } catch (e) {
-                defenseSystem.active = false;
-                document.getElementById('raid-hud').classList.add('hidden');
-                document.getElementById('flash-overlay').classList.remove('blood-moon');
             }
         }
 
@@ -404,7 +369,7 @@ function gameLoop(timestamp) {
     }
 
     // ============================================================
-    // PART B: FAST LOGIC (Run at TARGET_FPS)
+    // PART C: PLAYER MOVEMENT (30 FPS)
     // ============================================================
     let dx = 0;
     let dy = 0;
@@ -431,12 +396,8 @@ function gameLoop(timestamp) {
     }
 
     if (dx !== 0 || dy !== 0) {
-        // Normalize vector
-        let len = Math.sqrt(dx * dx + dy * dy); // Keep sqrt here for accurate normalization
-        if (len > 0) {
-            dx /= len; 
-            dy /= len;
-        }
+        let len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) { dx /= len; dy /= len; }
 
         let speed = player.speed * (dt * 60);
         let nextX = player.x + dx * speed;
@@ -485,10 +446,10 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-// --- OPTIMIZATION HELPERS ---
+// --- OPTIMIZATION HELPERS (Unchanged but included for completeness) ---
 
 function checkProximityPrompts() {
-    // 1. NPC Prompt - Box check (Math.abs) is faster than Circle (Math.sqrt)
+    // 1. NPC Prompt (Fast Box Check)
     let nearbyNPC = world.npcs.find(n => Math.abs(n.x - player.x) < 1 && Math.abs(n.y - player.y) < 1);
     
     if (DOM.npcPrompt) {
@@ -496,8 +457,7 @@ function checkProximityPrompts() {
         else DOM.npcPrompt.classList.add('hidden');
     }
 
-    // 2. PokeCenter Prompt - Optimized using Squared Distance
-    // Distance 1.5 -> 1.5 * 1.5 = 2.25
+    // 2. PokeCenter Prompt (Fast Squared Check)
     let nearbyCenter = world.buildings.find(b => {
         if (b.type !== 'pokecenter') return false;
         let dx = b.x - player.x;
@@ -518,13 +478,11 @@ function processAutoHarvest(dt, timestamp) {
         return;
     }
 
-    // Optimization: Use Squared Distance to avoid Square Root
-    // dist 1.2 -> 1.2 * 1.2 = 1.44
+    // Fast Squared Check
     let dx = autoHarvestTarget.x - player.x;
     let dy = autoHarvestTarget.y - player.y;
     let distSq = dx * dx + dy * dy;
     
-    // Check against squared threshold
     if (distSq > 1.44) { 
         const angle = Math.atan2(dy, dx);
         const speed = player.speed * (dt * 60);
