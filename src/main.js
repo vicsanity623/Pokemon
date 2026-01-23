@@ -194,9 +194,6 @@ function runIntro() {
 
 // Main Loop (Optimized)
 let lastTime = 0;
-let lastSlowUpdate = 0;
-const SLOW_UPDATE_INTERVAL = 100; // ms
-
 function gameLoop(timestamp) {
 
     // ============================================================
