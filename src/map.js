@@ -85,8 +85,6 @@ class MapSystem {
         const range = 50; // View radius (100x100 tiles total)
 
         // Calculate Scale to Fit Screen
-        // We use Math.min to ensure the tiles stay square (aspect ratio) 
-        // and fit within the smallest dimension of the screen
         const scaleX = canvas.width / (range * 2);
         const scaleY = canvas.height / (range * 2);
         const scale = Math.min(scaleX, scaleY);
@@ -111,7 +109,7 @@ class MapSystem {
                 // Optional: Draw tiny grid lines if scale is large enough
                 if (scale > 4) {
                     ctx.fillStyle = "rgba(0,0,0,0.1)";
-                    ctx.fillRect(drawOffsetX + x * scale, drawOffsetY + y * scale, scale, scale); // Dim logic handled by getColor usually
+                    ctx.fillRect(drawOffsetX + x * scale, drawOffsetY + y * scale, scale, scale);
                 }
             }
         }
@@ -120,6 +118,32 @@ class MapSystem {
         const getCanvasX = (wx) => drawOffsetX + (wx - startX) * scale;
         const getCanvasY = (wy) => drawOffsetY + (wy - startY) * scale;
         const isValid = (wx, wy) => wx >= startX && wx < startX + range * 2 && wy >= startY && wy < startY + range * 2;
+
+        // --- NEW FEATURE: DANGER RINGS (Relative to World 0,0) ---
+        // Calculate where World(0,0) is on the screen
+        const zeroX = getCanvasX(0);
+        const zeroY = getCanvasY(0);
+
+        ctx.lineWidth = 2;
+
+        // SAFE ZONE (50 Tiles)
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.6)'; // Green Ring
+        ctx.beginPath();
+        ctx.arc(zeroX + scale / 2, zeroY + scale / 2, 50 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // MEDIUM ZONE (100 Tiles)
+        ctx.strokeStyle = 'rgba(241, 196, 15, 0.6)'; // Yellow Ring
+        ctx.beginPath();
+        ctx.arc(zeroX + scale / 2, zeroY + scale / 2, 100 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // DANGER ZONE (150 Tiles)
+        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)'; // Red Ring
+        ctx.beginPath();
+        ctx.arc(zeroX + scale / 2, zeroY + scale / 2, 150 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        // ------------------------------------------------
 
         // 2. Draw Resources
         if (typeof resourceSystem !== 'undefined') {
@@ -174,6 +198,7 @@ class MapSystem {
             });
         }
 
+        // 5.5 Draw Phone (Liminal System)
         if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation && typeof liminalSystem !== 'undefined' && !liminalSystem.active) {
             const phoneX = homeSystem.houseLocation.x;
             const phoneY = homeSystem.houseLocation.y + 666;
@@ -196,7 +221,6 @@ class MapSystem {
         }
 
         // 6. Draw Player (Center)
-        // Since the map is centered on player, they are always at:
         const px = drawOffsetX + (range * scale);
         const py = drawOffsetY + (range * scale);
 
@@ -207,5 +231,23 @@ class MapSystem {
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // --- NEW FEATURE: COORDINATES DISPLAY ---
+        ctx.textAlign = "left";
+        // Stroke Effect for visibility
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.font = "16px monospace";
+        ctx.strokeText(`POS: ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`, 10, 30);
+
+        // Main Text
+        ctx.fillStyle = "white";
+        ctx.fillText(`POS: ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`, 10, 30);
+
+        // Legend for Zones
+        ctx.font = "12px monospace";
+        ctx.fillStyle = "#e74c3c";
+        ctx.fillText("RED RING = DANGER (High Level)", 10, canvas.height - 10);
+        // ----------------------------------------
     }
 }
