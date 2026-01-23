@@ -92,7 +92,7 @@ class RPGSystem {
 
         hud.innerHTML = `
             <div style="margin-bottom:5px; color:white; text-shadow:1px 1px 0 #000; text-align:center;">
-                <span id="rpg-name">SURVIVOR</span> Lv.<span id="rpg-level">1</span>
+                <span id="rpg-name">Player</span> Lv.<span id="rpg-level">1</span>
             </div>
             
             <!-- HP BAR (Red) -->
@@ -204,7 +204,17 @@ class RPGSystem {
         if (hpBar) hpBar.style.width = `${hpPct}%`;
         if (xpBar) xpBar.style.width = `${xpPct}%`;
         if (stamBar) stamBar.style.width = `${stamPct}%`;
-        if (lvlText) lvlText.innerText = this.level.toString();
+
+        // --- NEW: COMBO DISPLAY IN LEVEL TEXT ---
+        if (lvlText) {
+            if (this.comboCount > 0) {
+                // Shows: Lv.13 🔥5
+                lvlText.innerHTML = `${this.level} <span style="color:#f1c40f; margin-left:5px;">Combo🔥${this.comboCount}</span>`;
+            } else {
+                lvlText.innerText = this.level.toString();
+            }
+        }
+        // ----------------------------------------
 
         if (gearText) {
             const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
@@ -226,7 +236,7 @@ class RPGSystem {
             this.xp = 0;
             this.maxHp += 10;
             this.hp = this.maxHp;
-            showDialog(`Survivor Level Up! (Lv.${this.level})`, 2000);
+            showDialog(`Player Level Up! (Lv.${this.level})`, 2000);
         }
         this.updateHUD(); // Ensure bar updates immediately
     }

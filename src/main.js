@@ -1,8 +1,9 @@
 // Global Instances
-const VERSION = 'v2.0.2'; // Bumped Version
+const VERSION = 'v2.0.3'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
-const canvas = document.getElementById('gameCanvas');
+/** @type {HTMLCanvasElement} */
+const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
 const renderer = new Renderer(canvas, world, player);
 const battleSystem = new BattleSystem(player);
 const questSystem = new QuestSystem(player);
@@ -23,10 +24,17 @@ const mapSystem = new MapSystem(player, world);
 world.init();
 let isPartyOpen = true; // Default to open
 
+// --- GLOBAL STATE VARIABLES (Declared early to avoid reference errors) ---
+let isPaused = false;
+let gameSpeed = 1.0;
+let needsUIUpdate = false;
+let catchCombo = { species: null, count: 0 };
+let dungeonSystem = null; // Will be initialized if DungeonSystem class exists
+
 // --- OPTIMIZATION VARIABLES ---
 // We use these to throttle heavy logic (AI, HUD updates)
 // so they run 10 times a second instead of 60.
-let lastSlowUpdate = 0; 
+let lastSlowUpdate = 0;
 const SLOW_UPDATE_INTERVAL = 100; // 100ms = 10 FPS for logic
 let isTabActive = true;
 
@@ -45,7 +53,7 @@ document.addEventListener('visibilitychange', () => {
     if (!isTabActive) {
         if (mainMusic && !mainMusic.paused) mainMusic.pause();
     } else {
-        if (mainMusic && !liminalSystem.active) mainMusic.play().catch(e => {});
+        if (mainMusic && !liminalSystem.active) mainMusic.play().catch(e => { });
     }
 });
 // --- AUTO HARVEST VARIABLES ---
@@ -54,10 +62,22 @@ let lastAutoAttackTime = 0;
 const TILE_SIZE_VISUAL = 64; // Adjust to 32 or 64 if clicks are slightly offset
 
 // Music System
-const mainMusic = document.getElementById('main-music');
-const battleMusic = document.getElementById('battle-music');
+/** @type {HTMLAudioElement} */
+const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+/** @type {HTMLAudioElement} */
+const battleMusic = /** @type {HTMLAudioElement} */ (document.getElementById('battle-music'));
 let musicVolume = 0.5; // 50% default volume
 
+// Sound Effect Helper
+function playSFX(id) {
+    const sfx = /** @type {HTMLAudioElement} */ (document.getElementById(id));
+    if (sfx) {
+        sfx.currentTime = 0;
+        sfx.play().catch(e => { });
+    }
+}
+
+// NOTE: updateHUD, toggleMainMenu, and renderPC are defined later in the file\n// JavaScript function declarations are hoisted, so forward declarations are unnecessary\n
 // Generate random stats for Pokemon (12-100 range)
 function generatePokemonStats() {
     return {
@@ -274,9 +294,9 @@ function gameLoop(timestamp) {
     // PART A: FAST LOGIC (30 FPS)
     // MOVED COMBAT/MOVEMENT SYSTEMS HERE SO THEY MATCH PLAYER SPEED
     // ============================================================
-    
+
     // 1. Update Player Movement (Calculations moved below)
-    
+
     // 2. Update Systems that need smooth movement/projectiles
     if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
     if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
@@ -357,24 +377,24 @@ function gameLoop(timestamp) {
                 // 3. Hatching Trigger
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
-                    
+
                     // Restore Name and Species
-                    p.name = p.species || "PIKACHU"; 
-                    
+                    p.name = p.species || "PIKACHU";
+
                     // Setup Sprites
                     p.backSprite = p.storedSprite ||
                         'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png';
-                    
+
                     // Initialize Stats if they don't exist
                     if (!p.stats) p.stats = generatePokemonStats();
-                    
+
                     // Ensure Level is set for HP calculation
-                    p.level = p.level || 5; 
+                    p.level = p.level || 5;
                     p.maxHp = p.level * 5 + (p.stats.hp || 10);
                     p.hp = p.maxHp;
 
                     showDialog(`Oh? The Egg hatched into ${p.name}!`, 4000);
-                    
+
                     // Trigger a UI refresh
                     if (typeof needsUIUpdate !== 'undefined') needsUIUpdate = true;
                     updateHUD();
@@ -415,7 +435,7 @@ function gameLoop(timestamp) {
     if (dx !== 0 || dy !== 0) {
         // 1. Normalize movement (Optimized with Math.hypot)
         const len = Math.hypot(dx, dy);
-        dx /= len; 
+        dx /= len;
         dy /= len;
 
         const speed = player.speed * (dt * 60);
@@ -446,13 +466,13 @@ function gameLoop(timestamp) {
             const ix = Math.round(player.x);
             const iy = Math.round(player.y);
             const item = world.getItem(ix, iy);
-            
+
             if (item) {
                 world.removeItem(ix, iy);
                 playSFX('sfx-pickup');
                 player.bag[item] = (player.bag[item] || 0) + 1;
                 showDialog(`Found a ${item}!`, 1000);
-                
+
                 // Ensure the Bag/Inventory UI knows to refresh
                 if (typeof needsUIUpdate !== 'undefined') needsUIUpdate = true;
             }
@@ -460,12 +480,12 @@ function gameLoop(timestamp) {
             // 5. Wild Encounter Logic
             const tile = world.getTile(ix, iy);
             const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
-            
+
             if (ENCOUNTER_TILES.includes(tile) && Math.random() < 0.08 * speed) {
                 const canFight = player.team.some(p => p.hp > 0);
                 if (canFight) {
                     const biome = tile === 'snow_tall' ? 'snow' :
-                                  tile === 'sand_tall' ? 'desert' : 'grass';
+                        tile === 'sand_tall' ? 'desert' : 'grass';
                     battleSystem.startBattle(false, 0, false, null, biome);
                 }
             }
@@ -492,7 +512,7 @@ function checkProximityPrompts() {
         let n = world.npcs[i];
         let dx = n.x - player.x;
         let dy = n.y - player.y;
-        if ((dx*dx + dy*dy) < 1) { // No Math.sqrt needed
+        if ((dx * dx + dy * dy) < 1) { // No Math.sqrt needed
             nearbyNPC = n;
             break;
         }
@@ -510,7 +530,7 @@ function checkProximityPrompts() {
         if (b.type === 'pokecenter') {
             let dx = b.x - player.x;
             let dy = b.y - player.y;
-            if ((dx*dx + dy*dy) < 2.25) { // 1.5 * 1.5 = 2.25
+            if ((dx * dx + dy * dy) < 2.25) { // 1.5 * 1.5 = 2.25
                 nearbyCenter = b;
                 break;
             }
@@ -534,21 +554,21 @@ function processAutoHarvest(dt, timestamp) {
     const dx = autoHarvestTarget.x - player.x;
     const dy = autoHarvestTarget.y - player.y;
     const distSq = (dx * dx) + (dy * dy);
-    
+
     // 1.2 distance squared is 1.44
-    if (distSq > 1.44) { 
+    if (distSq > 1.44) {
         // WALK TOWARDS
         const angle = Math.atan2(dy, dx); // We already have dx/dy
         const speed = player.speed * (dt * 60);
         player.x += Math.cos(angle) * speed;
         player.y += Math.sin(angle) * speed;
         player.moving = true;
-        
-        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) 
+
+        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle)))
             player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
-        else 
+        else
             player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
-            
+
     } else {
         player.moving = false;
         if (timestamp - lastAutoAttackTime > 250) {
@@ -596,7 +616,7 @@ input.press = (key) => {
                 rpgSystem.stamina = rpgSystem.maxStamina;
                 rpgSystem.updateHUD();
             }
-            homeSystem.interact(); 
+            homeSystem.interact();
             return;
         }
 
@@ -624,15 +644,15 @@ input.press = (key) => {
                 return;
             }
         }
-        
+
         // 4.5 Check Dungeon Entrance (Phase 6)
         if (typeof dungeonSystem !== 'undefined' && dungeonSystem.hasSpawned) {
-             const dx = dungeonSystem.entrance.x - player.x;
-             const dy = dungeonSystem.entrance.y - player.y;
-             if (Math.sqrt(dx*dx + dy*dy) < 1.5) {
-                 if (confirm("Enter the Dungeon? High Level Recommended!")) dungeonSystem.enter();
-                 return;
-             }
+            const dx = dungeonSystem.entrance.x - player.x;
+            const dy = dungeonSystem.entrance.y - player.y;
+            if (Math.sqrt(dx * dx + dy * dy) < 1.5) {
+                if (confirm("Enter the Dungeon? High Level Recommended!")) dungeonSystem.enter();
+                return;
+            }
         }
 
         // 5. Check for nearby NPC
@@ -1545,10 +1565,11 @@ function loadGame() {
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
-        
+
         if (data.player.combo) {
             // Restore the global variable
             catchCombo = data.player.combo;
+        }
 
         // Restore Store System
         if (data.store) {
@@ -1788,8 +1809,7 @@ function updateHUD() {
 }
 
 // --- Main Menu System ---
-let isPaused = false;
-let gameSpeed = 1.0;
+// isPaused and gameSpeed are now declared at the top of the file
 let currentBox = 0;
 
 function toggleMainMenu() {
@@ -2462,19 +2482,21 @@ function updateResourceDisplay() {
 
 // --- NEW: TOUCH INTERACTION HANDLER ---
 function setupTouchInteractions() {
-    const canvas = document.getElementById('gameCanvas');
-    
-    canvas.addEventListener('pointerdown', (e) => {
+    /** @type {HTMLCanvasElement} */
+    const touchCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
+
+    touchCanvas.addEventListener('pointerdown', (e) => {
         // Ignore if touching buttons
-        if (e.target.closest('.action-btn')) return;
+        const target = /** @type {Element} */ (e.target);
+        if (target && target.closest && target.closest('.action-btn')) return;
 
         // Calculate Click World Coordinates
-        const rect = canvas.getBoundingClientRect();
+        const rect = touchCanvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = touchCanvas.width / 2;
+        const centerY = touchCanvas.height / 2;
 
         const worldX = player.x + (clickX - centerX) / TILE_SIZE;
         const worldY = player.y + (clickY - centerY) / TILE_SIZE;
@@ -2483,9 +2505,9 @@ function setupTouchInteractions() {
         if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
             const wb = craftingSystem.workbenchLocation;
             if (Math.abs(worldX - wb.x) < 1.5 && Math.abs(worldY - wb.y) < 1.5) {
-                const dist = Math.sqrt((wb.x - player.x)**2 + (wb.y - player.y)**2);
+                const dist = Math.sqrt((wb.x - player.x) ** 2 + (wb.y - player.y) ** 2);
                 if (dist < 3.0) {
-                    e.stopPropagation(); 
+                    e.stopPropagation();
                     craftingSystem.interact();
                     return;
                 } else {
@@ -2503,7 +2525,7 @@ function teleportToLiminal() {
     if (homeSystem && homeSystem.houseLocation) {
         player.x = homeSystem.houseLocation.x;
         player.y = homeSystem.houseLocation.y + 666;
-        
+
         closeOptions();
         toggleMainMenu(); // Close pause menu
         showDialog("... Signal Detected ...", 2000);
