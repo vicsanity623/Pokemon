@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.0.1'; // Bumped Version
+const VERSION = 'v2.0.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -485,21 +485,37 @@ function gameLoop(timestamp) {
 // --- OPTIMIZATION HELPERS (Unchanged but included for completeness) ---
 
 function checkProximityPrompts() {
-    // 1. NPC Prompt (Fast Box Check)
-    let nearbyNPC = world.npcs.find(n => Math.abs(n.x - player.x) < 1 && Math.abs(n.y - player.y) < 1);
-    
+    // 1. NPC Prompt (Distance < 1) -> Squared Distance < 1
+    // We use a simple loop which is faster than .find() for small arrays
+    let nearbyNPC = null;
+    for (let i = 0; i < world.npcs.length; i++) {
+        let n = world.npcs[i];
+        let dx = n.x - player.x;
+        let dy = n.y - player.y;
+        if ((dx*dx + dy*dy) < 1) { // No Math.sqrt needed
+            nearbyNPC = n;
+            break;
+        }
+    }
+
     if (DOM.npcPrompt) {
         if (nearbyNPC) DOM.npcPrompt.classList.remove('hidden');
         else DOM.npcPrompt.classList.add('hidden');
     }
 
-    // 2. PokeCenter Prompt (Fast Squared Check)
-    let nearbyCenter = world.buildings.find(b => {
-        if (b.type !== 'pokecenter') return false;
-        let dx = b.x - player.x;
-        let dy = b.y - player.y;
-        return (dx * dx + dy * dy) < 2.25;
-    });
+    // 2. PokeCenter Prompt (Distance < 1.5) -> Squared Distance < 2.25
+    let nearbyCenter = null;
+    for (let i = 0; i < world.buildings.length; i++) {
+        let b = world.buildings[i];
+        if (b.type === 'pokecenter') {
+            let dx = b.x - player.x;
+            let dy = b.y - player.y;
+            if ((dx*dx + dy*dy) < 2.25) { // 1.5 * 1.5 = 2.25
+                nearbyCenter = b;
+                break;
+            }
+        }
+    }
 
     if (DOM.npcPrompt && nearbyCenter) {
         DOM.npcPrompt.innerText = 'Press A to heal';
@@ -514,13 +530,15 @@ function processAutoHarvest(dt, timestamp) {
         return;
     }
 
-    // Fast Squared Check
-    let dx = autoHarvestTarget.x - player.x;
-    let dy = autoHarvestTarget.y - player.y;
-    let distSq = dx * dx + dy * dy;
+    // Optimization: Calculate Squared Distance
+    const dx = autoHarvestTarget.x - player.x;
+    const dy = autoHarvestTarget.y - player.y;
+    const distSq = (dx * dx) + (dy * dy);
     
+    // 1.2 distance squared is 1.44
     if (distSq > 1.44) { 
-        const angle = Math.atan2(dy, dx);
+        // WALK TOWARDS
+        const angle = Math.atan2(dy, dx); // We already have dx/dy
         const speed = player.speed * (dt * 60);
         player.x += Math.cos(angle) * speed;
         player.y += Math.sin(angle) * speed;
@@ -1434,7 +1452,8 @@ function saveGame() {
             storage: player.storage,
             seen: player.seen,
             seenShiny: player.seenShiny,
-            lastLogin: Date.now() // <--- ADD THIS LINE
+            lastLogin: Date.now(),
+            combo: (typeof catchCombo !== 'undefined') ? catchCombo : null,
         },
         world: {
             seed: world.rng.seed,
@@ -1526,6 +1545,10 @@ function loadGame() {
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
+        
+        if (data.player.combo) {
+            // Restore the global variable
+            catchCombo = data.player.combo;
 
         // Restore Store System
         if (data.store) {
