@@ -198,10 +198,6 @@ const TARGET_FPS = 30; // 30 is ideal for battery saver, 60 for smoothness
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let timeAccumulator = 0;
 
-// --- NEW BATTERY SAVER VARIABLES ---
-const TARGET_FPS = 30; // Cap at 30 FPS for mobile battery saving
-const FRAME_INTERVAL = 1000 / TARGET_FPS;
-let timeAccumulator = 0;
 function gameLoop(timestamp) {
 
     // ============================================================
