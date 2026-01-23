@@ -942,25 +942,23 @@ class BattleSystem {
     }
     
     // --- NEW COMBO LOGIC ---
-    registerCombo(enemyName, method) {
+    registerCombo(id, name, method) {
         if (typeof rpgSystem === 'undefined') return;
-
-        // Clean the name (remove 'Wild ' or 'Shiny ' or 'Stage X:')
-        let species = enemyName.replace('Wild ', '').replace('Shiny ', '').replace(/STAGE \d+: /, '').trim();
 
         // 1. LOGIC FOR CATCHING (Updates the Streak)
         if (method === 'catch') {
-            if (rpgSystem.comboSpecies === species) {
+            // Check against ID (Number) instead of Name (String)
+            if (rpgSystem.comboSpecies === id) {
                 // Continuation!
                 rpgSystem.comboCount++;
-                showDialog(`Catch Combo: ${rpgSystem.comboCount} ${species}!`, 2000);
+                showDialog(`Catch Combo: ${rpgSystem.comboCount} ${name}!`, 2000);
             } else {
                 // Broken Streak!
                 if (rpgSystem.comboCount > 0) {
-                    showDialog(`Combo Broken! (Caught ${species})`, 2000);
+                    showDialog(`Combo Broken! (Caught ${name})`, 2000);
                 }
-                // Start New Streak
-                rpgSystem.comboSpecies = species;
+                // Start New Streak with ID
+                rpgSystem.comboSpecies = id; 
                 rpgSystem.comboCount = 1;
             }
         }
@@ -969,7 +967,7 @@ class BattleSystem {
         else if (method === 'defeat') {
             // We do NOTHING here. The streak remains safe.
             if (rpgSystem.comboCount > 0) {
-                console.log(`Combo Safe (${rpgSystem.comboCount} ${rpgSystem.comboSpecies})`);
+                // console.log(`Combo Safe`);
             }
         }
     }
@@ -1010,7 +1008,7 @@ class BattleSystem {
         }
 
         // Update Combo
-        this.registerCombo(this.enemy.name, 'catch');
+        this.registerCombo(this.enemy.id, this.enemy.name, 'catch');
 
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
@@ -1045,7 +1043,7 @@ class BattleSystem {
         showDialog(msg);
 
         // Update Combo
-        this.registerCombo(this.enemy.name, 'defeat');
+        this.registerCombo(this.enemy.id, this.enemy.name, 'defeat');
 
         // 3. ANIME XP SEQUENCE
         // A. Add the "Explosive" class to all visible XP bars in the squad list
