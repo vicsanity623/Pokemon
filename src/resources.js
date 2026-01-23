@@ -74,9 +74,11 @@ class ResourceSystem {
     }
 
     generateChunk(cx, cy) {
+        if (cx > 3000 || cy > 3000) return;
+        // ---------------------------------------------
+
         const chunkKey = `${cx},${cy}`;
         
-        // If we already generated this chunk, skip it
         if (this.generatedChunks.has(chunkKey)) return;
 
         // Loop through every tile in this 16x16 chunk
