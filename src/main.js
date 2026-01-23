@@ -413,14 +413,17 @@ function gameLoop(timestamp) {
     }
 
     if (dx !== 0 || dy !== 0) {
-        let len = Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) { dx /= len; dy /= len; }
+        // 1. Normalize movement (Optimized with Math.hypot)
+        const len = Math.hypot(dx, dy);
+        dx /= len; 
+        dy /= len;
 
-        let speed = player.speed * (dt * 60);
-        let nextX = player.x + dx * speed;
-        let nextY = player.y + dy * speed;
+        const speed = player.speed * (dt * 60);
+        const nextX = player.x + dx * speed;
+        const nextY = player.y + dy * speed;
 
-        let blocked = world.isBlocked(Math.round(nextX), Math.round(nextY));
+        // 2. Collision Check
+        const blocked = world.isBlocked(Math.round(nextX), Math.round(nextY));
 
         if (!blocked) {
             player.x = nextX;
@@ -428,31 +431,47 @@ function gameLoop(timestamp) {
             player.steps += speed;
             player.moving = true;
 
+            // Set Direction Sprite
             if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? 'right' : 'left';
             else player.dir = dy > 0 ? 'down' : 'up';
 
-            if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
+            // 3. Quest & UI Thresholds
+            if (Math.floor(player.steps) % 10 === 0) {
+                questSystem.update('walk');
+                // Refresh UI occasionally while walking to update XP/Step counters
+                if (typeof needsUIUpdate !== 'undefined') needsUIUpdate = true;
+            }
 
-            let item = world.getItem(Math.round(player.x), Math.round(player.y));
+            // 4. Item Pickup Logic
+            const ix = Math.round(player.x);
+            const iy = Math.round(player.y);
+            const item = world.getItem(ix, iy);
+            
             if (item) {
-                world.removeItem(Math.round(player.x), Math.round(player.y));
+                world.removeItem(ix, iy);
                 playSFX('sfx-pickup');
                 player.bag[item] = (player.bag[item] || 0) + 1;
                 showDialog(`Found a ${item}!`, 1000);
+                
+                // Ensure the Bag/Inventory UI knows to refresh
+                if (typeof needsUIUpdate !== 'undefined') needsUIUpdate = true;
             }
 
-            const tile = world.getTile(Math.round(player.x), Math.round(player.y));
+            // 5. Wild Encounter Logic
+            const tile = world.getTile(ix, iy);
             const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
+            
             if (ENCOUNTER_TILES.includes(tile) && Math.random() < 0.08 * speed) {
                 const canFight = player.team.some(p => p.hp > 0);
                 if (canFight) {
-                    let biome = tile === 'snow_tall' ? 'snow' :
-                                tile === 'sand_tall' ? 'desert' : 'grass';
+                    const biome = tile === 'snow_tall' ? 'snow' :
+                                  tile === 'sand_tall' ? 'desert' : 'grass';
                     battleSystem.startBattle(false, 0, false, null, biome);
                 }
             }
         }
     } else {
+        // Logic for when player is standing still
         if (!autoHarvestTarget) player.moving = false;
     }
 
