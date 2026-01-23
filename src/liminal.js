@@ -1,25 +1,142 @@
+class LiminalEntity {
+    constructor(x, y, isParent) {
+        this.x = x;
+        this.y = y;
+        this.isParent = isParent;
+        
+        // Physics
+        this.speed = isParent ? 0.040 : 0.055; // Offspring are faster
+        this.size = isParent ? 0.4 : 0.25; // Smaller size to fit in hallways
+        this.vx = 0;
+        this.vy = 0;
+
+        // "Brain"
+        this.viewDistance = 15;
+        this.stuckTimer = 0;
+        this.wanderAngle = Math.random() * Math.PI * 2;
+    }
+
+    update(dt, player, system, state) {
+        let desiredX = 0;
+        let desiredY = 0;
+
+        // --- 1. BRAIN: DECIDE TARGET ---
+        if (state === 'HUNT') {
+            // Target Player
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > 0) {
+                desiredX = dx / dist;
+                desiredY = dy / dist;
+            }
+        } else {
+            // PROWL (Wander)
+            // Change direction slowly
+            this.wanderAngle += (Math.random() - 0.5) * 0.5;
+            desiredX = Math.cos(this.wanderAngle);
+            desiredY = Math.sin(this.wanderAngle);
+        }
+
+        // --- 2. COLLISION AVOIDANCE (The "Smart" Part) ---
+        // Look ahead. If wall, apply strong force away from it.
+        const lookAhead = 0.5;
+        const feelers = [
+            {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
+            {x: 0.7, y: 0.7}, {x: -0.7, y: -0.7}, {x: 0.7, y: -0.7}, {x: -0.7, y: 0.7}
+        ];
+
+        let avoidX = 0;
+        let avoidY = 0;
+
+        for (let f of feelers) {
+            // Check grid at feeler position
+            const checkX = this.x + f.x * lookAhead;
+            const checkY = this.y + f.y * lookAhead;
+            
+            // If that spot is a wall...
+            if (system.getLiminalTile(checkX, checkY) === 'liminal_wall') {
+                // Push AWAY from that wall
+                avoidX -= f.x * 2.5; // Strong repulsion
+                avoidY -= f.y * 2.5;
+            }
+        }
+
+        // Combine Desire + Avoidance
+        this.vx += (desiredX + avoidX);
+        this.vy += (desiredY + avoidY);
+
+        // Normalize speed
+        const speedLen = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+        if (speedLen > 0) {
+            this.vx = (this.vx / speedLen) * this.speed;
+            this.vy = (this.vy / speedLen) * this.speed;
+        }
+
+        // --- 3. APPLY MOVEMENT WITH HARD COLLISION CHECK ---
+        const nextX = this.x + this.vx;
+        const nextY = this.y + this.vy;
+
+        // Check if the new spot is valid (Corner checks for size)
+        if (!this.checkWallCollision(nextX, this.y, system)) {
+            this.x = nextX;
+        } else {
+            // Hit wall X, slight bounce/slide
+            this.vx *= -0.5;
+        }
+
+        if (!this.checkWallCollision(this.x, nextY, system)) {
+            this.y = nextY;
+        } else {
+            // Hit wall Y
+            this.vy *= -0.5;
+        }
+
+        // --- 4. PLAYER INTERACTION ---
+        const distToPlayer = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+        if (distToPlayer < 0.6 && !system.isHidden) {
+            system.corruptSaveFile("CONSUMED");
+        }
+    }
+
+    // Returns true if entity body hits a wall
+    checkWallCollision(x, y, system) {
+        // Check 4 corners of the entity based on its size
+        const points = [
+            {cx: x - this.size/2, cy: y - this.size/2},
+            {cx: x + this.size/2, cy: y - this.size/2},
+            {cx: x - this.size/2, cy: y + this.size/2},
+            {cx: x + this.size/2, cy: y + this.size/2}
+        ];
+
+        for (let p of points) {
+            if (system.getLiminalTile(p.cx, p.cy) === 'liminal_wall') return true;
+        }
+        return false;
+    }
+}
+
 class LiminalSystem {
     constructor(player, world) {
         this.player = player;
         this.world = world;
         this.active = false;
         
-        // --- DOOM MECHANICS ---
-        this.state = 'MIRROR'; // MIRROR, HUNT, SEARCH
-        this.stateTimer = 0;
-        
+        // --- CYCLE MECHANICS ---
+        this.state = 'PROWL'; // PROWL (60s) <-> HUNT (60s)
+        this.cycleTimer = 0;
+        this.CYCLE_DURATION = 60 * 60; // 60 seconds (in frames approx)
+
         // Tracking
         this.visitedTiles = new Set();
         this.uniqueStepCount = 0;
         this.hasEscaped = false;
-
-        // Hiding
         this.isHidden = false;
-        this.hiddenX = 0;
-        this.hiddenY = 0;
 
-        // The Entity
-        this.entity = { x: 0, y: 0, active: false };
+        // Entities
+        this.mainEntity = null;
+        this.offspring = []; // Array of 10 small ones
     }
 
     enter() {
@@ -34,11 +151,19 @@ class LiminalSystem {
         this.visitedTiles.clear();
         this.uniqueStepCount = 0;
 
-        this.entity.x = 50002 + 10;
-        this.entity.y = 50002;
-        this.entity.active = true;
-        this.state = 'MIRROR';
-        this.stateTimer = 0;
+        // Spawn Main Entity
+        this.mainEntity = new LiminalEntity(50002 + 8, 50002 + 8, true);
+        
+        // Spawn 10 Offspring randomly around
+        this.offspring = [];
+        for(let i=0; i<10; i++) {
+            let ox = 50002 + (Math.random() * 20 - 10);
+            let oy = 50002 + (Math.random() * 20 - 10);
+            this.offspring.push(new LiminalEntity(ox, oy, false));
+        }
+
+        this.state = 'PROWL';
+        this.cycleTimer = 0;
 
         document.getElementById('bottom-hud').classList.add('hidden');
         document.getElementById('quest-tracker').classList.add('hidden');
@@ -51,87 +176,45 @@ class LiminalSystem {
     update(dt) {
         if (!this.active) return;
 
-        // 1. TRACK UNIQUE STEPS
+        // 1. UNIQUE STEP TRACKING
         if (this.player.moving && !this.isHidden) {
             const key = `${Math.round(this.player.x)},${Math.round(this.player.y)}`;
             if (!this.visitedTiles.has(key)) {
                 this.visitedTiles.add(key);
                 this.uniqueStepCount++;
-                if (this.uniqueStepCount % 1000 === 0) showDialog(`Data recovered: ${this.uniqueStepCount / 100}%`, 2000);
-                if (this.uniqueStepCount === 10000) showDialog("A TEAR IN REALITY HAS OPENED.", 5000);
+                if (this.uniqueStepCount % 1000 === 0) showDialog(`Data integrity: ${this.uniqueStepCount / 100}%`, 2000);
+                if (this.uniqueStepCount === 10000) showDialog("THE EXIT HAS OPENED.", 5000);
             }
         }
 
-        // 2. AI STATE MACHINE
-        this.stateTimer += dt;
-        let targetX = this.entity.x;
-        let targetY = this.entity.y;
-        let speed = 0;
-
-        if (this.state === 'MIRROR') {
-            const startX = 50000;
-            const diffX = this.player.x - startX;
-            targetX = startX - diffX + 10;
-            targetY = this.player.y;
-            speed = 0.08; // Slower mirror
-
-            if (this.stateTimer > 30) {
+        // 2. CYCLE STATE MACHINE
+        this.cycleTimer += dt;
+        if (this.cycleTimer > 60) { // Every 60 seconds switch
+            this.cycleTimer = 0;
+            if (this.state === 'PROWL') {
                 this.state = 'HUNT';
-                this.stateTimer = 0;
-                showDialog("IT SEES YOU.", 3000);
-            }
-        } 
-        else if (this.state === 'HUNT') {
-            if (!this.isHidden) {
-                targetX = this.player.x;
-                targetY = this.player.y;
-                speed = 0.042; // Slightly faster than player (0.04)
-
-                const dist = Math.sqrt((this.player.x - this.entity.x)**2 + (this.player.y - this.entity.y)**2);
-                if (dist < 0.8) this.corruptSaveFile("CAUGHT");
+                showDialog("THE SWARM IS HUNTING.", 3000);
             } else {
-                this.state = 'SEARCH';
-                this.stateTimer = 0;
-                showDialog("It is searching...", 2000);
-            }
-        }
-        else if (this.state === 'SEARCH') {
-            // Wobbly movement
-            targetX = this.player.x + (Math.random() - 0.5) * 5;
-            targetY = this.player.y + (Math.random() - 0.5) * 5;
-            speed = 0.02;
-
-            if (this.stateTimer > 40) {
-                this.state = 'MIRROR';
-                this.stateTimer = 0;
-                showDialog("It lost interest... for now.", 3000);
+                this.state = 'PROWL';
+                showDialog("The swarm is quiet...", 3000);
             }
         }
 
-        // --- ENTITY MOVEMENT WITH COLLISION ---
-        if (this.entity.active) {
-            const dx = targetX - this.entity.x;
-            const dy = targetY - this.entity.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist > 0.1) {
-                // Potential new position
-                const nextX = this.entity.x + (dx / dist) * speed;
-                const nextY = this.entity.y + (dy / dist) * speed;
-                
-                // Check Wall Collision
-                const tile = this.getLiminalTile(nextX, nextY);
-                if (tile !== 'liminal_wall') {
-                    this.entity.x = nextX;
-                    this.entity.y = nextY;
-                }
-            }
-        }
+        // 3. UPDATE ENTITIES
+        // Main Entity
+        if (this.mainEntity) this.mainEntity.update(dt, this.player, this, this.state);
+        
+        // Offspring
+        this.offspring.forEach(child => {
+            child.update(dt, this.player, this, this.state);
+        });
     }
 
+    // --- INTERACTION ---
     tryInteract() {
         if (!this.active) return false;
 
+        // Exit Logic
         if (this.uniqueStepCount >= 10000) {
             let tile = this.getLiminalTile(this.player.x, this.player.y);
             if (tile === 'liminal_exit') {
@@ -140,6 +223,7 @@ class LiminalSystem {
             }
         }
 
+        // Locker Logic
         let tile = this.getLiminalTile(this.player.x, this.player.y);
         if (tile === 'liminal_locker') {
             this.toggleHide();
@@ -156,12 +240,7 @@ class LiminalSystem {
         if (this.isHidden) {
             showDialog("Hiding in locker...", 1000);
         } else {
-            if (this.state === 'SEARCH') {
-                this.state = 'HUNT';
-                showDialog("YOU REVEALED YOURSELF!", 2000);
-            } else {
-                showDialog("Stepped out.", 1000);
-            }
+            showDialog("Stepped out.", 1000);
         }
     }
 
@@ -178,8 +257,7 @@ class LiminalSystem {
 
         if (typeof saveGame === 'function') saveGame();
 
-        showDialog("You escaped the void... The phone is gone.", 5000);
-        
+        showDialog("You escaped. The phone is gone.", 5000);
         const mainMusic = document.getElementById('main-music');
         if (mainMusic) mainMusic.play().catch(e=>{});
     }
@@ -195,10 +273,11 @@ class LiminalSystem {
             reason: reason,
             timestamp: Date.now()
         }));
-        alert("FATAL ERROR: ENTITY INTERACTION DETECTED.\nSYSTEM HALTED.");
+        alert("FATAL ERROR: SIGNAL LOST.\n\nCAUSE: " + reason);
         window.location.reload();
     }
 
+    // --- GENERATION ---
     getLiminalTile(x, y) {
         let ix = Math.floor(x);
         let iy = Math.floor(y);
@@ -207,13 +286,14 @@ class LiminalSystem {
              if (Math.abs(ix % 50) === 25 && Math.abs(iy % 50) === 25) return 'liminal_exit';
         }
 
-        let roomX = Math.abs(ix) % 10;
-        let roomY = Math.abs(iy) % 10;
-
+        // Locker every 20 tiles
         if (Math.abs(ix % 20) === 5 && Math.abs(iy % 20) === 5) {
             return 'liminal_locker';
         }
 
+        // Walls (10x10 Grid)
+        let roomX = Math.abs(ix) % 10;
+        let roomY = Math.abs(iy) % 10;
         if (roomX === 0 && roomY !== 5) return 'liminal_wall';
         if (roomY === 0 && roomX !== 5) return 'liminal_wall';
         if (roomX === 5 && roomY === 5) return 'liminal_wall'; 
@@ -230,33 +310,50 @@ class LiminalSystem {
     }
 
     drawEntity(ctx, canvas, tileSize) {
-        if (!this.active || !this.entity.active) return;
+        if (!this.active) return;
 
-        let drawX = (this.entity.x - this.player.x) * tileSize + canvas.width / 2 - tileSize / 2;
-        let drawY = (this.entity.y - this.player.y) * tileSize + canvas.height / 2 - tileSize / 2;
+        // Helper to draw one entity
+        const drawOne = (ent) => {
+            let drawX = (ent.x - this.player.x) * tileSize + canvas.width / 2 - tileSize / 2;
+            let drawY = (ent.y - this.player.y) * tileSize + canvas.height / 2 - tileSize / 2;
 
-        if (this.state === 'HUNT') {
-            drawX += (Math.random() * 4 - 2);
-            drawY += (Math.random() * 4 - 2);
-        }
+            // Don't draw if off screen
+            if (drawX < -50 || drawX > canvas.width + 50 || drawY < -50 || drawY > canvas.height + 50) return;
 
-        let color = 'rgba(0,0,0,0.9)';
-        let eyeColor = '#fff';
+            let color = ent.isParent ? 'rgba(0,0,0,0.95)' : 'rgba(50,0,0,0.8)'; // Main is Black, Kids are Dark Red
+            let eyeColor = '#fff';
 
-        if (this.state === 'HUNT') { color = '#330000'; eyeColor = '#ff0000'; }
-        if (this.state === 'SEARCH') { color = '#331a00'; eyeColor = '#ffa500'; }
+            if (this.state === 'HUNT') { 
+                color = ent.isParent ? '#000' : '#500';
+                eyeColor = '#ff0000'; 
+            }
 
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(drawX + tileSize/2, drawY + tileSize/2, tileSize/2, 0, Math.PI * 2);
-        ctx.fill();
+            // Size scaling
+            const size = ent.size * tileSize;
 
-        ctx.fillStyle = eyeColor;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = eyeColor;
-        ctx.fillRect(drawX + tileSize/3, drawY + tileSize/3, 5, 5);
-        ctx.fillRect(drawX + tileSize/1.5, drawY + tileSize/3, 5, 5);
-        ctx.shadowBlur = 0;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(drawX + tileSize/2, drawY + tileSize/2, size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = eyeColor;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = eyeColor;
+            // Adjust eyes based on size
+            const eyeSize = ent.isParent ? 5 : 3;
+            const eyeOffset = ent.isParent ? tileSize/4 : tileSize/6;
+            
+            ctx.fillRect(drawX + tileSize/2 - eyeOffset, drawY + tileSize/2 - eyeOffset/2, eyeSize, eyeSize);
+            ctx.fillRect(drawX + tileSize/2 + eyeOffset - eyeSize, drawY + tileSize/2 - eyeOffset/2, eyeSize, eyeSize);
+            ctx.shadowBlur = 0;
+        };
+
+        // Draw Main
+        if (this.mainEntity) drawOne(this.mainEntity);
+
+        // Draw Offspring
+        this.offspring.forEach(child => drawOne(child));
     }
 
     getSaveData() {
@@ -266,8 +363,9 @@ class LiminalSystem {
             uniqueStepCount: this.uniqueStepCount,
             visitedTiles: Array.from(this.visitedTiles),
             state: this.state,
-            stateTimer: this.stateTimer,
-            entity: this.entity
+            cycleTimer: this.cycleTimer
+            // We don't save entity positions perfectly to keep file small, 
+            // they will respawn around start or player on load
         };
     }
 
@@ -276,15 +374,20 @@ class LiminalSystem {
         this.hasEscaped = data.hasEscaped || false;
         this.uniqueStepCount = data.uniqueStepCount || 0;
         this.visitedTiles = new Set(data.visitedTiles || []);
-        this.state = data.state || 'MIRROR';
-        this.stateTimer = data.stateTimer || 0;
-        this.entity = data.entity || { x: 0, y: 0, active: false };
+        this.state = data.state || 'PROWL';
+        this.cycleTimer = data.cycleTimer || 0;
 
         if (this.active) {
             document.getElementById('bottom-hud').classList.add('hidden');
             document.getElementById('quest-tracker').classList.add('hidden');
             document.getElementById('hamburger-btn').classList.add('hidden');
             document.body.style.backgroundColor = '#1a1a00';
+            
+            // Respawn entities near player to resume hunt
+            this.mainEntity = new LiminalEntity(50002, 50002, true);
+            this.offspring = [];
+            for(let i=0; i<10; i++) this.offspring.push(new LiminalEntity(50002, 50002, false));
+
             const mainMusic = document.getElementById('main-music');
             if (mainMusic) mainMusic.pause();
         }
