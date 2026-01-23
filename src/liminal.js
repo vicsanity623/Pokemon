@@ -1,115 +1,145 @@
+// A simple Q-Learning Brain
+class QBrain {
+    constructor() {
+        this.qTable = {}; // State -> [Values for Up, Down, Left, Right]
+        this.learningRate = 0.1;
+        this.discountFactor = 0.9;
+        this.explorationRate = 0.2; // 20% chance to do random stuff (to learn)
+    }
+
+    getStateKey(inputs) {
+        return inputs.join(',');
+    }
+
+    getAction(state) {
+        const key = this.getStateKey(state);
+        if (!this.qTable[key]) {
+            this.qTable[key] = [0, 0, 0, 0]; // Initialize
+        }
+
+        // Explore (Random) vs Exploit (Best known move)
+        if (Math.random() < this.explorationRate) {
+            return Math.floor(Math.random() * 4);
+        } else {
+            // Return index of highest value
+            return this.qTable[key].indexOf(Math.max(...this.qTable[key]));
+        }
+    }
+
+    reward(state, action, reward, nextState) {
+        const key = this.getStateKey(state);
+        const nextKey = this.getStateKey(nextState);
+
+        if (!this.qTable[key]) this.qTable[key] = [0, 0, 0, 0];
+        if (!this.qTable[nextKey]) this.qTable[nextKey] = [0, 0, 0, 0];
+
+        const oldVal = this.qTable[key][action];
+        const nextMax = Math.max(...this.qTable[nextKey]);
+
+        // Bellman Equation
+        const newVal = oldVal + this.learningRate * (reward + this.discountFactor * nextMax - oldVal);
+        this.qTable[key][action] = newVal;
+    }
+}
+
 class LiminalEntity {
     constructor(x, y, isParent) {
         this.x = x;
         this.y = y;
         this.isParent = isParent;
         
-        // Physics
-        this.speed = isParent ? 0.040 : 0.055; // Offspring are faster
-        this.size = isParent ? 0.4 : 0.25; // Smaller size to fit in hallways
-        this.vx = 0;
-        this.vy = 0;
+        this.speed = isParent ? 0.040 : 0.060; // Kids are fast
+        this.size = isParent ? 0.4 : 0.25; 
 
-        // "Brain"
-        this.viewDistance = 15;
+        // THE BRAIN
+        this.brain = new QBrain();
+        this.lastState = null;
+        this.lastAction = null;
         this.stuckTimer = 0;
-        this.wanderAngle = Math.random() * Math.PI * 2;
     }
 
     update(dt, player, system, state) {
-        let desiredX = 0;
-        let desiredY = 0;
+        // 1. OBSERVE ENVIRONMENT (Sensors)
+        // Check grid in 4 directions
+        const wallN = system.getLiminalTile(this.x, this.y - 1) === 'liminal_wall' ? 1 : 0;
+        const wallS = system.getLiminalTile(this.x, this.y + 1) === 'liminal_wall' ? 1 : 0;
+        const wallW = system.getLiminalTile(this.x - 1, this.y) === 'liminal_wall' ? 1 : 0;
+        const wallE = system.getLiminalTile(this.x + 1, this.y) === 'liminal_wall' ? 1 : 0;
 
-        // --- 1. BRAIN: DECIDE TARGET ---
-        if (state === 'HUNT') {
-            // Target Player
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist > 0) {
-                desiredX = dx / dist;
-                desiredY = dy / dist;
-            }
+        // Relative direction to player
+        let dx = player.x - this.x;
+        let dy = player.y - this.y;
+        
+        // Quadrant: 0=TL, 1=TR, 2=BL, 3=BR
+        let quadrant = 0;
+        if (dx >= 0 && dy < 0) quadrant = 1;
+        if (dx < 0 && dy >= 0) quadrant = 2;
+        if (dx >= 0 && dy >= 0) quadrant = 3;
+
+        // Hunt Mode Override: If not hunting, randomize target to wander
+        if (state !== 'HUNT') quadrant = Math.floor(Math.random() * 4);
+
+        const currentState = [wallN, wallS, wallW, wallE, quadrant];
+
+        // 2. DECIDE ACTION
+        // 0=Up, 1=Down, 2=Left, 3=Right
+        const action = this.brain.getAction(currentState);
+
+        // 3. EXECUTE ACTION
+        let vx = 0, vy = 0;
+        if (action === 0) vy = -this.speed;
+        if (action === 1) vy = this.speed;
+        if (action === 2) vx = -this.speed;
+        if (action === 3) vx = this.speed;
+
+        const nextX = this.x + vx;
+        const nextY = this.y + vy;
+        let reward = -0.1; // Slight penalty for time passing (encourages speed)
+
+        // 4. CHECK COLLISION & CALCULATE REWARD
+        let hitWall = false;
+        if (this.checkWallCollision(nextX, nextY, system)) {
+            hitWall = true;
+            reward = -10; // BIG PUNISHMENT for hitting wall
+            // Bounce back slightly
+            this.x -= vx * 2;
+            this.y -= vy * 2;
         } else {
-            // PROWL (Wander)
-            // Change direction slowly
-            this.wanderAngle += (Math.random() - 0.5) * 0.5;
-            desiredX = Math.cos(this.wanderAngle);
-            desiredY = Math.sin(this.wanderAngle);
-        }
-
-        // --- 2. COLLISION AVOIDANCE (The "Smart" Part) ---
-        // Look ahead. If wall, apply strong force away from it.
-        const lookAhead = 0.5;
-        const feelers = [
-            {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
-            {x: 0.7, y: 0.7}, {x: -0.7, y: -0.7}, {x: 0.7, y: -0.7}, {x: -0.7, y: 0.7}
-        ];
-
-        let avoidX = 0;
-        let avoidY = 0;
-
-        for (let f of feelers) {
-            // Check grid at feeler position
-            const checkX = this.x + f.x * lookAhead;
-            const checkY = this.y + f.y * lookAhead;
-            
-            // If that spot is a wall...
-            if (system.getLiminalTile(checkX, checkY) === 'liminal_wall') {
-                // Push AWAY from that wall
-                avoidX -= f.x * 2.5; // Strong repulsion
-                avoidY -= f.y * 2.5;
-            }
-        }
-
-        // Combine Desire + Avoidance
-        this.vx += (desiredX + avoidX);
-        this.vy += (desiredY + avoidY);
-
-        // Normalize speed
-        const speedLen = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-        if (speedLen > 0) {
-            this.vx = (this.vx / speedLen) * this.speed;
-            this.vy = (this.vy / speedLen) * this.speed;
-        }
-
-        // --- 3. APPLY MOVEMENT WITH HARD COLLISION CHECK ---
-        const nextX = this.x + this.vx;
-        const nextY = this.y + this.vy;
-
-        // Check if the new spot is valid (Corner checks for size)
-        if (!this.checkWallCollision(nextX, this.y, system)) {
             this.x = nextX;
-        } else {
-            // Hit wall X, slight bounce/slide
-            this.vx *= -0.5;
-        }
-
-        if (!this.checkWallCollision(this.x, nextY, system)) {
             this.y = nextY;
-        } else {
-            // Hit wall Y
-            this.vy *= -0.5;
+            
+            // Reward for getting closer to player
+            const newDist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+            const oldDist = Math.sqrt((player.x - (this.x-vx))**2 + (player.y - (this.y-vy))**2);
+            
+            if (newDist < oldDist) reward += 2; // Good! Closer!
+            else reward -= 1; // Bad! Further!
         }
 
-        // --- 4. PLAYER INTERACTION ---
+        // 5. LEARN
+        // We observe the NEW state after moving to teach the brain
+        // (Simplified: Re-using sensors at new pos would be more accurate but this works for simple AI)
+        if (this.lastState) {
+            this.brain.reward(this.lastState, this.lastAction, reward, currentState);
+        }
+
+        this.lastState = currentState;
+        this.lastAction = action;
+
+        // --- DEATH CHECK ---
         const distToPlayer = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
         if (distToPlayer < 0.6 && !system.isHidden) {
             system.corruptSaveFile("CONSUMED");
         }
     }
 
-    // Returns true if entity body hits a wall
     checkWallCollision(x, y, system) {
-        // Check 4 corners of the entity based on its size
         const points = [
             {cx: x - this.size/2, cy: y - this.size/2},
             {cx: x + this.size/2, cy: y - this.size/2},
             {cx: x - this.size/2, cy: y + this.size/2},
             {cx: x + this.size/2, cy: y + this.size/2}
         ];
-
         for (let p of points) {
             if (system.getLiminalTile(p.cx, p.cy) === 'liminal_wall') return true;
         }
@@ -123,20 +153,19 @@ class LiminalSystem {
         this.world = world;
         this.active = false;
         
-        // --- CYCLE MECHANICS ---
-        this.state = 'PROWL'; // PROWL (60s) <-> HUNT (60s)
-        this.cycleTimer = 0;
-        this.CYCLE_DURATION = 60 * 60; // 60 seconds (in frames approx)
-
-        // Tracking
+        this.state = 'MIRROR';
+        this.stateTimer = 0;
+        
         this.visitedTiles = new Set();
         this.uniqueStepCount = 0;
         this.hasEscaped = false;
-        this.isHidden = false;
 
-        // Entities
+        this.isHidden = false;
+        this.hiddenX = 0;
+        this.hiddenY = 0;
+
         this.mainEntity = null;
-        this.offspring = []; // Array of 10 small ones
+        this.offspring = []; 
     }
 
     enter() {
@@ -154,7 +183,7 @@ class LiminalSystem {
         // Spawn Main Entity
         this.mainEntity = new LiminalEntity(50002 + 8, 50002 + 8, true);
         
-        // Spawn 10 Offspring randomly around
+        // Spawn 10 Offspring randomly
         this.offspring = [];
         for(let i=0; i<10; i++) {
             let ox = 50002 + (Math.random() * 20 - 10);
@@ -162,8 +191,8 @@ class LiminalSystem {
             this.offspring.push(new LiminalEntity(ox, oy, false));
         }
 
-        this.state = 'PROWL';
-        this.cycleTimer = 0;
+        this.state = 'MIRROR';
+        this.stateTimer = 0;
 
         document.getElementById('bottom-hud').classList.add('hidden');
         document.getElementById('quest-tracker').classList.add('hidden');
@@ -182,39 +211,47 @@ class LiminalSystem {
             if (!this.visitedTiles.has(key)) {
                 this.visitedTiles.add(key);
                 this.uniqueStepCount++;
-                if (this.uniqueStepCount % 1000 === 0) showDialog(`Data integrity: ${this.uniqueStepCount / 100}%`, 2000);
-                if (this.uniqueStepCount === 10000) showDialog("THE EXIT HAS OPENED.", 5000);
+                if (this.uniqueStepCount % 1000 === 0) showDialog(`Data recovered: ${this.uniqueStepCount / 100}%`, 2000);
+                if (this.uniqueStepCount === 10000) showDialog("A TEAR IN REALITY HAS OPENED.", 5000);
             }
         }
 
-        // 2. CYCLE STATE MACHINE
-        this.cycleTimer += dt;
-        if (this.cycleTimer > 60) { // Every 60 seconds switch
-            this.cycleTimer = 0;
-            if (this.state === 'PROWL') {
+        // 2. AI STATE MACHINE
+        this.stateTimer += dt;
+
+        if (this.state === 'MIRROR') {
+            if (this.stateTimer > 30) {
                 this.state = 'HUNT';
-                showDialog("THE SWARM IS HUNTING.", 3000);
-            } else {
-                this.state = 'PROWL';
-                showDialog("The swarm is quiet...", 3000);
+                this.stateTimer = 0;
+                showDialog("IT SEES YOU.", 3000);
+            }
+        } 
+        else if (this.state === 'HUNT') {
+            if (this.isHidden) {
+                this.state = 'SEARCH';
+                this.stateTimer = 0;
+                showDialog("It is searching...", 2000);
+            }
+        }
+        else if (this.state === 'SEARCH') {
+            if (this.stateTimer > 40) {
+                this.state = 'MIRROR';
+                this.stateTimer = 0;
+                showDialog("It lost interest... for now.", 3000);
             }
         }
 
-        // 3. UPDATE ENTITIES
-        // Main Entity
+        // 3. UPDATE ENTITIES (Pass DT and State)
         if (this.mainEntity) this.mainEntity.update(dt, this.player, this, this.state);
         
-        // Offspring
         this.offspring.forEach(child => {
             child.update(dt, this.player, this, this.state);
         });
     }
 
-    // --- INTERACTION ---
     tryInteract() {
         if (!this.active) return false;
 
-        // Exit Logic
         if (this.uniqueStepCount >= 10000) {
             let tile = this.getLiminalTile(this.player.x, this.player.y);
             if (tile === 'liminal_exit') {
@@ -223,7 +260,6 @@ class LiminalSystem {
             }
         }
 
-        // Locker Logic
         let tile = this.getLiminalTile(this.player.x, this.player.y);
         if (tile === 'liminal_locker') {
             this.toggleHide();
@@ -240,7 +276,12 @@ class LiminalSystem {
         if (this.isHidden) {
             showDialog("Hiding in locker...", 1000);
         } else {
-            showDialog("Stepped out.", 1000);
+            if (this.state === 'SEARCH') {
+                this.state = 'HUNT';
+                showDialog("YOU REVEALED YOURSELF!", 2000);
+            } else {
+                showDialog("Stepped out.", 1000);
+            }
         }
     }
 
@@ -257,27 +298,34 @@ class LiminalSystem {
 
         if (typeof saveGame === 'function') saveGame();
 
-        showDialog("You escaped. The phone is gone.", 5000);
+        showDialog("You escaped the void... The phone is gone.", 5000);
+        
         const mainMusic = document.getElementById('main-music');
         if (mainMusic) mainMusic.play().catch(e=>{});
     }
 
+    // --- FIX: STOP GAME LOOP BEFORE ALERT ---
     corruptSaveFile(reason) {
+        // 1. KILL THE LOGIC IMMEDIATELY
         this.active = false;
+        
+        // 2. Clear Screen
         const canvas = document.getElementById('gameCanvas');
         canvas.style.opacity = '0';
         document.body.style.backgroundColor = 'black';
         document.getElementById('ui-layer').innerHTML = '';
+        
+        // 3. Write Death to Storage
         localStorage.setItem('poke_save', JSON.stringify({
             status: "CORRUPTED",
             reason: reason,
             timestamp: Date.now()
         }));
-        alert("FATAL ERROR: SIGNAL LOST.\n\nCAUSE: " + reason);
-        window.location.reload();
+
+        // 4. Force reload (using location.replace is cleaner than reload for history)
+        window.location.replace(window.location.href);
     }
 
-    // --- GENERATION ---
     getLiminalTile(x, y) {
         let ix = Math.floor(x);
         let iy = Math.floor(y);
@@ -286,14 +334,13 @@ class LiminalSystem {
              if (Math.abs(ix % 50) === 25 && Math.abs(iy % 50) === 25) return 'liminal_exit';
         }
 
-        // Locker every 20 tiles
+        let roomX = Math.abs(ix) % 10;
+        let roomY = Math.abs(iy) % 10;
+
         if (Math.abs(ix % 20) === 5 && Math.abs(iy % 20) === 5) {
             return 'liminal_locker';
         }
 
-        // Walls (10x10 Grid)
-        let roomX = Math.abs(ix) % 10;
-        let roomY = Math.abs(iy) % 10;
         if (roomX === 0 && roomY !== 5) return 'liminal_wall';
         if (roomY === 0 && roomX !== 5) return 'liminal_wall';
         if (roomX === 5 && roomY === 5) return 'liminal_wall'; 
@@ -312,15 +359,13 @@ class LiminalSystem {
     drawEntity(ctx, canvas, tileSize) {
         if (!this.active) return;
 
-        // Helper to draw one entity
         const drawOne = (ent) => {
             let drawX = (ent.x - this.player.x) * tileSize + canvas.width / 2 - tileSize / 2;
             let drawY = (ent.y - this.player.y) * tileSize + canvas.height / 2 - tileSize / 2;
 
-            // Don't draw if off screen
             if (drawX < -50 || drawX > canvas.width + 50 || drawY < -50 || drawY > canvas.height + 50) return;
 
-            let color = ent.isParent ? 'rgba(0,0,0,0.95)' : 'rgba(50,0,0,0.8)'; // Main is Black, Kids are Dark Red
+            let color = ent.isParent ? 'rgba(0,0,0,0.95)' : 'rgba(50,0,0,0.8)';
             let eyeColor = '#fff';
 
             if (this.state === 'HUNT') { 
@@ -328,7 +373,6 @@ class LiminalSystem {
                 eyeColor = '#ff0000'; 
             }
 
-            // Size scaling
             const size = ent.size * tileSize;
 
             ctx.fillStyle = color;
@@ -336,11 +380,9 @@ class LiminalSystem {
             ctx.arc(drawX + tileSize/2, drawY + tileSize/2, size, 0, Math.PI * 2);
             ctx.fill();
 
-            // Eyes
             ctx.fillStyle = eyeColor;
             ctx.shadowBlur = 10;
             ctx.shadowColor = eyeColor;
-            // Adjust eyes based on size
             const eyeSize = ent.isParent ? 5 : 3;
             const eyeOffset = ent.isParent ? tileSize/4 : tileSize/6;
             
@@ -349,10 +391,7 @@ class LiminalSystem {
             ctx.shadowBlur = 0;
         };
 
-        // Draw Main
         if (this.mainEntity) drawOne(this.mainEntity);
-
-        // Draw Offspring
         this.offspring.forEach(child => drawOne(child));
     }
 
@@ -363,9 +402,9 @@ class LiminalSystem {
             uniqueStepCount: this.uniqueStepCount,
             visitedTiles: Array.from(this.visitedTiles),
             state: this.state,
-            cycleTimer: this.cycleTimer
-            // We don't save entity positions perfectly to keep file small, 
-            // they will respawn around start or player on load
+            stateTimer: this.stateTimer,
+            // Persist AI Brains? For now, we reset them on load to prevent save bloat,
+            // but you could iterate and save this.mainEntity.brain.qTable if you wanted.
         };
     }
 
@@ -374,8 +413,8 @@ class LiminalSystem {
         this.hasEscaped = data.hasEscaped || false;
         this.uniqueStepCount = data.uniqueStepCount || 0;
         this.visitedTiles = new Set(data.visitedTiles || []);
-        this.state = data.state || 'PROWL';
-        this.cycleTimer = data.cycleTimer || 0;
+        this.state = data.state || 'MIRROR';
+        this.stateTimer = data.stateTimer || 0;
 
         if (this.active) {
             document.getElementById('bottom-hud').classList.add('hidden');
@@ -383,8 +422,7 @@ class LiminalSystem {
             document.getElementById('hamburger-btn').classList.add('hidden');
             document.body.style.backgroundColor = '#1a1a00';
             
-            // Respawn entities near player to resume hunt
-            this.mainEntity = new LiminalEntity(50002, 50002, true);
+            this.mainEntity = new LiminalEntity(50002 + 8, 50002 + 8, true);
             this.offspring = [];
             for(let i=0; i<10; i++) this.offspring.push(new LiminalEntity(50002, 50002, false));
 
