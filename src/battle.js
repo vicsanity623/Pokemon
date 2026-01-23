@@ -940,28 +940,38 @@ class BattleSystem {
         }
         this.catchSuccess();
     }
-
-    updateCombo(speciesId, outcome) {
+    
+    // --- NEW COMBO LOGIC ---
+    registerCombo(enemyName, method) {
         if (typeof rpgSystem === 'undefined') return;
 
-        if (outcome === 'run') {
-            // Preserving combo, do nothing specific
-            return;
-        }
+        // Clean the name (remove 'Wild ' or 'Shiny ' or 'Stage X:')
+        let species = enemyName.replace('Wild ', '').replace('Shiny ', '').replace(/STAGE \d+: /, '').trim();
 
-        // Win or Catch
-        // Note: Using strict equality check ID. 
-        // If we want to group "Pidgey" and "Pidgeotto", we need access to evolutionary lines, but exact ID is safer for now.
-        if (rpgSystem.comboSpecies === speciesId) {
-            rpgSystem.comboCount++;
-            showDialog(`Catch Combo: ${rpgSystem.comboCount}!`, 1000);
-        } else {
-            if (rpgSystem.comboCount > 0) showDialog(`Combo Broken...`, 1000);
-            rpgSystem.comboCount = 1;
-            rpgSystem.comboSpecies = speciesId;
+        // 1. LOGIC FOR CATCHING (Updates the Streak)
+        if (method === 'catch') {
+            if (rpgSystem.comboSpecies === species) {
+                // Continuation!
+                rpgSystem.comboCount++;
+                showDialog(`Catch Combo: ${rpgSystem.comboCount} ${species}!`, 2000);
+            } else {
+                // Broken Streak!
+                if (rpgSystem.comboCount > 0) {
+                    showDialog(`Combo Broken! (Caught ${species})`, 2000);
+                }
+                // Start New Streak
+                rpgSystem.comboSpecies = species;
+                rpgSystem.comboCount = 1;
+            }
         }
-        // Force HUD update if we add combo display there later
-        if (typeof updateHUD === 'function') updateHUD();
+        
+        // 2. LOGIC FOR DEFEATING (Preserves the Streak)
+        else if (method === 'defeat') {
+            // We do NOTHING here. The streak remains safe.
+            if (rpgSystem.comboCount > 0) {
+                console.log(`Combo Safe (${rpgSystem.comboCount} ${rpgSystem.comboSpecies})`);
+            }
+        }
     }
 
     async catchSuccess() {
@@ -1000,7 +1010,7 @@ class BattleSystem {
         }
 
         // Update Combo
-        this.updateCombo(this.enemy.id, 'catch');
+        this.registerCombo(this.enemy.name, 'catch');
 
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
@@ -1008,9 +1018,6 @@ class BattleSystem {
     pokemonBtn() { showDialog("You are fighting as a squad! No switching needed."); }
     runBtn() {
         if (this.isAttacking) return;
-
-        // Run preserves combo
-        // this.updateCombo(this.enemy.id, 'run'); 
 
         showDialog('Got away safely!', 2000);
         setTimeout(() => this.endBattle(), 1000);
@@ -1038,7 +1045,7 @@ class BattleSystem {
         showDialog(msg);
 
         // Update Combo
-        this.updateCombo(this.enemy.id, 'win');
+        this.registerCombo(this.enemy.name, 'defeat');
 
         // 3. ANIME XP SEQUENCE
         // A. Add the "Explosive" class to all visible XP bars in the squad list
