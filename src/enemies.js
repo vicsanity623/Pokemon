@@ -70,6 +70,10 @@ class EnemySystem {
                         rpgSystem.hp -= 10;
                         rpgSystem.updateHUD();
                         showDialog("Hit by Shadow Ball!", 1000);
+                        // Screen shake
+                        const canvas = document.getElementById('gameCanvas');
+                        canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
+                        setTimeout(() => canvas.style.transform = 'none', 100);
                     }
                     this.projectiles.splice(i, 1);
                     continue;
@@ -105,6 +109,10 @@ class EnemySystem {
     spawnRandomEnemy() {
         if (this.enemies.length >= this.maxEnemies) return;
 
+        // --- FIX: NO SPAWNS IN LIMINAL SPACE ---
+        if (typeof liminalSystem !== 'undefined' && liminalSystem.active) return;
+        // ---------------------------------------
+
         // Spawn 15-20 tiles away
         const angle = Math.random() * Math.PI * 2;
         const dist = 15 + Math.random() * 5;
@@ -114,7 +122,7 @@ class EnemySystem {
         if (this.world.isBlocked(Math.round(x), Math.round(y))) return;
 
         // Determine Type
-        const isNight = true; // Simplified: Assume always dangerous for now, or check Clock
+        const isNight = true; // Simplified
         const type = Math.random() < 0.7 ? 'skeleton' : 'shadow';
 
         this.enemies.push({
