@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v1.4.7'; // Bumped Version
+const VERSION = 'v1.4.8'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 const canvas = document.getElementById('gameCanvas');
@@ -23,6 +23,31 @@ const mapSystem = new MapSystem(player, world);
 world.init();
 let isPartyOpen = true; // Default to open
 
+// --- OPTIMIZATION VARIABLES ---
+// We use these to throttle heavy logic (AI, HUD updates)
+// so they run 10 times a second instead of 60.
+let lastSlowUpdate = 0; 
+const SLOW_UPDATE_INTERVAL = 100; // 100ms = 10 FPS for logic
+let isTabActive = true;
+
+// DOM Cache (Stores elements so we don't search for them every frame)
+const DOM = {
+    npcPrompt: document.getElementById('npc-prompt'),
+    hudMoney: document.getElementById('hud-money'),
+    hudXpText: document.getElementById('hud-xp-text'),
+    hudXpFill: document.getElementById('hud-xp-fill'),
+    metaLevel: document.getElementById('meta-level') // If you have this
+};
+
+// Visibility Handler (Stops the game processing when you close the app/tab)
+document.addEventListener('visibilitychange', () => {
+    isTabActive = !document.hidden;
+    if (!isTabActive) {
+        if (mainMusic && !mainMusic.paused) mainMusic.pause();
+    } else {
+        if (mainMusic && !liminalSystem.active) mainMusic.play().catch(e => {});
+    }
+});
 // --- AUTO HARVEST VARIABLES ---
 let autoHarvestTarget = null;
 let lastAutoAttackTime = 0;
@@ -167,26 +192,42 @@ function runIntro() {
     }
 }
 
-// Main Loop
+// Main Loop (Optimized)
 let lastTime = 0;
+let lastSlowUpdate = 0;
+const SLOW_UPDATE_INTERVAL = 100; // ms
+
 function gameLoop(timestamp) {
-    if (isPaused) {
+
+    // ============================================================
+    // 1. PAUSE / TAB HIDDEN (Battery Saver)
+    // ============================================================
+    if (isPaused || !isTabActive) {
         lastTime = timestamp;
         requestAnimationFrame(gameLoop);
         return;
     }
 
+    // ============================================================
+    // 2. STORE MODE (Minimal Updates)
+    // ============================================================
     if (storeSystem && storeSystem.isOpen) {
         renderer.draw();
-        updateHUD();
+
+        if (timestamp - lastSlowUpdate > SLOW_UPDATE_INTERVAL) {
+            updateHUD();
+            lastSlowUpdate = timestamp;
+        }
+
         lastTime = timestamp;
         requestAnimationFrame(gameLoop);
         return;
     }
 
-    // Force Render Battle Screen Logic
+    // ============================================================
+    // 3. BATTLE MODE (Battle System Owns Rendering)
+    // ============================================================
     if (battleSystem.isActive) {
-        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -196,195 +237,80 @@ function gameLoop(timestamp) {
         return;
     }
 
-    if (!battleSystem.isActive) {
-        // Smooth Movement Logic
-        let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
-        lastTime = timestamp;
-        if (dt > 0.1) dt = 0.1;
+    // ============================================================
+    // 4. DELTA TIME
+    // ============================================================
+    let dt = ((timestamp - lastTime) / 1000) * gameSpeed;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1;
 
-        // --- PHASE 1-4 SYSTEMS UPDATES ---
+    // ============================================================
+    // PART A: SLOW LOGIC (10 FPS)
+    // ============================================================
+    if (timestamp - lastSlowUpdate > SLOW_UPDATE_INTERVAL) {
+
+        // Heavy Systems
         if (typeof liminalSystem !== 'undefined') liminalSystem.update(dt);
         if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt);
         if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
         if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt);
         if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
-        // ---------------------------
 
-        let dx = 0;
-        let dy = 0;
-
-        if (input.active && (input.joystickVector.x !== 0 || input.joystickVector.y !== 0)) {
-            dx = input.joystickVector.x;
-            dy = input.joystickVector.y;
-        } else {
-            if (input.isDown('ArrowUp')) dy -= 1;
-            if (input.isDown('ArrowDown')) dy += 1;
-            if (input.isDown('ArrowLeft')) dx -= 1;
-            if (input.isDown('ArrowRight')) dx += 1;
-            if (dx !== 0 || dy !== 0) {
-                let len = Math.sqrt(dx * dx + dy * dy);
-                dx /= len;
-                dy /= len;
-            }
-        }
-
-        if (rivalSystem.isPlayerFrozen()) { dx = 0; dy = 0; }
-
-        // --- AUTO HARVEST LOGIC ---
-        // If manual input exists, cancel auto-harvest
-        if (dx !== 0 || dy !== 0) {
-            autoHarvestTarget = null;
-        }
-        // If no manual input, process auto-harvest
-        else if (autoHarvestTarget) {
-            // 1. Check if node still exists
-            if (!resourceSystem.nodes[autoHarvestTarget.key]) {
-                autoHarvestTarget = null; // Done!
-                player.moving = false;
-            } else {
-                // 2. Distance Check
-                const dist = Math.sqrt(Math.pow(autoHarvestTarget.x - player.x, 2) + Math.pow(autoHarvestTarget.y - player.y, 2));
-
-                if (dist > 1.2) {
-                    // WALK TOWARDS
-                    const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
-                    const speed = player.speed * (dt * 60);
-                    player.x += Math.cos(angle) * speed;
-                    player.y += Math.sin(angle) * speed;
-                    player.moving = true;
-                    player.steps += speed; // Count steps
-
-                    // Direction
-                    if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
-                        player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
-                    } else {
-                        player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
-                    }
-                } else {
-                    // ATTACK
-                    player.moving = false;
-
-                    // Face target
-                    const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
-                    if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
-                        player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
-                    } else {
-                        player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
-                    }
-
-                    // Auto-Swing Timer (Every 250ms)
-                    if (timestamp - lastAutoAttackTime > 250) {
-                        lastAutoAttackTime = timestamp;
-                        let dmg = 1;
-                        if (typeof rpgSystem !== 'undefined') dmg = rpgSystem.getDamage();
-                        resourceSystem.checkHit(autoHarvestTarget.x, autoHarvestTarget.y, dmg);
-                    }
-                }
-            }
-        }
-
-        if (dx !== 0 || dy !== 0) {
-            let length = Math.sqrt(dx * dx + dy * dy);
-            if (length > 0) { dx /= length; dy /= length; }
-
-            let moveSpeed = player.speed * (dt * 60);
-            let nextX = player.x + dx * moveSpeed;
-            let nextY = player.y + dy * moveSpeed;
-
-            let targetTile = world.getTile(Math.round(nextX), Math.round(nextY));
-
-            if (!world.isBlocked(Math.round(nextX), Math.round(nextY))) {
-                player.x = nextX;
-                player.y = nextY;
-                player.steps += moveSpeed;
-                player.moving = true;
-
-                let item = world.getItem(Math.round(player.x), Math.round(player.y));
-                if (item) {
-                    world.removeItem(Math.round(player.x), Math.round(player.y));
-                    playSFX('sfx-pickup');
-                    if (player.bag[item]) player.bag[item]++;
-                    else player.bag[item] = 1;
-                    showDialog(`Found a ${item}! (Total: ${player.bag[item]})`, 2000);
-                }
-
-                if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? 'right' : 'left';
-                else player.dir = dy > 0 ? 'down' : 'up';
-
-                if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
-
-                const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
-                if (ENCOUNTER_TILES.includes(targetTile) && Math.random() < 0.08 * moveSpeed) {
-                    const canFight = player.team.length > 0 && player.team.some(p => p.hp > 0);
-                    if (canFight) {
-                        let biomeType = 'grass';
-                        if (targetTile === 'snow_tall') biomeType = 'snow';
-                        if (targetTile === 'sand_tall') biomeType = 'desert';
-                        battleSystem.startBattle(false, 0, false, null, biomeType);
-                    } else {
-                        if (Math.floor(player.steps) % 50 === 0) {
-                            showDialog("Your team is exhausted! Find a Poke Center!", 2000);
-                        }
-                    }
-                }
-            }
-        } else {
-            player.moving = false;
-        }
-
+        // World / Time
         clock.update(player);
         world.updateNPCs();
-        renderer.draw();
+
+        // HUD
         updateHUD();
 
-        // Check NPC proximity
-        let nearbyNPC = world.npcs.find((npc) => {
-            let dist = Math.sqrt(Math.pow(npc.x - player.x, 2) + Math.pow(npc.y - player.y, 2));
-            return dist < 1;
+        // NPC Prompt
+        let npcPrompt = document.getElementById('npc-prompt');
+        let nearbyNPC = world.npcs.find(npc => {
+            let dx = npc.x - player.x;
+            let dy = npc.y - player.y;
+            return (dx * dx + dy * dy) < 1;
         });
 
-        if (nearbyNPC && !battleSystem.isActive) {
-            document.getElementById('npc-prompt').classList.remove('hidden');
+        let nearbyPokeCenter = world.buildings.find(b => {
+            let dx = b.x - player.x;
+            let dy = b.y - player.y;
+            return b.type === 'pokecenter' && (dx * dx + dy * dy) < 2.25;
+        });
+
+        if (nearbyPokeCenter) {
+            npcPrompt.innerText = 'Press A to heal';
+            npcPrompt.classList.remove('hidden');
+        } else if (nearbyNPC) {
+            npcPrompt.innerText = '';
+            npcPrompt.classList.remove('hidden');
         } else {
-            document.getElementById('npc-prompt').classList.add('hidden');
+            npcPrompt.classList.add('hidden');
         }
 
-        // Check Poke Center proximity
-        let nearbyPokeCenter = world.buildings.find((building) => {
-            let dist = Math.sqrt(Math.pow(building.x - player.x, 2) + Math.pow(building.y - player.y, 2));
-            return dist < 1.5 && building.type === 'pokecenter';
-        });
+        // Spawning
+        arenaSystem.checkSpawn(world, clock.gameDays);
+        storeSystem.checkSpawn(world, arenaSystem);
+        if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
 
-        if (nearbyPokeCenter && !battleSystem.isActive) {
-            let prompt = document.getElementById('npc-prompt');
-            prompt.innerText = 'Press A to heal';
-            prompt.classList.remove('hidden');
-        }
-
-        // --- SPAWNING LOGIC ---
-        // Poke Center Spawning
-        if (Math.floor(player.steps) % 300 === 0 && player.steps > player.lastPokeCenterStep + 250 && !world.buildings.some(b => b.type === 'pokecenter')) {
-            let centerX = Math.round(player.x + (Math.random() * 40 - 20));
-            let centerY = Math.round(player.y + (Math.random() * 40 - 20));
-            world.spawnPokeCenter(centerX, centerY);
+        if (
+            Math.floor(player.steps) % 300 === 0 &&
+            player.steps > player.lastPokeCenterStep + 250 &&
+            !world.buildings.some(b => b.type === 'pokecenter')
+        ) {
+            let cx = Math.round(player.x + (Math.random() * 40 - 20));
+            let cy = Math.round(player.y + (Math.random() * 40 - 20));
+            world.spawnPokeCenter(cx, cy);
             player.lastPokeCenterStep = Math.floor(player.steps);
             showDialog('A Poke Center appeared nearby!', 3000);
         }
 
-        // Check Arena Spawn
-        arenaSystem.checkSpawn(world, clock.gameDays);
-        // Check Store Spawn
-        storeSystem.checkSpawn(world, arenaSystem);
-
-        // --- PHASE 5: WORKBENCH SPAWN ---
-        if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
-        // --------------------------------
-
-        // Rival Encounters
-        const elapsedSeconds = Math.floor((Date.now() - clock.startTime + clock.elapsedTime) / 1000);
+        // Rival Logic
+        const elapsedSeconds = Math.floor(
+            (Date.now() - clock.startTime + clock.elapsedTime) / 1000
+        );
         rivalSystem.update(clock.gameDays, world, elapsedSeconds);
 
-        // Blood Moon Logic
+        // Blood Moon / Defense
         if (clock.gameDays > 0 && clock.gameDays % 2 === 0 && !defenseSystem.active) {
             if (defenseSystem.lastRaidDay !== clock.gameDays) {
                 defenseSystem.startRaid();
@@ -396,7 +322,6 @@ function gameLoop(timestamp) {
             try {
                 defenseSystem.update(dt);
             } catch (e) {
-                console.error("Defense Update Crash:", e);
                 defenseSystem.active = false;
                 document.getElementById('raid-hud').classList.add('hidden');
                 document.getElementById('flash-overlay').classList.remove('blood-moon');
@@ -410,7 +335,8 @@ function gameLoop(timestamp) {
                 if (p.eggSteps <= 0) {
                     p.isEgg = false;
                     p.name = p.species;
-                    p.backSprite = p.storedSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+                    p.backSprite = p.storedSprite ||
+                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
                     if (!p.stats) p.stats = generatePokemonStats();
                     p.maxHp = p.level * 5 + p.stats.hp;
                     p.hp = p.maxHp;
@@ -419,10 +345,137 @@ function gameLoop(timestamp) {
                 }
             }
         });
+
+        lastSlowUpdate = timestamp;
     }
+
+    // ============================================================
+    // PART B: FAST LOGIC (60 FPS)
+    // ============================================================
+    let dx = 0;
+    let dy = 0;
+
+    if (input.active && (input.joystickVector.x || input.joystickVector.y)) {
+        dx = input.joystickVector.x;
+        dy = input.joystickVector.y;
+    } else {
+        if (input.isDown('ArrowUp') || input.isDown('w')) dy -= 1;
+        if (input.isDown('ArrowDown') || input.isDown('s')) dy += 1;
+        if (input.isDown('ArrowLeft') || input.isDown('a')) dx -= 1;
+        if (input.isDown('ArrowRight') || input.isDown('d')) dx += 1;
+    }
+
+    if (rivalSystem.isPlayerFrozen()) {
+        dx = 0; dy = 0;
+    }
+
+    // Auto Harvest
+    if (dx !== 0 || dy !== 0) {
+        autoHarvestTarget = null;
+    } else if (autoHarvestTarget) {
+        processAutoHarvest(dt, timestamp);
+    }
+
+    if (dx !== 0 || dy !== 0) {
+        let len = Math.hypot(dx, dy);
+        dx /= len; dy /= len;
+
+        let speed = player.speed * (dt * 60);
+        let nextX = player.x + dx * speed;
+        let nextY = player.y + dy * speed;
+
+        let blocked = world.isBlocked(Math.round(nextX), Math.round(nextY));
+
+        if (!blocked) {
+            player.x = nextX;
+            player.y = nextY;
+            player.steps += speed;
+            player.moving = true;
+
+            if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? 'right' : 'left';
+            else player.dir = dy > 0 ? 'down' : 'up';
+
+            if (Math.floor(player.steps) % 10 === 0) questSystem.update('walk');
+
+            let item = world.getItem(Math.round(player.x), Math.round(player.y));
+            if (item) {
+                world.removeItem(Math.round(player.x), Math.round(player.y));
+                playSFX('sfx-pickup');
+                player.bag[item] = (player.bag[item] || 0) + 1;
+                showDialog(`Found a ${item}!`, 1000);
+            }
+
+            const tile = world.getTile(Math.round(player.x), Math.round(player.y));
+            const ENCOUNTER_TILES = ['grass_tall', 'snow_tall', 'sand_tall'];
+            if (ENCOUNTER_TILES.includes(tile) && Math.random() < 0.08 * speed) {
+                const canFight = player.team.some(p => p.hp > 0);
+                if (canFight) {
+                    let biome = tile === 'snow_tall' ? 'snow' :
+                                tile === 'sand_tall' ? 'desert' : 'grass';
+                    battleSystem.startBattle(false, 0, false, null, biome);
+                }
+            }
+        }
+    } else {
+        if (!autoHarvestTarget) player.moving = false;
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    renderer.draw();
     requestAnimationFrame(gameLoop);
 }
 
+// --- OPTIMIZATION HELPERS ---
+
+function checkProximityPrompts() {
+    // 1. NPC Prompt
+    let nearbyNPC = world.npcs.find(n => Math.abs(n.x - player.x) < 1 && Math.abs(n.y - player.y) < 1);
+    if (DOM.npcPrompt) {
+        if (nearbyNPC) DOM.npcPrompt.classList.remove('hidden');
+        else DOM.npcPrompt.classList.add('hidden');
+    }
+
+    // 2. PokeCenter Prompt
+    let nearbyCenter = world.buildings.find(b => b.type === 'pokecenter' && Math.sqrt(Math.pow(b.x - player.x, 2) + Math.pow(b.y - player.y, 2)) < 1.5);
+    if (DOM.npcPrompt && nearbyCenter) {
+        DOM.npcPrompt.innerText = 'Press A to heal';
+        DOM.npcPrompt.classList.remove('hidden');
+    }
+}
+
+function processAutoHarvest(dt, timestamp) {
+    if (!resourceSystem.nodes[autoHarvestTarget.key]) {
+        autoHarvestTarget = null;
+        player.moving = false;
+        return;
+    }
+
+    const dist = Math.sqrt(Math.pow(autoHarvestTarget.x - player.x, 2) + Math.pow(autoHarvestTarget.y - player.y, 2));
+    
+    if (dist > 1.2) {
+        const angle = Math.atan2(autoHarvestTarget.y - player.y, autoHarvestTarget.x - player.x);
+        const speed = player.speed * (dt * 60);
+        player.x += Math.cos(angle) * speed;
+        player.y += Math.sin(angle) * speed;
+        player.moving = true;
+        
+        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) 
+            player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+        else 
+            player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+            
+    } else {
+        player.moving = false;
+        if (timestamp - lastAutoAttackTime > 250) {
+            lastAutoAttackTime = timestamp;
+            let dmg = 1;
+            if (typeof rpgSystem !== 'undefined') dmg = rpgSystem.getDamage();
+            resourceSystem.checkHit(autoHarvestTarget.x, autoHarvestTarget.y, dmg);
+        }
+    }
+}
 // Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
@@ -1625,35 +1678,25 @@ function loadGame() {
     }
 }
 function updateHUD() {
-    // Money
-    document.getElementById('hud-money').innerText = `$${player.money}`;
+    // 1. Money
+    if (DOM.hudMoney) DOM.hudMoney.innerText = `$${player.money}`;
 
-    // XP (Active Pokemon)
-    if (player.team.length === 0) return; // No Pokemon
+    // 2. XP (Active Pokemon)
+    if (player.team.length > 0) {
+        let p = player.team[0];
+        // Ensure stats exist to prevent crash
+        if (p && typeof p.exp !== 'undefined' && typeof p.level !== 'undefined') {
+            let maxExp = p.level * 100;
+            let pct = (p.exp / maxExp) * 100;
 
-    let p = player.team[0];
-    if (!p || typeof p.exp === 'undefined' || typeof p.level === 'undefined') {
-        // Pokemon missing required properties
-        document.getElementById('hud-xp-text').innerText = 'XP: --';
-        document.getElementById('hud-xp-fill').style.width = '0%';
-        return;
+            if (DOM.hudXpText) DOM.hudXpText.innerText = `XP: ${p.exp} / ${maxExp}`;
+            if (DOM.hudXpFill) DOM.hudXpFill.style.width = `${pct}%`;
+        }
     }
 
-    let maxExp = p.level * 100;
-    let pct = (p.exp / maxExp) * 100;
-
-    document.getElementById('hud-xp-text').innerText =
-        `XP: ${p.exp} / ${maxExp}`;
-    document.getElementById('hud-xp-fill').style.width = `${pct}%`;
-
-    // Update Party Sidebar
-    if (typeof updatePartySidebar === 'function') {
-        updatePartySidebar();
-    }
-
-    if (typeof updateResourceDisplay === 'function') {
-        updateResourceDisplay();
-    }
+    // 3. Sidebars & Resources (These checks are fast, so they are fine here)
+    if (typeof updatePartySidebar === 'function') updatePartySidebar();
+    if (typeof updateResourceDisplay === 'function') updateResourceDisplay();
 }
 
 // --- Main Menu System ---
