@@ -11,7 +11,7 @@ class EnemySystem {
         this.spawnTimer = 0;
 
         // Distance-based scaling constants
-        this.DANGER_ZONE_START = 100; // Enemies start scaling at 100 tiles
+        this.DANGER_ZONE_START = 10; // Enemies start scaling at 100 tiles
         this.DEATH_ZONE = 400; // Maximum recommended distance
         this.MAX_ENEMY_CAP = 50; // Absolute max enemies at extreme distances
     }

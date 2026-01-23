@@ -173,7 +173,7 @@ class MapSystem {
                 }
             });
         }
-        
+
         if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation && typeof liminalSystem !== 'undefined' && !liminalSystem.active) {
             const phoneX = homeSystem.houseLocation.x;
             const phoneY = homeSystem.houseLocation.y + 666;
@@ -186,12 +186,12 @@ class MapSystem {
                 // Draw pulsing red box
                 ctx.fillStyle = '#c0392b'; // Dark Red
                 ctx.fillRect(drawX - scale, drawY - scale, scale * 3, scale * 3);
-                
+
                 // Label
                 ctx.fillStyle = '#fff';
                 ctx.font = `${Math.max(10, scale)}px Arial`;
                 ctx.textAlign = 'center';
-                ctx.fillText("☎️", drawX + scale/2, drawY + scale);
+                ctx.fillText("☎️", drawX + scale / 2, drawY + scale);
             }
         }
 

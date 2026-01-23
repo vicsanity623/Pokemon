@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.0.4'; // Bumped Version
+const VERSION = 'v2.0.8'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -591,25 +591,81 @@ function processAutoHarvest(dt, timestamp) {
 
     // 1.2 distance squared is 1.44
     if (distSq > 1.44) {
-        // WALK TOWARDS
-        const angle = Math.atan2(dy, dx); // We already have dx/dy
+        // --- WALK TOWARDS (WITH COLLISION CHECK) ---
+        const angle = Math.atan2(dy, dx);
         const speed = player.speed * (dt * 60);
-        player.x += Math.cos(angle) * speed;
-        player.y += Math.sin(angle) * speed;
-        player.moving = true;
 
-        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle)))
-            player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
-        else
-            player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+        let nextX = player.x + Math.cos(angle) * speed;
+        let nextY = player.y + Math.sin(angle) * speed;
+
+        // CHECK COLLISION BEFORE MOVING
+        // We use the new circular collision logic we added earlier
+        let blocked = world.isBlocked(Math.round(nextX), Math.round(nextY));
+
+        // If we are blocked by something OTHER than the target resource itself
+        if (blocked) {
+            // Check if the thing blocking us IS the target
+            let tx = Math.round(nextX);
+            let ty = Math.round(nextY);
+            if (`${tx},${ty}` === autoHarvestTarget.key) {
+                blocked = false; // Allow moving closer to target
+            }
+        }
+
+        if (!blocked) {
+            player.x = nextX;
+            player.y = nextY;
+            player.moving = true;
+
+            // Update Direction
+            if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle)))
+                player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+            else
+                player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+        } else {
+            // Path Blocked (Water/Wall) -> Cancel
+            showDialog("Can't reach that!", 1000);
+            autoHarvestTarget = null;
+            player.moving = false;
+        }
 
     } else {
+        // --- ARRIVED: ATTACK LOGIC ---
         player.moving = false;
+
+        // Face target
+        const angle = Math.atan2(dy, dx);
+        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+            player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+        } else {
+            player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+        }
+
+        // Auto-Swing Timer (Every 250ms)
         if (timestamp - lastAutoAttackTime > 250) {
-            lastAutoAttackTime = timestamp;
-            let dmg = 1;
-            if (typeof rpgSystem !== 'undefined') dmg = rpgSystem.getDamage();
-            resourceSystem.checkHit(autoHarvestTarget.x, autoHarvestTarget.y, dmg);
+
+            // --- STAMINA FIX: Check Stamina First ---
+            if (typeof rpgSystem !== 'undefined') {
+                if (rpgSystem.stamina < 10) {
+                    showDialog("Too tired!", 500);
+                    // Don't cancel immediately, wait for regen
+                    return;
+                }
+
+                // Manually deduct stamina since we aren't calling triggerAttack()
+                // (triggerAttack has logic we don't want, like screen shake on every frame)
+                rpgSystem.stamina -= 10;
+                rpgSystem.updateHUD(); // Visual update
+
+                // Play Sound
+                playSFX('sfx-attack1');
+
+                // Apply Damage
+                let dmg = rpgSystem.getDamage();
+                resourceSystem.checkHit(autoHarvestTarget.x, autoHarvestTarget.y, dmg);
+
+                lastAutoAttackTime = timestamp;
+            }
         }
     }
 }

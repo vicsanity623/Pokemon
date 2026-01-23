@@ -44,6 +44,9 @@ class RPGSystem {
     }
 
     takeDamage(amount) {
+        // 1. SAFETY: If we are currently respawning, ignore everything.
+        if (this.isRespawning) return;
+
         const defense = this.getDefense();
         const reduced = Math.max(1, Math.floor(amount * (1 - (defense / 100))));
 
@@ -52,24 +55,54 @@ class RPGSystem {
 
         // Visual Shake
         const canvas = document.getElementById('gameCanvas');
-        canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
-        setTimeout(() => canvas.style.transform = 'none', 100);
+        if (canvas) {
+            canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
+            setTimeout(() => canvas.style.transform = 'none', 100);
+        }
 
+        // 2. DEATH CHECK
         if (this.hp <= 0) {
+            this.hp = 0;
             this.respawn();
         }
     }
 
     respawn() {
-        showDialog("YOU DIED. Respawning at home...", 3000);
+        // 3. PREVENT LOOP: Set flag immediately
+        if (this.isRespawning) return;
+        this.isRespawning = true;
+
+        showDialog("Passed out! Teleported home.", 3000);
+
+        // 4. TELEPORT HOME (Fixed Offset)
+        if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation) {
+            this.player.x = homeSystem.houseLocation.x;
+
+            // FIX: Add +4 to Y to spawn at the door, not inside the wall
+            this.player.y = homeSystem.houseLocation.y + 4;
+        } else {
+            // Fallback
+            this.player.x = 0;
+            this.player.y = 0;
+        }
+
+        // 5. HEAL PLAYER & PARTY
         this.hp = this.maxHp;
         this.stamina = this.maxStamina;
-        if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation) {
-            homeSystem.teleportHome();
-        } else {
-            this.player.x = 0; this.player.y = 0;
+        this.player.moving = false;
+
+        if (this.player.team && this.player.team.length > 0) {
+            this.player.team.forEach(p => {
+                p.hp = p.maxHp;
+            });
         }
+
         this.updateHUD();
+
+        // 6. RESET FLAG
+        setTimeout(() => {
+            this.isRespawning = false;
+        }, 1000);
     }
 
     createHUD() {
@@ -138,9 +171,20 @@ class RPGSystem {
     }
 
     update(dt) {
+        // 1. Stamina Regen
         if (this.stamina < this.maxStamina) this.stamina += dt * 5;
+
+        // 2. Attack Cooldown
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         else this.isAttacking = false;
+
+        // 3. THE FIX: EMERGENCY RESPAWN TRIGGER
+        // This detects if you are stuck at 0 HP and forces the teleport home
+        if (this.hp <= 0 && !this.isRespawning) {
+            console.log("0 HP detected. Respawning...");
+            this.respawn();
+        }
+
         this.updateHUD();
     }
 
