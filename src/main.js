@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.0.3'; // Bumped Version
+const VERSION = 'v2.0.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -60,6 +60,10 @@ document.addEventListener('visibilitychange', () => {
 let autoHarvestTarget = null;
 let lastAutoAttackTime = 0;
 const TILE_SIZE_VISUAL = 64; // Adjust to 32 or 64 if clicks are slightly offset
+
+// --- AUTO ATTACK ENEMY VARIABLES ---
+let autoAttackEnemyTarget = null; // The enemy object being auto-attacked
+let lastEnemyAttackTime = 0;
 
 // Music System
 /** @type {HTMLAudioElement} */
@@ -162,7 +166,30 @@ gameCanvas.addEventListener('pointerdown', (e) => {
     const worldClickX = player.x + (clickX - centerX) / TILE_SIZE_VISUAL;
     const worldClickY = player.y + (clickY - centerY) / TILE_SIZE_VISUAL;
 
-    // 3. Find Resource Node
+    // --- CHECK FOR ENEMY TAP FIRST (Priority over resources) ---
+    if (typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
+        let closestEnemy = null;
+        let closestDist = 1.5; // Max tap detection radius
+
+        for (let enemy of enemySystem.enemies) {
+            const dx = enemy.x - worldClickX;
+            const dy = enemy.y - worldClickY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestEnemy = enemy;
+            }
+        }
+
+        if (closestEnemy) {
+            autoAttackEnemyTarget = closestEnemy;
+            autoHarvestTarget = null; // Cancel harvest if attacking enemy
+            showDialog(`Targeting ${closestEnemy.name}!`, 500);
+            return;
+        }
+    }
+
+    // 3. Find Resource Node (if no enemy was tapped)
     const tx = Math.round(worldClickX);
     const ty = Math.round(worldClickY);
 
@@ -184,9 +211,11 @@ gameCanvas.addEventListener('pointerdown', (e) => {
 
     if (found) {
         autoHarvestTarget = found;
+        autoAttackEnemyTarget = null; // Cancel enemy attack if harvesting
         showDialog("Moving to harvest...", 500);
     } else {
         autoHarvestTarget = null; // Tap empty ground to stop
+        autoAttackEnemyTarget = null; // Also clear enemy target
     }
 });
 
@@ -425,9 +454,14 @@ function gameLoop(timestamp) {
         dx = 0; dy = 0;
     }
 
-    // Auto Harvest
+    // Auto Harvest / Auto Attack Enemy
     if (dx !== 0 || dy !== 0) {
+        // Manual movement cancels all auto-targets
         autoHarvestTarget = null;
+        autoAttackEnemyTarget = null;
+    } else if (autoAttackEnemyTarget) {
+        // Priority: Attack enemy if target exists
+        processAutoAttackEnemy(dt, timestamp);
     } else if (autoHarvestTarget) {
         processAutoHarvest(dt, timestamp);
     }
@@ -579,6 +613,98 @@ function processAutoHarvest(dt, timestamp) {
         }
     }
 }
+
+// --- AUTO ATTACK ENEMY FUNCTION ---
+function processAutoAttackEnemy(dt, timestamp) {
+    // 1. Check if target still exists and is alive
+    if (!autoAttackEnemyTarget) return;
+
+    // Verify enemy is still in the enemies array (wasn't killed)
+    const stillExists = enemySystem.enemies.includes(autoAttackEnemyTarget);
+    if (!stillExists || autoAttackEnemyTarget.hp <= 0) {
+        autoAttackEnemyTarget = null;
+        player.moving = false;
+        return;
+    }
+
+    // 2. Calculate distance to enemy
+    const dx = autoAttackEnemyTarget.x - player.x;
+    const dy = autoAttackEnemyTarget.y - player.y;
+    const distSq = (dx * dx) + (dy * dy);
+
+    // Attack range is 1.5 tiles (squared = 2.25)
+    const ATTACK_RANGE_SQ = 2.25;
+
+    if (distSq > ATTACK_RANGE_SQ) {
+        // WALK TOWARDS ENEMY
+        const angle = Math.atan2(dy, dx);
+        const speed = player.speed * (dt * 60);
+        player.x += Math.cos(angle) * speed;
+        player.y += Math.sin(angle) * speed;
+        player.moving = true;
+
+        // Update player direction to face enemy
+        if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+            player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
+        } else {
+            player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
+        }
+    } else {
+        // IN RANGE - AUTO ATTACK!
+        player.moving = false;
+
+        // Face the enemy
+        if (Math.abs(dx) > Math.abs(dy)) {
+            player.dir = dx > 0 ? 'right' : 'left';
+        } else {
+            player.dir = dy > 0 ? 'down' : 'up';
+        }
+
+        // Attack on interval (200ms = 5 attacks per second, faster than manual)
+        if (timestamp - lastEnemyAttackTime > 200) {
+            lastEnemyAttackTime = timestamp;
+
+            // Check stamina requirement
+            if (typeof rpgSystem !== 'undefined' && rpgSystem.stamina >= 10) {
+                // Consume stamina
+                rpgSystem.stamina -= 10;
+
+                // Get damage
+                const damage = rpgSystem.getDamage();
+
+                // Deal damage directly to the enemy
+                autoAttackEnemyTarget.hp -= damage;
+
+                // Visual feedback
+                playSFX('sfx-attack1');
+                const canvas = document.getElementById('gameCanvas');
+                canvas.style.transform = `translate(${Math.random() * 2 - 1}px, ${Math.random() * 2 - 1}px)`;
+                setTimeout(() => canvas.style.transform = 'none', 50);
+
+                // Knockback effect on enemy
+                const pushAngle = Math.atan2(autoAttackEnemyTarget.y - player.y, autoAttackEnemyTarget.x - player.x);
+                autoAttackEnemyTarget.x += Math.cos(pushAngle) * 0.2;
+                autoAttackEnemyTarget.y += Math.sin(pushAngle) * 0.2;
+
+                // Check if enemy died
+                if (autoAttackEnemyTarget.hp <= 0) {
+                    // Find and kill the enemy properly
+                    const idx = enemySystem.enemies.indexOf(autoAttackEnemyTarget);
+                    if (idx !== -1) {
+                        enemySystem.killEnemy(idx);
+                    }
+                    autoAttackEnemyTarget = null;
+                }
+
+                rpgSystem.updateHUD();
+            } else {
+                // Out of stamina - show feedback
+                showDialog("Out of stamina!", 500);
+            }
+        }
+    }
+}
+
 // Interaction Handler (A Button)
 input.press = (key) => {
     input.keys[key] = true;
