@@ -329,17 +329,22 @@ class LiminalSystem {
         let ix = Math.floor(x);
         let iy = Math.floor(y);
 
+        // --- HARDCODED SAFE LOCKER (Right of Spawn) ---
+        if (ix === 50005 && iy === 50002) return 'liminal_locker';
+        // ----------------------------------------------
+
         if (this.uniqueStepCount >= 10000) {
              if (Math.abs(ix % 50) === 25 && Math.abs(iy % 50) === 25) return 'liminal_exit';
         }
 
-        let roomX = Math.abs(ix) % 10;
-        let roomY = Math.abs(iy) % 10;
-
+        // Standard Locker every 20 tiles
         if (Math.abs(ix % 20) === 5 && Math.abs(iy % 20) === 5) {
             return 'liminal_locker';
         }
-
+        
+        // ... rest of wall logic ...
+        let roomX = Math.abs(ix) % 10;
+        let roomY = Math.abs(iy) % 10;
         if (roomX === 0 && roomY !== 5) return 'liminal_wall';
         if (roomY === 0 && roomX !== 5) return 'liminal_wall';
         if (roomX === 5 && roomY === 5) return 'liminal_wall'; 
