@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.1.4'; // Bumped Version
+const VERSION = 'v2.1.5'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -1997,24 +1997,37 @@ function loadGame() {
         return false;
     }
 }
-function updateHUD() {
-    // 1. Money
-    if (DOM.hudMoney) DOM.hudMoney.innerText = `$${player.money}`;
 
-    // 2. XP (Active Pokemon)
+// Variables to track last known values
+let lastMoney = -1;
+let lastXP = -1;
+
+function updateHUD() {
+    // 1. Money - Only update if changed
+    if (DOM.hudMoney && player.money !== lastMoney) {
+        DOM.hudMoney.innerText = `$${player.money}`;
+        lastMoney = player.money;
+    }
+
+    // 2. XP - Only update if changed
     if (player.team.length > 0) {
         let p = player.team[0];
-        // Ensure stats exist to prevent crash
         if (p && typeof p.exp !== 'undefined' && typeof p.level !== 'undefined') {
-            let maxExp = p.level * 100;
-            let pct = (p.exp / maxExp) * 100;
+            // Check if XP actually changed to avoid layout thrashing
+            if (p.exp !== lastXP) {
+                let maxExp = p.level * 100;
+                let pct = (p.exp / maxExp) * 100;
 
-            if (DOM.hudXpText) DOM.hudXpText.innerText = `XP: ${p.exp} / ${maxExp}`;
-            if (DOM.hudXpFill) DOM.hudXpFill.style.width = `${pct}%`;
+                if (DOM.hudXpText) DOM.hudXpText.innerText = `XP: ${p.exp} / ${maxExp}`;
+                if (DOM.hudXpFill) DOM.hudXpFill.style.width = `${pct}%`;
+                
+                lastXP = p.exp;
+            }
         }
     }
 
-    // 3. Sidebars & Resources (These checks are fast, so they are fine here)
+    // 3. Sidebars & Resources
+    // These functions now handle their own optimization check internally
     if (typeof updatePartySidebar === 'function') updatePartySidebar();
     if (typeof updateResourceDisplay === 'function') updateResourceDisplay();
 }
@@ -2649,32 +2662,31 @@ function updatePartySidebar() {
     sb.appendChild(listContainer);
 }
 
-// --- RESOURCE HUD DISPLAY (Integrated) ---
-function updateResourceDisplay() {
-    // 1. Find the container INSIDE the RPG HUD
-    const resContainer = document.getElementById('rpg-resources');
+// --- OPTIMIZED RESOURCE HUD ---
+// 1. Define list OUTSIDE the function so it's created only once
+const RESOURCE_TRACK_LIST = {
+    'Wood': '🌲', 'Stone': '🪨', 'Coal': '⚫', 
+    'Iron Ore': '🔩', 'Gold Ore': '🧈', 'Obsidian': '🔮', 
+    'Bone': '🦴', 'Shadow Essence': '👻', 'Berry': '🍒'
+};
 
-    // If HUD hasn't been built yet, stop (it will run again next frame)
+let lastResourceHTML = ""; // Memory of what we drew last time
+
+function updateResourceDisplay() {
+    const resContainer = document.getElementById('rpg-resources');
     if (!resContainer) return;
 
-    // 2. Hide if in Battle (Clean UI)
+    // 2. Hide if in Battle
     if (typeof battleSystem !== 'undefined' && battleSystem.isActive) {
-        resContainer.style.display = 'none';
+        if (resContainer.style.display !== 'none') resContainer.style.display = 'none';
         return;
     }
 
-    // 3. Define Resources
-    const trackList = {
-        'Wood': '🌲', 'Stone': '🪨', 'Coal': '⚫',
-        'Iron Ore': '🔩', 'Gold Ore': '🧈', 'Obsidian': '🔮',
-        'Bone': '🦴', 'Shadow Essence': '👻', 'Berry': '🍒'
-    };
-
-    // 4. Build HTML
+    // 3. Build HTML String
     let html = '';
     let hasResources = false;
 
-    for (let [item, icon] of Object.entries(trackList)) {
+    for (let [item, icon] of Object.entries(RESOURCE_TRACK_LIST)) {
         const count = player.bag[item] || 0;
         if (count > 0) {
             html += `<span>${icon} ${count}</span>`;
@@ -2682,12 +2694,17 @@ function updateResourceDisplay() {
         }
     }
 
-    // 5. Render
-    if (hasResources) {
+    // 4. THE LAG FIX: Only touch the DOM if the text is different!
+    if (html !== lastResourceHTML) {
         resContainer.innerHTML = html;
-        resContainer.style.display = 'flex'; // Unhide it
-    } else {
-        resContainer.style.display = 'none'; // Keep hidden if empty
+        lastResourceHTML = html;
+        
+        // Handle Visibility
+        if (hasResources) {
+            if (resContainer.style.display !== 'flex') resContainer.style.display = 'flex';
+        } else {
+            if (resContainer.style.display !== 'none') resContainer.style.display = 'none';
+        }
     }
 }
 
