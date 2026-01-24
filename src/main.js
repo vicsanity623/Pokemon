@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.0.6'; // Bumped Version
+const VERSION = 'v3.0.7'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -243,22 +243,31 @@ gameCanvas.addEventListener('pointerdown', (e) => {
 
 // Intro Story
 const introText = [
-    'Year 20XX...',
-    'The world has fallen.',
+    'Year 20XX... The world has fallen.',
     'You wake up alone.',
+    'Gather resources like Wood and Stone.', // Added instruction
+    'Find a Workbench to craft weapons.',   // Added instruction
+    'Explore carefully to find hidden secrets.', // Added instruction
     'Take your Pokeballs.',
+    'Build your team.',
+    'Breed & Merge to create powerful Pokemon.',
+    'Defend and protect against endless enemies.',
+    '. . . . don’t go too far.',
     'Survive.'
+    '. . .',
+    'Tap the star next to any Pokemom to create a Guardian.',
 ];
 let introIndex = 0;
 
 function runIntro() {
     if (introIndex < introText.length) {
+        // I increased the time slightly to 3000 (3 seconds) so people can read the longer text
         showDialog(introText[introIndex], 0);
         introIndex++;
-        setTimeout(runIntro, 2500);
+        setTimeout(runIntro, 3000); 
     } else {
         hideDialog();
-        showDialog('Use D-Pad to move. Tap A to interact.', 3000);
+        showDialog('Tap to interact .', 3000);
         questSystem.generate();
     }
 }
