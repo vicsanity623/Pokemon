@@ -21,6 +21,7 @@ const resourceSystem = new ResourceSystem(player, world);
 const enemySystem = new EnemySystem(player, world);
 const craftingSystem = new CraftingSystem(player);
 const mapSystem = new MapSystem(player, world);
+const multiplayerSystem = new MultiplayerSystem(player);
 world.init();
 let isPartyOpen = true; // Default to open
 
@@ -358,6 +359,8 @@ function gameLoop(timestamp) {
     // 1. Update Player Movement (Calculations moved below)
 
     // 2. Update Systems that need smooth movement/projectiles
+    // Send my position to friend
+if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
     if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
     if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
     if (typeof defenseSystem !== 'undefined' && defenseSystem.active) {
