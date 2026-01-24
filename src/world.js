@@ -648,6 +648,11 @@ class Renderer {
         this.world.npcs.forEach(npc => {
             renderList.push({ type: 'npc', y: npc.y, data: npc });
         });
+        
+        // Add Other Player (Multiplayer)
+        if (typeof multiplayerSystem !== 'undefined' && multiplayerSystem.otherPlayer.active) {
+            renderList.push({ type: 'multiplayer', y: multiplayerSystem.otherPlayer.y, data: null });
+        }
 
         // 3. Add Player
         renderList.push({ type: 'player', y: this.player.y, data: this.player });
@@ -706,6 +711,7 @@ class Renderer {
             else if (item.type === 'resource') this.drawResource(item.data);
             else if (item.type === 'crop') this.drawCrop(item.data);
             else if (item.type === 'enemy') this.drawEnemy(item.data);
+            else if (item.type === 'multiplayer') multiplayerSystem.draw(this.ctx, this.canvas, this.player);
         });
 
         this.drawOverlays();
