@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.1.3'; // Bumped Version
+const VERSION = 'v2.1.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -1496,7 +1496,6 @@ function handleNPCInteraction(npc) {
 }
 
 // Init
-// Init
 window.onload = async () => {
     const rawSave = localStorage.getItem('poke_save');
     if (rawSave) {
@@ -1521,17 +1520,18 @@ window.onload = async () => {
     // Start Loading Assets
     await assetLoader.loadAll();
 
-    // --- CHECK FOR SAVE GAME ---
     if (!loadGame()) {
-        console.log("Creating Fresh World with Safe Zone...");
+        console.log("New Game: clearing spawn area...");
 
-        // 1. SET SPAWN TO CENTER
+        // 1. FORCE PLAYER TO CENTER (0,0)
         player.x = 0;
         player.y = 0;
 
-        // 2. GIVE STARTERS
+        // 2. ORIGINAL STARTER LOGIC
         const starterStats = generatePokemonStats();
         const starterMaxHp = 5 * 5 + starterStats.hp;
+
+        // Pikachu 1
         player.team.push({
             name: 'PIKACHU',
             level: 5,
@@ -1543,7 +1543,7 @@ window.onload = async () => {
             stats: starterStats
         });
 
-        // Second starter for breeding
+        // Pikachu 2 (Different Stats for breeding test)
         const p2Stats = generatePokemonStats();
         const p2MaxHp = 5 * 5 + p2Stats.hp;
         player.team.push({
@@ -1557,11 +1557,13 @@ window.onload = async () => {
             stats: p2Stats
         });
 
-        // 3. GENERATE THE CHAOTIC WORLD FIRST
+        runIntro();
+        
+        // 3. GENERATE RESOURCES (Trees/Rocks)
         resourceSystem.generate();
 
-        // --- THE BULLDOZER: CLEAR 50 TILE RADIUS ---
-        // This ensures the start area is pristine
+        // 4. CLEAN THE SAFE ZONE (The Fix)
+        // This runs AFTER generation to wipe the center clean
         const SAFE_RADIUS = 25; // 25 radius = 50 tiles wide
 
         for (let y = -SAFE_RADIUS; y <= SAFE_RADIUS; y++) {
@@ -1576,69 +1578,66 @@ window.onload = async () => {
                     }
 
                     // B. FORCE GRASS TILES (Remove Water/Tall Grass)
-                    // We try to access the map directly. If world.map exists:
+                    // Checks if map is stored in world.map or world.tiles
                     if (world.map) world.map[key] = 'grass';
-                    // If world.tiles exists:
                     else if (world.tiles) world.tiles[key] = 'grass';
                     
-                    // Also clear items on the ground in this area
+                    // C. DELETE GROUND ITEMS
                     if (world.items && world.items[key]) delete world.items[key];
                 }
             }
         }
 
-        // 4. CLEAR ENEMIES IN SAFE ZONE
-        if (enemySystem && enemySystem.enemies) {
+        // 5. REMOVE ENEMIES FROM SAFE ZONE
+        if (typeof enemySystem !== 'undefined' && enemySystem.enemies) {
             enemySystem.enemies = enemySystem.enemies.filter(e => {
                 const dist = Math.sqrt(e.x*e.x + e.y*e.y);
-                return dist > SAFE_RADIUS; // Keep only enemies outside radius
+                // Only keep enemies that are FARTHER than safe radius
+                return dist > SAFE_RADIUS;
             });
         }
 
-        // 5. SPAWN HOUSE IN CENTER
-        homeSystem.spawnHouse(world, 0, -4);
-
-        // 6. SPAWN 3 STARTER NPCs
-        // Clear existing random NPCs first if you want total isolation
-        world.npcs = []; 
-        
-        // Add the 3 essentials
-        world.npcs.push(new NPC(3, 3, "Guide", "talk", "Welcome! Stay in the grass safe zone until you are strong."));
-        world.npcs.push(new NPC(-3, 3, "Healer", "talk", "I can't heal you yet, but the House has a bed!"));
-        world.npcs.push(new NPC(4, -2, "Merchant", "talk", "I'm setting up shop soon."));
-
-        runIntro();
-    } 
-
-    // Safe spawn check (Fail-safe)
-    if (world.isBlocked(Math.round(player.x), Math.round(player.y))) {
-        player.x = 0; 
-        player.y = 0;
+    } else {
+        // Welcomes are now handled inside loadGame internally
     }
+
+    // Spawn player's house at exact center
+    homeSystem.spawnHouse(world, 0, -4);
 
     requestAnimationFrame(gameLoop);
 
     // Initialize Music
-    const mainMusic = document.getElementById('main-music');
-    const battleMusic = document.getElementById('battle-music');
+    const mainMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('main-music')
+    );
+    const battleMusic = /** @type {HTMLAudioElement} */ (
+        document.getElementById('battle-music')
+    );
 
     if (mainMusic && battleMusic) {
         mainMusic.volume = musicVolume;
         battleMusic.volume = musicVolume;
 
+        // Start main music (with autoplay handling)
+        mainMusic.play().catch((err) => {
+            console.log('Autoplay blocked. Music will start on first user interaction.');
+            document.addEventListener('click', () => {
+                if (mainMusic.paused) mainMusic.play();
+            }, { once: true });
+        });
+    }
+
+    if (mainMusic && battleMusic) {
+        // Only play music if NOT in Liminal Space
         if (!liminalSystem.active) {
-            mainMusic.play().catch((err) => {
-                document.addEventListener('click', () => {
-                    if (mainMusic.paused) mainMusic.play();
-                }, { once: true });
-            });
+            mainMusic.play().catch((err) => {});
         }
     }
 
     // Auto-Save every 30s
     setInterval(saveGame, 30000);
 
-    // Register Service Worker
+    // Register Service Worker with AUTO-UPDATE Logic
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
         navigator.serviceWorker.register('./sw.js').then(registration => {
             registration.update();
@@ -1646,7 +1645,8 @@ window.onload = async () => {
                 const newWorker = registration.installing;
                 newWorker.onstatechange = () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                         window.location.reload();
+                        showDialog("Update found! Reloading...", 2000);
+                        setTimeout(() => window.location.reload(), 2000);
                     }
                 };
             };
@@ -1654,11 +1654,10 @@ window.onload = async () => {
         navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
     }
 
-    // Item Respawn Timer
+    // --- ITEM RESPAWN TIMER ---
     setInterval(() => {
         if (world && player) {
-            // Respawn items far away from player so safe zone doesn't get cluttered
-            // We use simple math to push them out
+            // Respawn items slightly further away so they don't clutter the safe house
             let rx = player.x + (Math.random() > 0.5 ? 25 : -25) + (Math.random() * 10);
             let ry = player.y + (Math.random() > 0.5 ? 25 : -25) + (Math.random() * 10);
             world.respawnItem(rx, ry);
