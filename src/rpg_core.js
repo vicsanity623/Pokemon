@@ -161,7 +161,7 @@ class RPGSystem {
     update(dt) {
         // 1. Stamina Regen (Now scales with level so big bars fill in same time)
         // Base rate 20 + (Level * 2)
-        const regenRate = 20 + (this.level * 2);
+        const regenRate = 28 + (this.level * 2);
         
         if (this.stamina < this.maxStamina) this.stamina += dt * regenRate;
         if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
