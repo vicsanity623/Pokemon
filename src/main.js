@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.0.0'; // Bumped Version
+const VERSION = 'v3.0.5'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -72,12 +72,20 @@ const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main
 const battleMusic = /** @type {HTMLAudioElement} */ (document.getElementById('battle-music'));
 let musicVolume = 0.5; // 50% default volume
 
-// Sound Effect Helper
+// --- OPTIMIZED SFX CACHE ---
+const sfxCache = {};
+
 function playSFX(id) {
-    const sfx = /** @type {HTMLAudioElement} */ (document.getElementById(id));
+    // Only search the DOM once per sound, then remember it
+    if (!sfxCache[id]) {
+        sfxCache[id] = document.getElementById(id);
+    }
+    
+    const sfx = sfxCache[id];
     if (sfx) {
+        // Reset and play immediately
         sfx.currentTime = 0;
-        sfx.play().catch(e => { });
+        sfx.play().catch(e => { /* Ignore auto-play errors */ });
     }
 }
 
@@ -684,7 +692,7 @@ function processAutoHarvest(dt, timestamp) {
     }
 }
 
-// --- AUTO ATTACK ENEMY FUNCTION ---
+// --- AUTO ATTACK ENEMY FUNCTION (FIXED) ---
 function processAutoAttackEnemy(dt, timestamp) {
     // 1. Check if target still exists and is alive
     if (!autoAttackEnemyTarget) return;
@@ -713,7 +721,6 @@ function processAutoAttackEnemy(dt, timestamp) {
         player.y += Math.sin(angle) * speed;
         player.moving = true;
 
-        // Update player direction to face enemy
         if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
             player.dir = Math.cos(angle) > 0 ? 'right' : 'left';
         } else {
@@ -723,33 +730,24 @@ function processAutoAttackEnemy(dt, timestamp) {
         // IN RANGE - AUTO ATTACK!
         player.moving = false;
 
-        // Face the enemy
         if (Math.abs(dx) > Math.abs(dy)) {
             player.dir = dx > 0 ? 'right' : 'left';
         } else {
             player.dir = dy > 0 ? 'down' : 'up';
         }
 
-        // Attack on interval (200ms = 5 attacks per second, faster than manual)
         if (timestamp - lastEnemyAttackTime > 200) {
             lastEnemyAttackTime = timestamp;
 
-            // Check stamina requirement
             if (typeof rpgSystem !== 'undefined' && rpgSystem.stamina >= 10) {
-                // Consume stamina
                 rpgSystem.stamina -= 10;
-
-                // Get damage
                 const damage = rpgSystem.getDamage();
-
-                // Deal damage directly to the enemy
+                
                 autoAttackEnemyTarget.hp -= damage;
 
-                // Visual feedback
+                // --- FIX: REMOVED CSS SCREEN SHAKE HERE ---
+                // The lines accessing canvas.style.transform were causing the pause.
                 playSFX('sfx-attack1');
-                const canvas = document.getElementById('gameCanvas');
-                canvas.style.transform = `translate(${Math.random() * 2 - 1}px, ${Math.random() * 2 - 1}px)`;
-                setTimeout(() => canvas.style.transform = 'none', 50);
 
                 // Knockback effect on enemy
                 const pushAngle = Math.atan2(autoAttackEnemyTarget.y - player.y, autoAttackEnemyTarget.x - player.x);
@@ -758,7 +756,6 @@ function processAutoAttackEnemy(dt, timestamp) {
 
                 // Check if enemy died
                 if (autoAttackEnemyTarget.hp <= 0) {
-                    // Find and kill the enemy properly
                     const idx = enemySystem.enemies.indexOf(autoAttackEnemyTarget);
                     if (idx !== -1) {
                         enemySystem.killEnemy(idx);
@@ -768,8 +765,10 @@ function processAutoAttackEnemy(dt, timestamp) {
 
                 rpgSystem.updateHUD();
             } else {
-                // Out of stamina - show feedback
-                showDialog("Out of stamina!", 500);
+                // Prevent dialog spam
+                if(!document.getElementById('dialog-box') || document.getElementById('dialog-box').classList.contains('hidden')) {
+                    showDialog("Out of stamina!", 500);
+                }
             }
         }
     }
