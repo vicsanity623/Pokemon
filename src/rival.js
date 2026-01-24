@@ -14,8 +14,8 @@ class RivalSystem {
         // State machine
         this.state = 'idle'; // idle, intro, approaching, exiting
         this.rivalPosition = null; // {x, y}
-        this.approachSpeed = 0.08; 
-        this.walkSpeed = 0.06; 
+        this.approachSpeed = 0.20; 
+        this.walkSpeed = 0.16; 
         this.exitDirection = 1; 
 
         this.hasHadIntro = false;
