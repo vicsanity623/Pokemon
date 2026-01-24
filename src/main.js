@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.0.9'; // Bumped Version
+const VERSION = 'v2.1.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -2668,7 +2668,7 @@ function setupTouchInteractions() {
     const touchCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
 
     touchCanvas.addEventListener('pointerdown', (e) => {
-        // Ignore if touching buttons
+        // Ignore if touching UI buttons
         const target = /** @type {Element} */ (e.target);
         if (target && target.closest && target.closest('.action-btn')) return;
 
@@ -2683,7 +2683,35 @@ function setupTouchInteractions() {
         const worldX = player.x + (clickX - centerX) / TILE_SIZE;
         const worldY = player.y + (clickY - centerY) / TILE_SIZE;
 
-        // 1. CHECK WORKBENCH TOUCH ONLY
+        /* ------------------------------------------------------------------
+           0. NPC TAP CHECK (HIGHEST PRIORITY)
+           ------------------------------------------------------------------ */
+        if (typeof npcSystem !== 'undefined' && npcSystem.npcs) {
+            for (const npc of npcSystem.npcs) {
+                if (!npc || !npc.x || !npc.y) continue;
+
+                const dx = Math.abs(worldX - npc.x);
+                const dy = Math.abs(worldY - npc.y);
+
+                // NPC touch radius (slightly forgiving for mobile)
+                if (dx < 1.2 && dy < 1.2) {
+                    e.stopPropagation();
+
+                    // Trigger dialogue instantly
+                    if (typeof npc.interact === 'function') {
+                        npc.interact();
+                    } else if (typeof startDialogue === 'function') {
+                        startDialogue(npc);
+                    }
+
+                    return; // 🔒 Prevent auto-harvest / rock interaction
+                }
+            }
+        }
+
+        /* ------------------------------------------------------------------
+           1. WORKBENCH TOUCH
+           ------------------------------------------------------------------ */
         if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
             const wb = craftingSystem.workbenchLocation;
             if (Math.abs(worldX - wb.x) < 1.5 && Math.abs(worldY - wb.y) < 1.5) {
@@ -2697,6 +2725,8 @@ function setupTouchInteractions() {
                 }
             }
         }
+
+        // NOTE: Auto-harvest / rock logic continues elsewhere as normal
     });
 }
 
