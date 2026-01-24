@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v2.1.0'; // Bumped Version
+const VERSION = 'v2.1.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -150,73 +150,61 @@ window.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') input.release('start');
 });
 
-// --- TAP TO HARVEST INPUT ---
-const gameCanvas = document.getElementById('gameCanvas');
+// --- SMART TOUCH INTERACTION (REPLACES ALL POINTERDOWN LISTENERS) ---
 gameCanvas.addEventListener('pointerdown', (e) => {
-    // 1. Ignore clicks if menus are open
     if (storeSystem.isOpen || isPaused || document.getElementById('crafting-ui')) return;
 
-    // 2. Calculate World Coordinates
     const rect = gameCanvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    const worldClickX = player.x + (e.clientX - rect.left - rect.width / 2) / TILE_SIZE_VISUAL;
+    const worldClickY = player.y + (e.clientY - rect.top - rect.height / 2) / TILE_SIZE_VISUAL;
 
-    const worldClickX = player.x + (clickX - centerX) / TILE_SIZE_VISUAL;
-    const worldClickY = player.y + (clickY - centerY) / TILE_SIZE_VISUAL;
-
-    // --- CHECK FOR ENEMY TAP FIRST (Priority over resources) ---
-    if (typeof enemySystem !== 'undefined' && enemySystem.enemies.length > 0) {
-        let closestEnemy = null;
-        let closestDist = 1.5; // Max tap detection radius
-
-        for (let enemy of enemySystem.enemies) {
-            const dx = enemy.x - worldClickX;
-            const dy = enemy.y - worldClickY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closestEnemy = enemy;
-            }
+    // 1. PRIORITY: Check for NPC Tap
+    const nearbyNPC = world.npcs.find(n => Math.hypot(n.x - worldClickX, n.y - worldClickY) < 1.2);
+    if (nearbyNPC) {
+        // Only talk if player is physically near the NPC too
+        if (Math.hypot(player.x - nearbyNPC.x, player.y - nearbyNPC.y) < 2.5) {
+            handleNPCInteraction(nearbyNPC);
+            autoHarvestTarget = null;
+            autoAttackEnemyTarget = null;
+            return; // 🔒 Stop event here
         }
+    }
 
-        if (closestEnemy) {
-            autoAttackEnemyTarget = closestEnemy;
-            autoHarvestTarget = null; // Cancel harvest if attacking enemy
-            showDialog(`Targeting ${closestEnemy.name}!`, 500);
+    // 2. PRIORITY: Check for Building Tap (PokeCenter, Arena, Home)
+    const nearbyBuilding = world.buildings.find(b => Math.hypot(b.x - worldClickX, b.y - worldClickY) < 1.5);
+    if (nearbyBuilding) {
+        if (Math.hypot(player.x - nearbyBuilding.x, player.y - nearbyBuilding.y) < 2.5) {
+            if (nearbyBuilding.type === 'pokecenter') handlePokeCenterInteraction();
+            else if (nearbyBuilding.type === 'arena') arenaSystem.enter();
+            else if (nearbyBuilding.type === 'home' || homeSystem.isNearHome(player.x, player.y)) homeSystem.interact();
             return;
         }
     }
 
-    // 3. Find Resource Node (if no enemy was tapped)
-    const tx = Math.round(worldClickX);
-    const ty = Math.round(worldClickY);
-
-    // Check exact tile and neighbors (for easier mobile tapping)
-    const candidates = [
-        `${tx},${ty}`,
-        `${tx + 1},${ty}`, `${tx - 1},${ty}`,
-        `${tx},${ty + 1}`, `${tx},${ty - 1}`
-    ];
-
-    let found = null;
-    for (let key of candidates) {
-        if (resourceSystem.nodes[key]) {
-            const parts = key.split(',');
-            found = { x: parseInt(parts[0]), y: parseInt(parts[1]), key: key };
-            break;
+    // 3. Check for Enemies
+    if (typeof enemySystem !== 'undefined') {
+        const enemy = enemySystem.enemies.find(en => Math.hypot(en.x - worldClickX, en.y - worldClickY) < 1.2);
+        if (enemy) {
+            autoAttackEnemyTarget = enemy;
+            autoHarvestTarget = null;
+            return;
         }
     }
 
-    if (found) {
-        autoHarvestTarget = found;
-        autoAttackEnemyTarget = null; // Cancel enemy attack if harvesting
-        showDialog("Moving to harvest...", 500);
-    } else {
-        autoHarvestTarget = null; // Tap empty ground to stop
-        autoAttackEnemyTarget = null; // Also clear enemy target
+    // 4. Resource Node (Auto-Harvest)
+    const tx = Math.round(worldClickX), ty = Math.round(worldClickY);
+    const candidates = [`${tx},${ty}`, `${tx+1},${ty}`, `${tx-1},${ty}`, `${tx},${ty+1}`, `${tx},${ty-1}`];
+    for (let key of candidates) {
+        if (resourceSystem.nodes[key]) {
+            const parts = key.split(',').map(Number);
+            autoHarvestTarget = { x: parts[0], y: parts[1], key: key };
+            autoAttackEnemyTarget = null;
+            return;
+        }
     }
+
+    autoHarvestTarget = null;
+    autoAttackEnemyTarget = null;
 });
 
 // Intro Story
@@ -762,7 +750,7 @@ function processAutoAttackEnemy(dt, timestamp) {
 }
 
 // Interaction Handler (A Button)
-input.press = (key) => {
+if (key === 'Enter' || key === 'a' || key === 'start') {
     input.keys[key] = true;
 
     // If a menu is open, don't allow world interactions
@@ -2661,77 +2649,6 @@ function updateResourceDisplay() {
         resContainer.style.display = 'none'; // Keep hidden if empty
     }
 }
-
-// --- NEW: TOUCH INTERACTION HANDLER ---
-function setupTouchInteractions() {
-    /** @type {HTMLCanvasElement} */
-    const touchCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
-
-    touchCanvas.addEventListener('pointerdown', (e) => {
-        // Ignore if touching UI buttons
-        const target = /** @type {Element} */ (e.target);
-        if (target && target.closest && target.closest('.action-btn')) return;
-
-        // Calculate Click World Coordinates
-        const rect = touchCanvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-
-        const centerX = touchCanvas.width / 2;
-        const centerY = touchCanvas.height / 2;
-
-        const worldX = player.x + (clickX - centerX) / TILE_SIZE;
-        const worldY = player.y + (clickY - centerY) / TILE_SIZE;
-
-        /* ------------------------------------------------------------------
-           0. NPC TAP CHECK (HIGHEST PRIORITY)
-           ------------------------------------------------------------------ */
-        if (typeof npcSystem !== 'undefined' && npcSystem.npcs) {
-            for (const npc of npcSystem.npcs) {
-                if (!npc || !npc.x || !npc.y) continue;
-
-                const dx = Math.abs(worldX - npc.x);
-                const dy = Math.abs(worldY - npc.y);
-
-                // NPC touch radius (slightly forgiving for mobile)
-                if (dx < 1.2 && dy < 1.2) {
-                    e.stopPropagation();
-
-                    // Trigger dialogue instantly
-                    if (typeof npc.interact === 'function') {
-                        npc.interact();
-                    } else if (typeof startDialogue === 'function') {
-                        startDialogue(npc);
-                    }
-
-                    return; // 🔒 Prevent auto-harvest / rock interaction
-                }
-            }
-        }
-
-        /* ------------------------------------------------------------------
-           1. WORKBENCH TOUCH
-           ------------------------------------------------------------------ */
-        if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
-            const wb = craftingSystem.workbenchLocation;
-            if (Math.abs(worldX - wb.x) < 1.5 && Math.abs(worldY - wb.y) < 1.5) {
-                const dist = Math.sqrt((wb.x - player.x) ** 2 + (wb.y - player.y) ** 2);
-                if (dist < 3.0) {
-                    e.stopPropagation();
-                    craftingSystem.interact();
-                    return;
-                } else {
-                    showDialog("Too far away!", 1000);
-                }
-            }
-        }
-
-        // NOTE: Auto-harvest / rock logic continues elsewhere as normal
-    });
-}
-
-// Call this initialization function
-setupTouchInteractions();
 
 function teleportToLiminal() {
     if (homeSystem && homeSystem.houseLocation) {
