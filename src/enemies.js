@@ -109,16 +109,19 @@ class EnemySystem {
             this.spawnTimer = 0;
         }
 
-        // 2. Update Enemies
+        // 2. Update Enemies (Optimized)
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i];
 
             // Movement AI (Chase Player)
             const dx = this.player.x - e.x;
             const dy = this.player.y - e.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            // OPTIMIZATION: Use Squared Distance to avoid Sqrt for simple checks
+            const distSq = dx * dx + dy * dy;
 
-            if (dist < 10) {
+            if (distSq < 100) { // 10 * 10 = 100
+                // We only do real sqrt if we are actually moving
+                const dist = Math.sqrt(distSq);
                 if (dist > 0.8) {
                     e.vx = (dx / dist) * e.speed; // Store velocity for prediction
                     e.vy = (dy / dist) * e.speed;
@@ -138,14 +141,14 @@ class EnemySystem {
             // Cooldowns
             if (e.attackCooldown > 0) e.attackCooldown -= dt;
 
-            // Shadow Pokemon Ranged Attack
-            if (e.type === 'shadow' && dist < 6 && e.attackCooldown <= 0) {
+            // Shadow Pokemon Ranged Attack (6 tiles = 36 sq)
+            if (e.type === 'shadow' && distSq < 36 && e.attackCooldown <= 0) {
                 this.shootProjectile(e, 'enemy'); // Pass type
                 e.attackCooldown = 3.0;
             }
         }
 
-        // 3. Update Projectiles (Collision Logic)
+        // 3. Update Projectiles (Collision Logic Optimized)
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             let p = this.projectiles[i];
             p.x += p.vx * dt;
@@ -154,42 +157,51 @@ class EnemySystem {
 
             // CHECK: Enemy Projectile vs Player
             if (p.source === 'enemy') {
-                const dist = Math.sqrt(Math.pow(this.player.x - p.x, 2) + Math.pow(this.player.y - p.y, 2));
-                if (dist < 0.5) {
-                    if (typeof rpgSystem !== 'undefined') {
-                        // Scale projectile damage with distance and player level
-                        const baseDamage = 10;
-                        const scaledDamage = Math.floor(baseDamage * this.getDistanceStatMultiplier() * this.getPlayerLevelMultiplier());
-                        rpgSystem.hp -= scaledDamage;
-                        rpgSystem.updateHUD();
-                        showDialog(`Hit by Shadow Ball! (-${scaledDamage} HP)`, 1000);
-                        // Screen shake
-                        const canvas = document.getElementById('gameCanvas');
-                        canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
-                        setTimeout(() => canvas.style.transform = 'none', 100);
+                const dx = this.player.x - p.x;
+                const dy = this.player.y - p.y;
+                
+                // Pre-check with simple math (bounding box) to avoid Sqrt
+                if (Math.abs(dx) < 0.8 && Math.abs(dy) < 0.8) {
+                     const distSq = dx * dx + dy * dy;
+                     if (distSq < 0.25) { // 0.5 * 0.5
+                        if (typeof rpgSystem !== 'undefined') {
+                            const baseDamage = 10;
+                            const scaledDamage = Math.floor(baseDamage * this.getDistanceStatMultiplier() * this.getPlayerLevelMultiplier());
+                            rpgSystem.hp -= scaledDamage;
+                            rpgSystem.updateHUD();
+                            showDialog(`Hit by Shadow Ball! (-${scaledDamage} HP)`, 1000);
+                            const canvas = document.getElementById('gameCanvas');
+                            if(canvas) {
+                                canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
+                                setTimeout(() => canvas.style.transform = 'none', 100);
+                            }
+                        }
+                        this.projectiles.splice(i, 1);
+                        continue;
                     }
-                    this.projectiles.splice(i, 1);
-                    continue;
                 }
             }
             // CHECK: Guardian Projectile vs Enemies
             else if (p.source === 'guardian') {
                 for (let j = this.enemies.length - 1; j >= 0; j--) {
                     let e = this.enemies[j];
-                    const dist = Math.sqrt(Math.pow(e.x - p.x, 2) + Math.pow(e.y - p.y, 2));
+                    const dx = e.x - p.x;
+                    const dy = e.y - p.y;
 
-                    // Hit Enemy!
-                    if (dist < 0.8) {
-                        e.hp -= p.damage;
-                        // Visual knockback
-                        e.x += p.vx * 0.1;
-                        e.y += p.vy * 0.1;
+                    // Bounding box pre-check
+                    if (Math.abs(dx) < 1.0 && Math.abs(dy) < 1.0) {
+                        const distSq = dx * dx + dy * dy;
+                        // Hit Enemy! (0.8 * 0.8 = 0.64)
+                        if (distSq < 0.64) {
+                            e.hp -= p.damage;
+                            e.x += p.vx * 0.1;
+                            e.y += p.vy * 0.1;
 
-                        // Particle effect would go here
-                        if (e.hp <= 0) this.killEnemy(j);
+                            if (e.hp <= 0) this.killEnemy(j);
 
-                        this.projectiles.splice(i, 1); // Remove bullet
-                        break; // Stop checking enemies for this bullet
+                            this.projectiles.splice(i, 1); // Remove bullet
+                            break; // Stop checking enemies for this bullet
+                        }
                     }
                 }
                 if (this.projectiles[i] === undefined) continue; // Bullet removed
