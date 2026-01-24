@@ -749,15 +749,15 @@ function processAutoAttackEnemy(dt, timestamp) {
     }
 }
 
-// Interaction Handler (A Button)
-if (key === 'Enter' || key === 'a' || key === 'start') {
+// --- FIXED INTERACTION HANDLER ---
+input.press = (key) => {
     input.keys[key] = true;
 
-    // If a menu is open, don't allow world interactions
+    // 1. If a menu is open, don't allow world interactions
     if (storeSystem.isOpen || isPaused) return;
 
-    if (key === 'Enter') {
-        // 'A' button mapped to Enter
+    // 2. Map all interaction keys (A button, Enter, Start) to the same logic
+    if (key === 'Enter' || key === 'a' || key === 'start') {
 
         // --- 0. CHECK LIMINAL INTERACTIONS (Priority) ---
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
@@ -766,11 +766,9 @@ if (key === 'Enter' || key === 'a' || key === 'start') {
 
         // 1. Check for nearby Poke Center (PRIORITY)
         let nearbyPokeCenter = world.buildings.find((building) => {
-            let dist = Math.sqrt(
-                Math.pow(building.x - player.x, 2) +
-                Math.pow(building.y - player.y, 2)
-            );
-            return dist < 1.5 && building.type === 'pokecenter';
+            let dx = building.x - player.x;
+            let dy = building.y - player.y;
+            return (dx * dx + dy * dy) < 2.25 && building.type === 'pokecenter';
         });
 
         if (nearbyPokeCenter) {
@@ -780,7 +778,6 @@ if (key === 'Enter' || key === 'a' || key === 'start') {
 
         // 2. Check for nearby Home (PRIORITY)
         if (homeSystem.isNearHome(player.x, player.y)) {
-            // Heal Player RPG Stats too
             if (typeof rpgSystem !== 'undefined') {
                 rpgSystem.hp = rpgSystem.maxHp;
                 rpgSystem.stamina = rpgSystem.maxStamina;
@@ -792,11 +789,9 @@ if (key === 'Enter' || key === 'a' || key === 'start') {
 
         // 3. Check for nearby Arena
         let nearbyArena = world.buildings.find((building) => {
-            let dist = Math.sqrt(
-                Math.pow(building.x - player.x, 2) +
-                Math.pow(building.y - player.y, 2)
-            );
-            return dist < 1.5 && building.type === 'arena';
+            let dx = building.x - player.x;
+            let dy = building.y - player.y;
+            return (dx * dx + dy * dy) < 2.25 && building.type === 'arena';
         });
 
         if (nearbyArena) {
@@ -808,18 +803,19 @@ if (key === 'Enter' || key === 'a' || key === 'start') {
         if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
             const doorY = homeSystem.houseLocation.y + 666;
-            const dist = Math.sqrt(Math.pow(doorX - player.x, 2) + Math.pow(doorY - player.y, 2));
-            if (dist < 1.5) {
+            let dx = doorX - player.x;
+            let dy = doorY - player.y;
+            if ((dx * dx + dy * dy) < 2.25) {
                 if (confirm("Answer the call?")) liminalSystem.enter();
                 return;
             }
         }
 
         // 4.5 Check Dungeon Entrance (Phase 6)
-        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.hasSpawned) {
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem && dungeonSystem.hasSpawned) {
             const dx = dungeonSystem.entrance.x - player.x;
             const dy = dungeonSystem.entrance.y - player.y;
-            if (Math.sqrt(dx * dx + dy * dy) < 1.5) {
+            if ((dx * dx + dy * dy) < 2.25) {
                 if (confirm("Enter the Dungeon? High Level Recommended!")) dungeonSystem.enter();
                 return;
             }
@@ -838,15 +834,18 @@ if (key === 'Enter' || key === 'a' || key === 'start') {
 
         // 6. Check for nearby Store
         if (storeSystem.location) {
-            let dist = Math.sqrt(
-                Math.pow(storeSystem.location.x - player.x, 2) +
-                Math.pow(storeSystem.location.y - player.y, 2)
-            );
-            if (dist < 1.5) {
+            let dx = storeSystem.location.x - player.x;
+            let dy = storeSystem.location.y - player.y;
+            if ((dx * dx + dy * dy) < 2.25) {
                 storeSystem.interact();
                 return;
             }
         }
+    }
+
+    // Handle Bag Toggle
+    if (key === 'b') {
+        togglePlayerBag();
     }
 };
 
