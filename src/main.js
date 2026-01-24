@@ -151,12 +151,38 @@ window.addEventListener('keyup', (e) => {
 });
 
 // --- SMART TOUCH INTERACTION (REPLACES ALL POINTERDOWN LISTENERS) ---
+const gameCanvas = document.getElementById('gameCanvas');
 gameCanvas.addEventListener('pointerdown', (e) => {
+    // 1. Ignore clicks if menus are open
     if (storeSystem.isOpen || isPaused || document.getElementById('crafting-ui')) return;
 
+    // 2. Calculate World Coordinates
     const rect = gameCanvas.getBoundingClientRect();
-    const worldClickX = player.x + (e.clientX - rect.left - rect.width / 2) / TILE_SIZE_VISUAL;
-    const worldClickY = player.y + (e.clientY - rect.top - rect.height / 2) / TILE_SIZE_VISUAL;
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const worldClickX = player.x + (clickX - centerX) / TILE_SIZE_VISUAL;
+    const worldClickY = player.y + (clickY - centerY) / TILE_SIZE_VISUAL;
+
+    // --- NEW: CHECK WORKBENCH FIRST ---
+    if (typeof craftingSystem !== 'undefined' && craftingSystem.workbenchLocation) {
+        const wb = craftingSystem.workbenchLocation;
+        // Check if tap is close to workbench (radius 1.5 tiles)
+        if (Math.abs(worldClickX - wb.x) < 1.5 && Math.abs(worldClickY - wb.y) < 1.5) {
+            // Distance Check from Player
+            const dist = Math.sqrt(Math.pow(wb.x - player.x, 2) + Math.pow(wb.y - player.y, 2));
+            if (dist < 3.0) { // Allow range of 3
+                craftingSystem.interact();
+                return; // Stop here, don't auto-harvest
+            } else {
+                showDialog("Too far from Workbench!", 1000);
+                // Optionally: Walk to it (Advanced logic), but for now just tell player
+                return;
+            }
+        }
+    }
 
     // 1. PRIORITY: Check for NPC Tap
     const nearbyNPC = world.npcs.find(n => Math.hypot(n.x - worldClickX, n.y - worldClickY) < 1.2);
