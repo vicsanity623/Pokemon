@@ -32,8 +32,8 @@ class CraftingSystem {
         if (this.hasSpawned) return;
         if (!homeSystem.houseLocation) return;
         
-        // --- CHANGED: Moved 10 tiles right ---
-        let wx = homeSystem.houseLocation.x + 10; 
+        // --- CHANGED: Moved 5 tiles right ---
+        let wx = homeSystem.houseLocation.x + 5; 
         // -------------------------------------
         
         let wy = homeSystem.houseLocation.y;
