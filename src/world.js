@@ -596,34 +596,28 @@ class Renderer {
                 this.ctx.fillRect(Math.floor(drawX), Math.floor(drawY), TILE_SIZE + 1, TILE_SIZE + 1);
 
                 // 2. Procedural Texture (Optimized: 1 detail per tile, Bitwise Math)
-                // This replaces the heavy loops you had before.
                 const seed = (worldX * 73856093) ^ (worldY * 19349663);
 
                 if (tile === 'grass' || tile === 'grass_tall') {
-                    // Simple grass blade
                     this.ctx.fillStyle = (tile === 'grass_tall') ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)';
                     let ox = (seed & 15) * 4; 
                     let oy = ((seed >> 4) & 15) * 4;
                     this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 4, 4);
                     
                     if (tile === 'grass_tall') {
-                        // Tall grass block
                         this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 10, TILE_SIZE - 20, TILE_SIZE - 20);
                     }
                 } else if (tile === 'water') {
-                    // Simple animated water
                     if ((Date.now() >> 8) % 2 === (seed & 1)) {
                         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                         this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 10, 10, 2);
                     }
                 } else if (tile === 'sand') {
-                    // Simple sand dot
                     this.ctx.fillStyle = '#FBC02D';
                     let ox = (seed & 15) * 4; 
                     let oy = ((seed >> 4) & 15) * 4;
                     this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 3, 3);
                 } else if (tile === 'snow') {
-                    // Simple snow patch
                     this.ctx.fillStyle = '#FFFFFF';
                     this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 10, 20, 10);
                 }
@@ -663,20 +657,31 @@ class Renderer {
             renderList.push({ type: 'guardian', y: guardianSystem.entity.y, data: guardianSystem });
         }
 
-        // 6. Add Resources
+        // 6. Add Resources (FIXED)
         if (typeof resourceSystem !== 'undefined') {
             // Optimization: Only add resources that are ON SCREEN
             const range = VIEW_W + 2; 
             for (let key in resourceSystem.nodes) {
                 const node = resourceSystem.nodes[key];
-                if (Math.abs(node.x - this.player.x) < range && Math.abs(node.y - this.player.y) < range) {
-                    renderList.push({ type: 'resource', y: node.y, data: { ...node, x: node.x, y: node.y } });
+                
+                // --- FIX STARTS HERE ---
+                // We MUST parse the key to get x/y, because node.x doesn't exist
+                const [nx, ny] = key.split(',').map(Number);
+                
+                // View Culling using the parsed coordinates
+                if (Math.abs(nx - this.player.x) < range && Math.abs(ny - this.player.y) < range) {
+                    // Inject x and y into the data object for drawing
+                    renderList.push({ type: 'resource', y: ny, data: { ...node, x: nx, y: ny } });
                 }
+                // --- FIX ENDS HERE ---
             }
+            
             for (let key in resourceSystem.crops) {
                 const crop = resourceSystem.crops[key];
-                if (Math.abs(crop.x - this.player.x) < range && Math.abs(crop.y - this.player.y) < range) {
-                    renderList.push({ type: 'crop', y: crop.y, data: { ...crop, x: crop.x, y: crop.y } });
+                // Same fix for crops
+                const [cx, cy] = key.split(',').map(Number);
+                if (Math.abs(cx - this.player.x) < range && Math.abs(cy - this.player.y) < range) {
+                    renderList.push({ type: 'crop', y: cy, data: { ...crop, x: cx, y: cy } });
                 }
             }
         }
