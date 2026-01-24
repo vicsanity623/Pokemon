@@ -248,14 +248,14 @@ const introText = [
     'Gather resources like Wood and Stone.', // Added instruction
     'Find a Workbench to craft weapons.',   // Added instruction
     'Explore carefully to find hidden secrets.', // Added instruction
-    'Take your Pokeballs.',
+    'Take your Pokéballs.',
     'Build your team.',
-    'Breed & Merge to create powerful Pokemon.',
+    'Breed & Merge to create powerful Pokémon.',
     'Defend and protect against endless enemies.',
     '. . . . don’t go too far.',
-    'Survive.'
+    'Survive.',
     '. . .',
-    'Tap the star next to any Pokemom to create a Guardian.',
+    'Tap the star next to any Pokémon to create a Guardian.',
 ];
 let introIndex = 0;
 
