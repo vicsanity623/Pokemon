@@ -3,16 +3,21 @@ class RPGSystem {
         this.player = player;
 
         // Stats
-        this.hp = 100;
-        this.maxHp = 100;
-        this.stamina = 100;
-        this.maxStamina = 100;
-        this.xp = 0;
         this.level = 1;
+        this.maxHp = 100;
+        this.hp = 100;
+        
+        // --- STAMINA SCALING ---
+        // Base 100 + (Level * 10)
+        // Level 1 = 110, Level 10 = 200
+        this.maxStamina = 100 + (this.level * 10);
+        this.stamina = this.maxStamina;
+        
+        this.xp = 0;
 
         // Catch Combo
         this.comboCount = 0;
-        this.comboSpecies = null; // ID of the Pokemon being chained
+        this.comboSpecies = null; 
 
         // Combat
         this.isAttacking = false;
@@ -20,9 +25,9 @@ class RPGSystem {
 
         // Equipment Slots
         this.equipment = {
-            weapon: null, // { name, damage, id }
-            armor: null,  // { name, defense, id }
-            accessory: null // { name, effect, id }
+            weapon: null, 
+            armor: null, 
+            accessory: null 
         };
 
         this.createHUD();
@@ -44,7 +49,6 @@ class RPGSystem {
     }
 
     takeDamage(amount) {
-        // 1. SAFETY: If we are currently respawning, ignore everything.
         if (this.isRespawning) return;
 
         const defense = this.getDefense();
@@ -68,27 +72,26 @@ class RPGSystem {
     }
 
     respawn() {
-        // 3. PREVENT LOOP: Set flag immediately
         if (this.isRespawning) return;
         this.isRespawning = true;
 
         showDialog("Passed out! Teleported home.", 3000);
 
-        // 4. TELEPORT HOME (Fixed Offset)
         if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation) {
             this.player.x = homeSystem.houseLocation.x;
-
-            // FIX: Add +4 to Y to spawn at the door, not inside the wall
             this.player.y = homeSystem.houseLocation.y + 4;
         } else {
-            // Fallback
             this.player.x = 0;
             this.player.y = 0;
         }
 
         // 5. HEAL PLAYER & PARTY
         this.hp = this.maxHp;
+        
+        // --- RECALCULATE MAX STAMINA ON RESPAWN ---
+        this.maxStamina = 100 + (this.level * 10);
         this.stamina = this.maxStamina;
+        
         this.player.moving = false;
 
         if (this.player.team && this.player.team.length > 0) {
@@ -99,22 +102,18 @@ class RPGSystem {
 
         this.updateHUD();
 
-        // 6. RESET FLAG
         setTimeout(() => {
             this.isRespawning = false;
         }, 1000);
     }
 
     createHUD() {
-        // Remove existing if any (prevents duplicates on reload)
         const existing = document.getElementById('rpg-hud');
         if (existing) existing.remove();
 
         const hud = document.createElement('div');
         hud.id = 'rpg-hud';
         hud.style.position = 'absolute';
-
-        // --- POSITIONING ---
         hud.style.top = '10px';
         hud.style.left = '50%';
         hud.style.transform = 'translateX(-50%)';
@@ -127,33 +126,22 @@ class RPGSystem {
             <div style="margin-bottom:5px; color:white; text-shadow:1px 1px 0 #000; text-align:center;">
                 <span id="rpg-name">Player</span> Lv.<span id="rpg-level">1</span>
             </div>
-            
-            <!-- HP BAR (Red) -->
             <div style="width:100%; height:12px; background:#333; border:2px solid #000; margin-bottom:2px; position:relative;">
                 <div id="rpg-hp-bar" style="width:100%; height:100%; background:#e74c3c; transition:width 0.2s;"></div>
             </div>
-
-            <!-- XP BAR (Blue) -->
             <div style="width:100%; height:6px; background:#333; border:2px solid #000; margin-bottom:2px; position:relative;">
                 <div id="rpg-xp-bar" style="width:0%; height:100%; background:#3498db; transition:width 0.2s;"></div>
             </div>
-
-            <!-- STAMINA BAR (Yellow) -->
             <div style="width:100%; height:8px; background:#333; border:2px solid #000;">
                 <div id="rpg-stamina-bar" style="width:100%; height:100%; background:#f1c40f; transition:width 0.2s;"></div>
             </div>
-            
-            <!-- Gear Display -->
             <div id="rpg-gear" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">
                 Wpn: Fists | Arm: None
             </div>
-
-            <!-- NEW: Resource Row (NOW WITH BACKGROUND) -->
             <div id="rpg-resources" style="margin-top: 4px; border-top: 1px dashed #555; background-color: rgba(0, 0, 0, 0.7); border-radius: 4px; padding: 4px; display: none; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #000;"></div>
         `;
         document.body.appendChild(hud);
 
-        // Check if button exists before adding (prevent duplicates)
         if (!document.getElementById('btn-attack')) {
             const btn = document.createElement('div');
             btn.id = 'btn-attack';
@@ -171,15 +159,18 @@ class RPGSystem {
     }
 
     update(dt) {
-        // 1. Stamina Regen
-        if (this.stamina < this.maxStamina) this.stamina += dt * 5;
+        // 1. Stamina Regen (Now scales with level so big bars fill in same time)
+        // Base rate 20 + (Level * 2)
+        const regenRate = 20 + (this.level * 2);
+        
+        if (this.stamina < this.maxStamina) this.stamina += dt * regenRate;
+        if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
 
         // 2. Attack Cooldown
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         else this.isAttacking = false;
 
-        // 3. THE FIX: EMERGENCY RESPAWN TRIGGER
-        // This detects if you are stuck at 0 HP and forces the teleport home
+        // 3. EMERGENCY RESPAWN
         if (this.hp <= 0 && !this.isRespawning) {
             console.log("0 HP detected. Respawning...");
             this.respawn();
@@ -195,13 +186,14 @@ class RPGSystem {
         this.stamina -= 10;
         this.attackCooldown = 0.4;
 
-        // Visual
         const canvas = document.getElementById('gameCanvas');
-        canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
-        setTimeout(() => canvas.style.transform = 'none', 100);
+        if(canvas) {
+            canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
+            setTimeout(() => canvas.style.transform = 'none', 100);
+        }
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        // HIT DETECTION (Wide Sweep)
+        // HIT DETECTION
         const targets = [];
         const px = Math.round(this.player.x);
         const py = Math.round(this.player.y);
@@ -213,7 +205,6 @@ class RPGSystem {
 
         const damage = this.getDamage();
 
-        // 1. Resources
         if (typeof resourceSystem !== 'undefined') {
             for (let t of targets) {
                 const hit = resourceSystem.checkHit(t.x, t.y, damage);
@@ -221,7 +212,6 @@ class RPGSystem {
             }
         }
 
-        // 2. Enemies
         if (typeof enemySystem !== 'undefined') {
             for (let t of targets) {
                 const hitEnemy = enemySystem.checkHit(t.x, t.y, damage);
@@ -231,10 +221,9 @@ class RPGSystem {
     }
 
     updateHUD() {
+        // Calculate percentages
         const hpPct = Math.max(0, (this.hp / this.maxHp) * 100);
         const stamPct = Math.max(0, (this.stamina / this.maxStamina) * 100);
-
-        // --- XP CALCULATION ---
         const xpNeeded = this.level * 100;
         const xpPct = Math.min(100, Math.max(0, (this.xp / xpNeeded) * 100));
 
@@ -244,27 +233,21 @@ class RPGSystem {
         const lvlText = document.getElementById('rpg-level');
         const gearText = document.getElementById('rpg-gear');
 
-        // Safety check if HUD exists
         if (hpBar) hpBar.style.width = `${hpPct}%`;
         if (xpBar) xpBar.style.width = `${xpPct}%`;
         if (stamBar) stamBar.style.width = `${stamPct}%`;
 
-        // --- NEW: COMBO DISPLAY IN LEVEL TEXT ---
         if (lvlText) {
             if (this.comboCount > 0) {
-                // Shows: Lv.13 🔥5
                 lvlText.innerHTML = `${this.level} <span style="color:#f1c40f; margin-left:5px;">Combo🔥${this.comboCount}</span>`;
             } else {
                 lvlText.innerText = this.level.toString();
             }
         }
-        // ----------------------------------------
 
         if (gearText) {
             const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
             const aName = this.equipment.armor ? this.equipment.armor.name : "None";
-
-            // We use innerHTML to create a colored background box
             gearText.innerHTML = `
                 <div style="background-color: rgba(0, 0, 0, 0.7); padding: 2px 8px; border-radius: 4px; display: inline-block; color: #fff;">
                     Wpn: <span style="color:#e74c3c">${wName}</span> | Arm: <span style="color:#3498db">${aName}</span>
@@ -279,13 +262,19 @@ class RPGSystem {
             this.level++;
             this.xp = 0;
             this.maxHp += 10;
+            
+            // --- STAMINA LEVEL UP ---
+            this.maxStamina = 100 + (this.level * 10);
+            
+            // Fully Heal on Level Up
             this.hp = this.maxHp;
+            this.stamina = this.maxStamina;
+            
             showDialog(`Player Level Up! (Lv.${this.level})`, 2000);
         }
-        this.updateHUD(); // Ensure bar updates immediately
+        this.updateHUD();
     }
 
-    // --- EQUIPMENT METHODS ---
     equip(item, type) {
         this.equipment[type] = item;
         showDialog(`Equipped ${item.name}!`, 1000);
@@ -295,7 +284,6 @@ class RPGSystem {
     equipById(itemId) {
         if (typeof craftingSystem === 'undefined') return;
 
-        // --- NEW SUFFIX LOGIC ---
         let baseId = itemId;
         let suffix = null;
 
@@ -310,19 +298,17 @@ class RPGSystem {
         const itemData = craftingSystem.RECIPES.find(r => r.id === baseId);
         if (!itemData) return;
 
-        // Create a Copy to modify stats without affecting global recipe
         const equippedItem = { ...itemData };
-        equippedItem.id = itemId; // Store the full ID (e.g. sword_iron_rare)
+        equippedItem.id = itemId; 
 
-        // Apply Boosts
         if (suffix === 'rare') {
             equippedItem.name = `Rare ${itemData.name}`;
-            equippedItem.color = '#3498db'; // Rare Blue
+            equippedItem.color = '#3498db'; 
             if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 1.25);
             if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 1.25);
         } else if (suffix === 'legendary') {
             equippedItem.name = `Legendary ${itemData.name}`;
-            equippedItem.color = '#f1c40f'; // Gold
+            equippedItem.color = '#f1c40f'; 
             if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 2.0);
             if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 2.0);
         }
@@ -372,6 +358,11 @@ class RPGSystem {
         this.maxHp = data.maxHp || 100;
         this.xp = data.xp || 0;
         this.level = data.level || 1;
+        
+        // --- RECALCULATE MAX STAMINA ON LOAD ---
+        this.maxStamina = 100 + (this.level * 10);
+        this.stamina = this.maxStamina;
+        
         this.equipment = data.equipment || { weapon: null, armor: null, accessory: null };
         this.comboCount = data.comboCount || 0;
         this.comboSpecies = data.comboSpecies || null;
