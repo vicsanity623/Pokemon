@@ -47,6 +47,7 @@ class World {
     initItems() {
         // Randomly scatter items
         let masterBallsSpawned = 0;
+        const SAFE_RADIUS_SQ = 625; // 25^2 = 625 (Safe Zone Radius)
 
         for (let i = 0; i < 60; i++) {
             let x, y, tile;
@@ -54,6 +55,13 @@ class World {
             do {
                 x = Math.floor(Math.random() * 200) - 100;
                 y = Math.floor(Math.random() * 200) - 100;
+
+                // Check: If inside safe zone, try again
+                if ((x * x) + (y * y) < SAFE_RADIUS_SQ) {
+                    attempts++;
+                    continue;
+                }
+
                 tile = this.getTile(x, y);
 
                 // Strict check
@@ -65,9 +73,10 @@ class World {
                 }
 
                 attempts++;
-            } while (tile === 'water' && attempts < 20);
+            } while ((tile === 'water' || (x * x + y * y < SAFE_RADIUS_SQ)) && attempts < 20);
 
             if (tile === 'water') continue; // Skip if failed
+            if ((x * x) + (y * y) < SAFE_RADIUS_SQ) continue; // Skip if inside safe zone
 
             let r = Math.random();
             let type = 'Potion';
@@ -123,6 +132,14 @@ class World {
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
             return liminalSystem.getLiminalTile(x, y);
         }
+
+        // --- SAFE ZONE FORCE CHECK ---
+        // If within 25 tiles of center (0,0), force grass.
+        // This overrides all noise generation below.
+        if ((x * x) + (y * y) < 625) { 
+            return 'grass';
+        }
+
         // 1. Temperature & Biome Noise
         let tempNoise = this.rng.noise(x * 0.02, y * 0.02);
         let temperature = (y / 200) + (tempNoise * 0.5); // Negative Y = North (Cold)
@@ -255,6 +272,9 @@ class World {
             let range = 25;
             let rx = Math.floor(playerX + (Math.random() * range * 2) - range);
             let ry = Math.floor(playerY + (Math.random() * range * 2) - range);
+
+            // Check against Safe Zone (Don't respawn items inside the house area)
+            if ((rx * rx) + (ry * ry) < 625) continue;
 
             let tile = this.getTile(rx, ry);
             let key = `${rx},${ry}`;
