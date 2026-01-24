@@ -192,6 +192,8 @@
                         <button onclick="togglePlayerBag(); toggleMainMenu()"
                             ontouchstart="togglePlayerBag(); toggleMainMenu()">BAG</button>
                         <button onclick="openOptions()" ontouchstart="openOptions()">OPTIONS</button>
+                        <button onclick="multiplayerSystem.hostGame()">HOST MULTIPLAYER</button>
+                        <button onclick="multiplayerSystem.joinGame()">JOIN MULTIPLAYER</button>
                         <button onclick="saveGame(); showDialog('Game Saved!', 2000)"
                             ontouchstart="saveGame(); showDialog('Game Saved!', 2000)">SAVE GAME</button>
                         <button onclick="loadGame(); showDialog('Game Loaded!', 2000); toggleMainMenu()"
@@ -352,6 +354,8 @@
     </div>
 
     <!-- Scripts Load Order is Vital -->
+    <!-- PeerJS for Multiplayer -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="src/utils.js"></script>
     <script src="src/data.js"></script>
     <script src="src/rpg_core.js"></script>
