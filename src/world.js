@@ -8,7 +8,10 @@ class World {
         this.items = {};
         this.npcs = [];
         this.buildings = [];
-        // We do NOT call initItems/initNPCs here anymore to prevent crash
+        
+        // --- LAG FIX: TILE CACHE ---
+        // This remembers calculated tiles so we don't do heavy math every frame.
+        this.tileCache = {};
     }
 
     // Call this manually after all systems are loaded
@@ -129,45 +132,57 @@ class World {
     }
 
     getTile(x, y) {
+        // 0. CHECK CACHE FIRST (Massive Performance Boost)
+        const key = `${x},${y}`;
+        if (this.tileCache[key]) {
+            // Check liminal separately so we don't cache dimension shifts permanently
+            if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
+                return liminalSystem.getLiminalTile(x, y);
+            }
+            return this.tileCache[key];
+        }
+
+        // 1. Liminal Check (Don't cache this as it changes state)
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
             return liminalSystem.getLiminalTile(x, y);
         }
 
+        let result = 'grass'; // Default
+
         // --- SAFE ZONE FORCE CHECK ---
-        // If within 25 tiles of center (0,0), force grass.
-        // This overrides all noise generation below.
         if ((x * x) + (y * y) < 625) { 
-            return 'grass';
+            result = 'grass';
+        } else {
+            // 2. Temperature & Biome Noise
+            let tempNoise = this.rng.noise(x * 0.02, y * 0.02);
+            let temperature = (y / 200) + (tempNoise * 0.5); // Negative Y = North (Cold)
+            let moisture = this.rng.noise(x * 0.05, y * 0.05);
+            let detail = this.rng.noise(x * 0.1, y * 0.1);
+
+            // WATER
+            if (detail < 0.25) result = 'water';
+
+            // --- POLAR BIOME (North / Negative Y) ---
+            else if (temperature < -0.4) {
+                if (detail < 0.3) result = 'ice';
+                else if (detail > 0.65) result = 'snow_tall'; // <--- NEW: Snow Grass
+                else result = 'snow';
+            }
+
+            // --- DESERT BIOME (East / Positive X) ---
+            else if (x > 50 && moisture < 0.4) {
+                if (detail > 0.65) result = 'sand_tall'; // <--- NEW: Sand Dunes
+                else result = 'sand';
+            }
+
+            // --- STANDARD BIOME (South/West) ---
+            else if (detail > 0.65) result = 'grass_tall';
+            else if (moisture > 0.7 && detail > 0.5) result = 'flowers';
         }
 
-        // 1. Temperature & Biome Noise
-        let tempNoise = this.rng.noise(x * 0.02, y * 0.02);
-        let temperature = (y / 200) + (tempNoise * 0.5); // Negative Y = North (Cold)
-        let moisture = this.rng.noise(x * 0.05, y * 0.05);
-        let detail = this.rng.noise(x * 0.1, y * 0.1);
-
-        // WATER
-        if (detail < 0.25) return 'water';
-
-        // --- POLAR BIOME (North / Negative Y) ---
-        if (temperature < -0.4) {
-            if (detail < 0.3) return 'ice';
-            if (detail > 0.65) return 'snow_tall'; // <--- NEW: Snow Grass
-            return 'snow';
-        }
-
-        // --- DESERT BIOME (East / Positive X) ---
-        // Changed to 50 so it's easier to find
-        if (x > 50 && moisture < 0.4) {
-            if (detail > 0.65) return 'sand_tall'; // <--- NEW: Sand Dunes
-            return 'sand';
-        }
-
-        // --- STANDARD BIOME (South/West) ---
-        if (detail > 0.65) return 'grass_tall';
-        if (moisture > 0.7 && detail > 0.5) return 'flowers';
-
-        return 'grass';
+        // SAVE TO CACHE
+        this.tileCache[key] = result;
+        return result;
     }
 
     getColor(type) {
