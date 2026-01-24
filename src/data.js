@@ -22,6 +22,7 @@ const TYPES = [
 const TYPE_CHART = {
     fire: {
         grass: 2.0,
+        ghost: 0,
         ice: 2.0,
         bug: 2.0,
         water: 0.5,
@@ -32,6 +33,7 @@ const TYPE_CHART = {
     water: {
         fire: 2.0,
         ground: 2.0,
+        ghost: 0,
         rock: 2.0,
         water: 0.5,
         grass: 0.5,
@@ -40,6 +42,7 @@ const TYPE_CHART = {
     grass: {
         water: 2.0,
         ground: 2.0,
+        ghost: 0,
         rock: 2.0,
         fire: 0.5,
         grass: 0.5,
@@ -53,12 +56,14 @@ const TYPE_CHART = {
         flying: 2.0,
         electric: 0.5,
         grass: 0.5,
+        ghost: 0,
         dragon: 0.5,
         ground: 0
     },
     ice: {
         grass: 2.0,
         ground: 2.0,
+        ghost: 0,
         flying: 2.0,
         dragon: 2.0,
         fire: 0.5,
@@ -82,11 +87,12 @@ const TYPE_CHART = {
         poison: 2.0,
         rock: 2.0,
         grass: 0.5,
+        ghost: 0,
         bug: 0.5,
         flying: 0
     },
-    flying: { grass: 2.0, fighting: 2.0, bug: 2.0, electric: 0.5, rock: 0.5 },
-    psychic: { fighting: 2.0, poison: 2.0, psychic: 0.5 },
+    flying: { grass: 2.0, fighting: 2.0, bug: 2.0, electric: 0.5, ghost: 0, rock: 0.5 },
+    psychic: { fighting: 2.0, poison: 2.0, ghost: 0.5, psychic: 0.5 },
     bug: {
         grass: 2.0,
         psychic: 2.0,
@@ -102,10 +108,11 @@ const TYPE_CHART = {
         flying: 2.0,
         bug: 2.0,
         fighting: 0.5,
+        ghost: 0,
         ground: 0.5
     },
     ghost: { ghost: 2.0, psychic: 0.5, normal: 0 },
-    dragon: { dragon: 2.0 },
+    dragon: { dragon: 2.0, ghost: 0 },
     normal: { rock: 0.5, ghost: 0 }
 };
 
@@ -183,8 +190,8 @@ class QuestSystem {
                 desc: `Defeat ${targetCount} Wild Pokemon`,
                 target: targetCount,
                 current: 0,
-                reward: 'Potion',
-                rewardQty: 2,
+                reward: 'Hyper Potion',
+                rewardQty: 5,
                 completed: false
             };
         } else {
@@ -194,8 +201,8 @@ class QuestSystem {
                 desc: `Travel ${steps} steps`,
                 target: steps,
                 current: 0,
-                reward: 'Pokeball',
-                rewardQty: 5,
+                reward: 'Ultra Ball',
+                rewardQty: 25,
                 completed: false
             };
         }
