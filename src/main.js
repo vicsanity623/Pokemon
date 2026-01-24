@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.0.5'; // Bumped Version
+const VERSION = 'v3.0.6'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -432,9 +432,9 @@ function gameLoop(timestamp) {
                     // Restore Name and Species
                     p.name = p.species || "PIKACHU";
 
-                    // Setup Sprites
-                    p.backSprite = p.storedSprite ||
-                        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png';
+                    // Restore Sprites (Back and Front)
+                    p.backSprite = p.storedSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png';
+                    p.sprite = p.storedFrontSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png'; // <--- RESTORE ICON
 
                     // Initialize Stats if they don't exist
                     if (!p.stats) p.stats = generatePokemonStats();
@@ -1476,8 +1476,12 @@ function handleNPCInteraction(npc) {
                     hp: 15,
                     exp: 0,
                     type: p1.type,
+                    // --- FIX: ADD ICONS AND STORAGE ---
+                    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
                     backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
                     storedSprite: p1.backSprite,
+                    storedFrontSprite: p1.sprite, // SAVE PARENT ICON FOR HATCHING
+                    // ----------------------------------
                     isEgg: true,
                     eggSteps: 500,
                     stats: eggStats, // Save the calculated stats
@@ -1494,6 +1498,7 @@ function handleNPCInteraction(npc) {
     }
 }
 
+// Init
 // Init
 window.onload = async () => {
     const rawSave = localStorage.getItem('poke_save');
@@ -1538,6 +1543,8 @@ window.onload = async () => {
             hp: starterMaxHp,
             exp: 0,
             type: 'electric',
+            // --- FIX: ADDED FRONT SPRITE ---
+            sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
             backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
             stats: starterStats
         });
@@ -1552,6 +1559,8 @@ window.onload = async () => {
             hp: p2MaxHp,
             exp: 0,
             type: 'electric',
+            // --- FIX: ADDED FRONT SPRITE ---
+            sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
             backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
             stats: p2Stats
         });
@@ -2562,103 +2571,114 @@ function cancelPCSelection() {
     renderPC();
 }
 
+// Global var to cache the sidebar HTML (add this near top of file or just before this function)
+let lastSidebarHTML = ""; 
+
 function updatePartySidebar() {
     const sb = document.getElementById('party-sidebar');
 
     // Safety check: hide sidebar during battle
     if (!sb || battleSystem.isActive) {
-        if (sb) sb.classList.add('hidden');
+        if (sb && !sb.classList.contains('hidden')) sb.classList.add('hidden');
         return;
     }
 
-    sb.classList.remove('hidden');
-    sb.innerHTML = '';
+    if (sb.classList.contains('hidden')) sb.classList.remove('hidden');
 
-    // 1. Create Toggle Button
-    const toggleBtn = document.createElement('button');
-    toggleBtn.id = 'party-toggle-btn';
-    toggleBtn.innerHTML = isPartyOpen ? '▼ TEAM' : '▶ TEAM';
-
-    // Define toggle logic separately
-    const handleToggle = (e) => {
-        // Stop the event from reaching the map
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Toggle state
-        isPartyOpen = !isPartyOpen;
-
-        // Re-render
-        updatePartySidebar();
-    };
-
-    // Attach both events for responsiveness
-    // FIXED: Use pointerdown for both desktop/mobile support
-    toggleBtn.onpointerdown = handleToggle;
-
-    sb.appendChild(toggleBtn);
-
-    // If closed, stop here
-    if (!isPartyOpen) return;
-
-    // 2. Create Container for Pokemon
-    const listContainer = document.createElement('div');
-    listContainer.id = 'party-list-container';
-
-    player.team.forEach((p, index) => {
-        const item = document.createElement('div');
-        item.className = 'party-sidebar-item';
-        if (index === 0) item.classList.add('active-lead');
-
-        // Stats Logic
-        const hpPct = (p.hp / p.maxHp) * 100;
-        let hpClass = '';
-        if (hpPct < 20) hpClass = 'low';
-        else if (hpPct < 50) hpClass = 'mid';
-
-        const xpNeeded = p.level * 100;
-        const xpPct = Math.min(100, (p.exp / xpNeeded) * 100);
-        let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
-
-        item.innerHTML = `
-            <img src="${iconUrl}" class="sidebar-icon">
-            <div class="sidebar-info">
-                <div class="sidebar-header">
-                    <span class="sidebar-name">${p.name}</span>
-                    <span class="sidebar-lvl">Lv.${p.level}</span>
-                </div>
-                <div class="sidebar-bar-container">
-                    <div class="sidebar-hp-bar"><div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div></div>
-                    <div class="sidebar-xp-bar"><div class="sidebar-xp-fill" style="width: ${xpPct}%"></div></div>
-                </div>
-            </div>
-        `;
-
-        const handleSwap = (e) => {
+    // 1. Create Toggle Button (ONCE only)
+    let toggleBtn = document.getElementById('party-toggle-btn');
+    if (!toggleBtn) {
+        sb.innerHTML = ''; // Clear initial state
+        toggleBtn = document.createElement('button');
+        toggleBtn.id = 'party-toggle-btn';
+        
+        // Toggle Logic
+        toggleBtn.onpointerdown = (e) => {
             e.preventDefault();
             e.stopPropagation();
-
-            if (index === 0) {
-                showDialog(`${p.name} is already the lead!`, 1000);
-                return;
-            }
-
-            const temp = player.team[0];
-            player.team[0] = player.team[index];
-            player.team[index] = temp;
-
-            showDialog(`Switched to ${player.team[0].name}!`, 1500);
+            isPartyOpen = !isPartyOpen;
+            lastSidebarHTML = ""; // Force redraw on toggle
             updatePartySidebar();
-            updateHUD();
         };
+        sb.appendChild(toggleBtn);
+    }
 
-        // FIXED: Use pointerdown for reliable interaction
-        item.onpointerdown = handleSwap;
+    // Update Button Text
+    toggleBtn.innerHTML = isPartyOpen ? '▼ TEAM' : '▶ TEAM';
 
-        listContainer.appendChild(item);
+    // If closed, remove list if exists and stop
+    let listContainer = document.getElementById('party-list-container');
+    if (!isPartyOpen) {
+        if (listContainer) listContainer.remove();
+        return;
+    }
+
+    // 2. Build New HTML String
+    let newHTML = "";
+    player.team.forEach((p, index) => {
+        const hpPct = (p.hp / p.maxHp) * 100;
+        let hpClass = hpPct < 20 ? 'low' : hpPct < 50 ? 'mid' : '';
+        const xpNeeded = p.level * 100;
+        const xpPct = Math.min(100, (p.exp / xpNeeded) * 100);
+        
+        // Use the new Sprite property (or fallback)
+        let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+        let activeClass = index === 0 ? 'active-lead' : '';
+
+        newHTML += `
+            <div class="party-sidebar-item ${activeClass}" data-index="${index}">
+                <img src="${iconUrl}" class="sidebar-icon">
+                <div class="sidebar-info">
+                    <div class="sidebar-header">
+                        <span class="sidebar-name">${p.name}</span>
+                        <span class="sidebar-lvl">Lv.${p.level}</span>
+                    </div>
+                    <div class="sidebar-bar-container">
+                        <div class="sidebar-hp-bar"><div class="sidebar-hp-fill ${hpClass}" style="width: ${hpPct}%"></div></div>
+                        <div class="sidebar-xp-bar"><div class="sidebar-xp-fill" style="width: ${xpPct}%"></div></div>
+                    </div>
+                </div>
+            </div>`;
     });
 
-    sb.appendChild(listContainer);
+    // 3. OPTIMIZATION: Only update DOM if content changed
+    if (newHTML !== lastSidebarHTML) {
+        // Create container if missing
+        if (!listContainer) {
+            listContainer = document.createElement('div');
+            listContainer.id = 'party-list-container';
+            sb.appendChild(listContainer);
+        }
+
+        listContainer.innerHTML = newHTML;
+        lastSidebarHTML = newHTML;
+
+        // Re-attach listeners to new elements
+        const items = listContainer.querySelectorAll('.party-sidebar-item');
+        items.forEach(item => {
+            item.onpointerdown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const index = parseInt(item.getAttribute('data-index'));
+
+                if (index === 0) {
+                    showDialog(`${player.team[0].name} is already lead!`, 1000);
+                    return;
+                }
+
+                const temp = player.team[0];
+                player.team[0] = player.team[index];
+                player.team[index] = temp;
+
+                showDialog(`Switched to ${player.team[0].name}!`, 1500);
+                
+                // Force immediate redraw
+                lastSidebarHTML = ""; 
+                updatePartySidebar();
+                updateHUD();
+            };
+        });
+    }
 }
 
 // --- OPTIMIZED RESOURCE HUD ---
