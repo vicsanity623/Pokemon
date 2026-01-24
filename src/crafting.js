@@ -31,10 +31,17 @@ class CraftingSystem {
     spawnWorkbench(world) {
         if (this.hasSpawned) return;
         if (!homeSystem.houseLocation) return;
-        let wx = homeSystem.houseLocation.x + 2;
+        
+        // --- CHANGED: Moved 10 tiles right ---
+        let wx = homeSystem.houseLocation.x + 10; 
+        // -------------------------------------
+        
         let wy = homeSystem.houseLocation.y;
+        
         this.workbenchLocation = { x: wx, y: wy };
         this.hasSpawned = true;
+        
+        // Important: Push to buildings so it draws and has collision
         world.buildings.push({ type: 'workbench', x: wx, y: wy });
     }
 
