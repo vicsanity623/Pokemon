@@ -701,12 +701,10 @@ function processAutoHarvest(dt, timestamp) {
     }
 }
 
-// --- AUTO ATTACK ENEMY FUNCTION (FIXED) ---
+// --- AUTO ATTACK ENEMY FUNCTION (FIXED & SMOOTH) ---
 function processAutoAttackEnemy(dt, timestamp) {
-    // 1. Check if target still exists and is alive
     if (!autoAttackEnemyTarget) return;
 
-    // Verify enemy is still in the enemies array (wasn't killed)
     const stillExists = enemySystem.enemies.includes(autoAttackEnemyTarget);
     if (!stillExists || autoAttackEnemyTarget.hp <= 0) {
         autoAttackEnemyTarget = null;
@@ -714,16 +712,13 @@ function processAutoAttackEnemy(dt, timestamp) {
         return;
     }
 
-    // 2. Calculate distance to enemy
     const dx = autoAttackEnemyTarget.x - player.x;
     const dy = autoAttackEnemyTarget.y - player.y;
     const distSq = (dx * dx) + (dy * dy);
-
-    // Attack range is 1.5 tiles (squared = 2.25)
     const ATTACK_RANGE_SQ = 2.25;
 
     if (distSq > ATTACK_RANGE_SQ) {
-        // WALK TOWARDS ENEMY
+        // WALK TOWARDS
         const angle = Math.atan2(dy, dx);
         const speed = player.speed * (dt * 60);
         player.x += Math.cos(angle) * speed;
@@ -736,7 +731,7 @@ function processAutoAttackEnemy(dt, timestamp) {
             player.dir = Math.sin(angle) > 0 ? 'down' : 'up';
         }
     } else {
-        // IN RANGE - AUTO ATTACK!
+        // AUTO ATTACK
         player.moving = false;
 
         if (Math.abs(dx) > Math.abs(dy)) {
@@ -753,28 +748,27 @@ function processAutoAttackEnemy(dt, timestamp) {
                 const damage = rpgSystem.getDamage();
                 
                 autoAttackEnemyTarget.hp -= damage;
-
-                // --- FIX: REMOVED CSS SCREEN SHAKE HERE ---
-                // The lines accessing canvas.style.transform were causing the pause.
                 playSFX('sfx-attack1');
 
-                // Knockback effect on enemy
+                // --- SMOOTH KNOCKBACK ---
                 const pushAngle = Math.atan2(autoAttackEnemyTarget.y - player.y, autoAttackEnemyTarget.x - player.x);
-                autoAttackEnemyTarget.x += Math.cos(pushAngle) * 0.2;
-                autoAttackEnemyTarget.y += Math.sin(pushAngle) * 0.2;
+                let nextX = autoAttackEnemyTarget.x + Math.cos(pushAngle) * 0.2;
+                let nextY = autoAttackEnemyTarget.y + Math.sin(pushAngle) * 0.2;
 
-                // Check if enemy died
+                // Check wall collision for enemy so they don't stutter against rocks
+                if (!world.isBlocked(Math.round(nextX), Math.round(nextY))) {
+                    autoAttackEnemyTarget.x = nextX;
+                    autoAttackEnemyTarget.y = nextY;
+                }
+
                 if (autoAttackEnemyTarget.hp <= 0) {
                     const idx = enemySystem.enemies.indexOf(autoAttackEnemyTarget);
-                    if (idx !== -1) {
-                        enemySystem.killEnemy(idx);
-                    }
+                    if (idx !== -1) enemySystem.killEnemy(idx);
                     autoAttackEnemyTarget = null;
                 }
 
                 rpgSystem.updateHUD();
             } else {
-                // Prevent dialog spam
                 if(!document.getElementById('dialog-box') || document.getElementById('dialog-box').classList.contains('hidden')) {
                     showDialog("Out of stamina!", 500);
                 }
