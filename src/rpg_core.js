@@ -8,44 +8,35 @@ class RPGSystem {
         this.hp = 100;
         
         // --- STAMINA SCALING ---
-        // Base 100 + (Level * 10)
-        // Level 1 = 110, Level 10 = 200
         this.maxStamina = 100 + (this.level * 10);
         this.stamina = this.maxStamina;
         
         this.xp = 0;
-
-        // Catch Combo
         this.comboCount = 0;
         this.comboSpecies = null; 
 
-        // Combat
         this.isAttacking = false;
         this.attackCooldown = 0;
+        this.isRespawning = false;
 
-        // Equipment Slots
-        this.equipment = {
-            weapon: null, 
-            armor: null, 
-            accessory: null 
-        };
+        this.equipment = { weapon: null, armor: null, accessory: null };
 
+        // CACHE DOM ELEMENTS FOR PERFORMANCE
+        this.domCache = {};
+        
         this.createHUD();
     }
 
-    // Calculate total damage
     getDamage() {
-        let base = 1; // Fists
+        let base = 1; 
         if (this.equipment.weapon) base = this.equipment.weapon.damage;
-        // Level scaling: +10% per level
         return Math.floor(base * (1 + (this.level * 0.1)));
     }
 
-    // Calculate total defense (Percentage reduction)
     getDefense() {
         let def = 0;
         if (this.equipment.armor) def = this.equipment.armor.defense;
-        return def; // e.g., 20 means 20% damage reduction
+        return def;
     }
 
     takeDamage(amount) {
@@ -57,14 +48,10 @@ class RPGSystem {
         this.hp -= reduced;
         this.updateHUD();
 
-        // Visual Shake
-        const canvas = document.getElementById('gameCanvas');
-        if (canvas) {
-            canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
-            setTimeout(() => canvas.style.transform = 'none', 100);
-        }
+        // --- OPTIMIZATION: REMOVED CSS SHAKE (Caused Lag) ---
+        // Just play sound
+        // if (typeof playSFX === 'function') playSFX('sfx-hit'); 
 
-        // 2. DEATH CHECK
         if (this.hp <= 0) {
             this.hp = 0;
             this.respawn();
@@ -85,26 +72,18 @@ class RPGSystem {
             this.player.y = 0;
         }
 
-        // 5. HEAL PLAYER & PARTY
         this.hp = this.maxHp;
-        
-        // --- RECALCULATE MAX STAMINA ON RESPAWN ---
         this.maxStamina = 100 + (this.level * 10);
         this.stamina = this.maxStamina;
-        
         this.player.moving = false;
 
         if (this.player.team && this.player.team.length > 0) {
-            this.player.team.forEach(p => {
-                p.hp = p.maxHp;
-            });
+            this.player.team.forEach(p => { p.hp = p.maxHp; });
         }
 
         this.updateHUD();
 
-        setTimeout(() => {
-            this.isRespawning = false;
-        }, 1000);
+        setTimeout(() => { this.isRespawning = false; }, 1000);
     }
 
     createHUD() {
@@ -142,6 +121,15 @@ class RPGSystem {
         `;
         document.body.appendChild(hud);
 
+        // Cache Elements immediately
+        this.domCache = {
+            hp: document.getElementById('rpg-hp-bar'),
+            xp: document.getElementById('rpg-xp-bar'),
+            stam: document.getElementById('rpg-stamina-bar'),
+            lvl: document.getElementById('rpg-level'),
+            gear: document.getElementById('rpg-gear')
+        };
+
         if (!document.getElementById('btn-attack')) {
             const btn = document.createElement('div');
             btn.id = 'btn-attack';
@@ -159,18 +147,14 @@ class RPGSystem {
     }
 
     update(dt) {
-        // 1. Stamina Regen (Now scales with level so big bars fill in same time)
-        // Base rate 20 + (Level * 2)
         const regenRate = 28 + (this.level * 2);
         
         if (this.stamina < this.maxStamina) this.stamina += dt * regenRate;
         if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
 
-        // 2. Attack Cooldown
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         else this.isAttacking = false;
 
-        // 3. EMERGENCY RESPAWN
         if (this.hp <= 0 && !this.isRespawning) {
             console.log("0 HP detected. Respawning...");
             this.respawn();
@@ -186,18 +170,14 @@ class RPGSystem {
         this.stamina -= 10;
         this.attackCooldown = 0.4;
 
-        const canvas = document.getElementById('gameCanvas');
-        if(canvas) {
-            canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
-            setTimeout(() => canvas.style.transform = 'none', 100);
-        }
+        // --- OPTIMIZATION: REMOVED CSS SHAKE ---
         if (typeof playSFX === 'function') playSFX('sfx-attack1');
 
-        // HIT DETECTION
         const targets = [];
         const px = Math.round(this.player.x);
         const py = Math.round(this.player.y);
 
+        // Sweeping Hitbox
         if (this.player.dir === 'left') { targets.push({ x: px - 1, y: py }, { x: px - 1, y: py - 1 }, { x: px - 1, y: py + 1 }); }
         else if (this.player.dir === 'right') { targets.push({ x: px + 1, y: py }, { x: px + 1, y: py - 1 }, { x: px + 1, y: py + 1 }); }
         else if (this.player.dir === 'up') { targets.push({ x: px, y: py - 1 }, { x: px - 1, y: py - 1 }, { x: px + 1, y: py - 1 }); }
@@ -221,34 +201,28 @@ class RPGSystem {
     }
 
     updateHUD() {
-        // Calculate percentages
         const hpPct = Math.max(0, (this.hp / this.maxHp) * 100);
         const stamPct = Math.max(0, (this.stamina / this.maxStamina) * 100);
         const xpNeeded = this.level * 100;
         const xpPct = Math.min(100, Math.max(0, (this.xp / xpNeeded) * 100));
 
-        const hpBar = document.getElementById('rpg-hp-bar');
-        const xpBar = document.getElementById('rpg-xp-bar');
-        const stamBar = document.getElementById('rpg-stamina-bar');
-        const lvlText = document.getElementById('rpg-level');
-        const gearText = document.getElementById('rpg-gear');
+        // Use Cached DOM Elements (Massive FPS boost)
+        if (this.domCache.hp) this.domCache.hp.style.width = `${hpPct}%`;
+        if (this.domCache.xp) this.domCache.xp.style.width = `${xpPct}%`;
+        if (this.domCache.stam) this.domCache.stam.style.width = `${stamPct}%`;
 
-        if (hpBar) hpBar.style.width = `${hpPct}%`;
-        if (xpBar) xpBar.style.width = `${xpPct}%`;
-        if (stamBar) stamBar.style.width = `${stamPct}%`;
-
-        if (lvlText) {
+        if (this.domCache.lvl) {
             if (this.comboCount > 0) {
-                lvlText.innerHTML = `${this.level} <span style="color:#f1c40f; margin-left:5px;">Combo🔥${this.comboCount}</span>`;
+                this.domCache.lvl.innerHTML = `${this.level} <span style="color:#f1c40f; margin-left:5px;">Combo🔥${this.comboCount}</span>`;
             } else {
-                lvlText.innerText = this.level.toString();
+                this.domCache.lvl.innerText = this.level.toString();
             }
         }
 
-        if (gearText) {
+        if (this.domCache.gear) {
             const wName = this.equipment.weapon ? this.equipment.weapon.name : "Fists";
             const aName = this.equipment.armor ? this.equipment.armor.name : "None";
-            gearText.innerHTML = `
+            this.domCache.gear.innerHTML = `
                 <div style="background-color: rgba(0, 0, 0, 0.7); padding: 2px 8px; border-radius: 4px; display: inline-block; color: #fff;">
                     Wpn: <span style="color:#e74c3c">${wName}</span> | Arm: <span style="color:#3498db">${aName}</span>
                 </div>
@@ -262,14 +236,9 @@ class RPGSystem {
             this.level++;
             this.xp = 0;
             this.maxHp += 10;
-            
-            // --- STAMINA LEVEL UP ---
             this.maxStamina = 100 + (this.level * 10);
-            
-            // Fully Heal on Level Up
             this.hp = this.maxHp;
             this.stamina = this.maxStamina;
-            
             showDialog(`Player Level Up! (Lv.${this.level})`, 2000);
         }
         this.updateHUD();
@@ -313,10 +282,7 @@ class RPGSystem {
             if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 2.0);
         }
 
-        if (this.equipment[itemData.type]) {
-            this.unequip(itemData.type);
-        }
-
+        if (this.equipment[itemData.type]) this.unequip(itemData.type);
         this.equipment[itemData.type] = equippedItem;
 
         if (this.player.bag[itemId] > 0) {
@@ -331,12 +297,9 @@ class RPGSystem {
     unequip(slotType) {
         const item = this.equipment[slotType];
         if (!item) return;
-
         if (!this.player.bag[item.id]) this.player.bag[item.id] = 0;
         this.player.bag[item.id]++;
-
         this.equipment[slotType] = null;
-
         showDialog(`Unequipped ${item.name}.`, 1000);
         this.updateHUD();
     }
@@ -358,11 +321,8 @@ class RPGSystem {
         this.maxHp = data.maxHp || 100;
         this.xp = data.xp || 0;
         this.level = data.level || 1;
-        
-        // --- RECALCULATE MAX STAMINA ON LOAD ---
         this.maxStamina = 100 + (this.level * 10);
         this.stamina = this.maxStamina;
-        
         this.equipment = data.equipment || { weapon: null, armor: null, accessory: null };
         this.comboCount = data.comboCount || 0;
         this.comboSpecies = data.comboSpecies || null;
