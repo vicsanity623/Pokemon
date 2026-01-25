@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.0.7'; // Bumped Version
+const VERSION = 'v3.0.9'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -22,6 +22,8 @@ const enemySystem = new EnemySystem(player, world);
 const craftingSystem = new CraftingSystem(player);
 const mapSystem = new MapSystem(player, world);
 const multiplayerSystem = new MultiplayerSystem(player);
+const bountySystem = new BountySystem(player);
+const dungeonSystem = new DungeonSystem(player);
 world.init();
 let isPartyOpen = true; // Default to open
 
@@ -162,6 +164,15 @@ window.addEventListener('keyup', (e) => {
 // --- SMART TOUCH INTERACTION (REPLACES ALL POINTERDOWN LISTENERS) ---
 const gameCanvas = document.getElementById('gameCanvas');
 gameCanvas.addEventListener('pointerdown', (e) => {
+    // --- 0. DUNGEON TAP LOGIC (Priority) ---
+    if (typeof dungeonSystem !== 'undefined' && dungeonSystem.isActive) {
+        // Calculate clickX relative to canvas
+        const rect = gameCanvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        
+        dungeonSystem.handleTap(clickX, gameCanvas.width); 
+        return; // STOP HERE! Don't run auto-harvest logic
+    }
     // 1. Ignore clicks if menus are open
     if (storeSystem.isOpen || isPaused || document.getElementById('crafting-ui')) return;
 
@@ -382,6 +393,7 @@ if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
 
         // Light Systems (Stats, Time, Resources)
         if (typeof rpgSystem !== 'undefined') rpgSystem.update(dt); // Regen HP/Stamina
+        if (typeof dungeonSystem !== 'undefined') dungeonSystem.update(dt);
         if (typeof resourceSystem !== 'undefined') resourceSystem.update(dt); // Respawn trees
 
         // World / Time
@@ -395,6 +407,16 @@ if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
         checkProximityPrompts();
 
         // Spawning Logic
+        // In main.js gameLoop or checkSpawn block
+        if (typeof homeSystem !== 'undefined' && homeSystem.houseLocation) {
+            // Only spawn once
+            if (!bountySystem.boardLocation) {
+                bountySystem.spawnBoard(world, homeSystem.houseLocation.x, homeSystem.houseLocation.y);
+            }
+            if (!dungeonSystem.entranceLocation) {
+                dungeonSystem.spawnEntrance(world, homeSystem.houseLocation.x, homeSystem.houseLocation.y);
+            }
+        }
         arenaSystem.checkSpawn(world, clock.gameDays);
         storeSystem.checkSpawn(world, arenaSystem);
         if (typeof craftingSystem !== 'undefined') craftingSystem.spawnWorkbench(world);
@@ -566,7 +588,11 @@ if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
     // ============================================================
     // RENDER
     // ============================================================
-    renderer.draw();
+    if (dungeonSystem.isActive) {
+        dungeonSystem.draw(canvas.getContext('2d'), canvas);
+    } else {
+        renderer.draw();
+    }
     requestAnimationFrame(gameLoop);
 }
 
@@ -790,24 +816,56 @@ input.press = (key) => {
     // 2. Map all interaction keys (A button, Enter, Start) to the same logic
     if (key === 'Enter' || key === 'a' || key === 'start') {
 
-        // --- 0. CHECK LIMINAL INTERACTIONS (Priority) ---
+        // --- PRIORITY 0: LIMINAL SPACE ---
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
             if (liminalSystem.tryInteract()) return;
         }
 
-        // 1. Check for nearby Poke Center (PRIORITY)
-        let nearbyPokeCenter = world.buildings.find((building) => {
-            let dx = building.x - player.x;
-            let dy = building.y - player.y;
-            return (dx * dx + dy * dy) < 2.25 && building.type === 'pokecenter';
-        });
+        // --- PRIORITY 1: BUILDINGS ---
+        
+        // Check Bounty Board
+        if (typeof bountySystem !== 'undefined' && bountySystem.boardLocation) {
+            const bx = bountySystem.boardLocation.x;
+            const by = bountySystem.boardLocation.y;
+            if (Math.abs(bx - player.x) < 1.5 && Math.abs(by - player.y) < 1.5) {
+                bountySystem.interact();
+                return;
+            }
+        }
 
+        // Check Dungeon Entrance
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.entranceLocation) {
+            const dx = dungeonSystem.entranceLocation.x - player.x;
+            const dy = dungeonSystem.entranceLocation.y - player.y;
+            if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5) {
+                if(confirm("Enter the Dungeon? Enemies are strong!")) dungeonSystem.enter();
+                return;
+            }
+        }
+
+        // Check PokeCenter
+        let nearbyPokeCenter = world.buildings.find((b) => {
+            let dx = b.x - player.x;
+            let dy = b.y - player.y;
+            return (dx*dx + dy*dy) < 2.25 && b.type === 'pokecenter';
+        });
         if (nearbyPokeCenter) {
             handlePokeCenterInteraction();
             return;
         }
 
-        // 2. Check for nearby Home (PRIORITY)
+        // Check Arena
+        let nearbyArena = world.buildings.find((b) => {
+            let dx = b.x - player.x;
+            let dy = b.y - player.y;
+            return (dx*dx + dy*dy) < 2.25 && b.type === 'arena';
+        });
+        if (nearbyArena) {
+            arenaSystem.enter();
+            return;
+        }
+
+        // Check Home
         if (homeSystem.isNearHome(player.x, player.y)) {
             if (typeof rpgSystem !== 'undefined') {
                 rpgSystem.hp = rpgSystem.maxHp;
@@ -818,59 +876,37 @@ input.press = (key) => {
             return;
         }
 
-        // 3. Check for nearby Arena
-        let nearbyArena = world.buildings.find((building) => {
-            let dx = building.x - player.x;
-            let dy = building.y - player.y;
-            return (dx * dx + dy * dy) < 2.25 && building.type === 'arena';
-        });
-
-        if (nearbyArena) {
-            arenaSystem.enter();
-            return;
+        // Check Store
+        if (storeSystem.location) {
+            let dx = storeSystem.location.x - player.x;
+            let dy = storeSystem.location.y - player.y;
+            if ((dx*dx + dy*dy) < 2.25) {
+                storeSystem.interact();
+                return;
+            }
         }
 
-        // 4. Check Liminal Trigger (The Red Phone)
+        // --- PRIORITY 2: TRIGGERS ---
+        
+        // Liminal Phone Trigger
         if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
             const doorY = homeSystem.houseLocation.y + 666;
             let dx = doorX - player.x;
             let dy = doorY - player.y;
-            if ((dx * dx + dy * dy) < 2.25) {
+            if ((dx*dx + dy*dy) < 2.25) {
                 if (confirm("Answer the call?")) liminalSystem.enter();
                 return;
             }
         }
 
-        // 4.5 Check Dungeon Entrance (Phase 6)
-        if (typeof dungeonSystem !== 'undefined' && dungeonSystem && dungeonSystem.hasSpawned) {
-            const dx = dungeonSystem.entrance.x - player.x;
-            const dy = dungeonSystem.entrance.y - player.y;
-            if ((dx * dx + dy * dy) < 2.25) {
-                if (confirm("Enter the Dungeon? High Level Recommended!")) dungeonSystem.enter();
-                return;
-            }
-        }
-
-        // 5. Check for nearby NPC
+        // --- PRIORITY 3: NPCS ---
         let nearbyNPC = world.npcs.find(
-            (npc) =>
-                Math.abs(npc.x - player.x) < 1.5 &&
-                Math.abs(npc.y - player.y) < 1.5
+            (n) => Math.abs(n.x - player.x) < 1.5 && Math.abs(n.y - player.y) < 1.5
         );
         if (nearbyNPC) {
             handleNPCInteraction(nearbyNPC);
             return;
-        }
-
-        // 6. Check for nearby Store
-        if (storeSystem.location) {
-            let dx = storeSystem.location.x - player.x;
-            let dy = storeSystem.location.y - player.y;
-            if ((dx * dx + dy * dy) < 2.25) {
-                storeSystem.interact();
-                return;
-            }
         }
     }
 
@@ -1720,6 +1756,8 @@ function saveGame() {
         store: { hasSpawned: storeSystem.hasSpawned, location: storeSystem.location },
         defense: { lastRaidDay: defenseSystem.lastRaidDay },
         liminal: (typeof liminalSystem !== 'undefined') ? liminalSystem.getSaveData() : null,
+        bounty: bountySystem.getSaveData(),
+        dungeon: dungeonSystem.getSaveData(),
 
         // --- NEW RPG & GUARDIAN DATA ---
         rpg: (typeof rpgSystem !== 'undefined') ? rpgSystem.getSaveData() : null,
@@ -1790,6 +1828,16 @@ function loadGame() {
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
+        
+        // --- SAFE LOADING FOR NEW SYSTEMS ---
+        // We use || {} to prevent crashing if data is missing
+        if (typeof bountySystem !== 'undefined') {
+            bountySystem.loadSaveData(data.bounty || {}); 
+        }
+        if (typeof dungeonSystem !== 'undefined') {
+            dungeonSystem.loadSaveData(data.dungeon || {});
+        }
+        // ------------------------------------
 
         if (data.player.combo) {
             // Restore the global variable
