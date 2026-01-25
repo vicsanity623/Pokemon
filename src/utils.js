@@ -260,15 +260,15 @@ class GameClock {
 const dialogQueue = [];
 let isDialogPlaying = false;
 
-function showDialog(text, duration = 3000) {
-    // 1. Remove any old-style dynamically created boxes (Cleanup)
+function showDialog(text, duration = 0) { // Duration is ignored in batch mode, handled automatically
+    // 1. Cleanup logic (same as before)
     const oldBox = document.getElementById('game-dialog');
     if (oldBox) oldBox.remove();
 
-    // 2. Add message to the queue
-    dialogQueue.push({ text, duration });
+    // 2. Add to queue
+    dialogQueue.push({ text });
 
-    // 3. If nothing is showing right now, start the player
+    // 3. Start if not running
     if (!isDialogPlaying) {
         processDialogQueue();
     }
@@ -285,12 +285,23 @@ function processDialogQueue() {
         return;
     }
 
-    // B. Start playing
+    // B. Start Playing
     isDialogPlaying = true;
-    const current = dialogQueue.shift(); // Get next message
 
-    // C. Update UI
-    p.innerText = current.text;
+    // --- C. BATCHING LOGIC (The Fix) ---
+    // Take up to 3 messages from the queue at once
+    const batch = [];
+    const MAX_LINES = 3; 
+
+    while (dialogQueue.length > 0 && batch.length < MAX_LINES) {
+        batch.push(dialogQueue.shift());
+    }
+
+    // Combine them into one HTML string with line breaks
+    // We use innerHTML so <br> or <div> works
+    const combinedText = batch.map(item => `<div>• ${item.text}</div>`).join('');
+    
+    p.innerHTML = combinedText; 
     box.classList.remove('hidden');
     
     // --- POSITIONING ---
@@ -299,26 +310,28 @@ function processDialogQueue() {
     box.style.top = "75%"; 
     box.style.left = "50%"; 
     box.style.transform = "translate(-50%, -50%)";
+    // Adjust height automatically to fit 1-3 lines
+    box.style.height = "auto"; 
+    box.style.padding = "10px";
 
-    // D. SMART TIMING (The "Fast Forward" Fix)
-    // If we have a huge backlog (lots of enemies died), show messages faster
-    let displayTime = current.duration;
+    // D. SMART TIMING
+    // Base time: 2 seconds to read the batch
+    let displayTime = 2000;
     
-    if (dialogQueue.length > 2) {
-        displayTime = 1000; // 1.0s if 3+ messages waiting
-    }
+    // If the queue is STILL huge even after taking 3, speed up
     if (dialogQueue.length > 5) {
-        displayTime = 500;  // 0.5s if 6+ messages waiting (Super Fast)
+        displayTime = 1000; // 1 second per batch
+    }
+    if (dialogQueue.length > 15) {
+        displayTime = 500;  // 0.5s (Turbo mode for massive loot drops)
     }
 
-    // E. Schedule next message
+    // E. Schedule next batch
     setTimeout(() => {
         processDialogQueue();
     }, displayTime);
 }
 
 function hideDialog() {
-    // Optional: Forces the box hidden, but keeps the queue running in background
-    // usually we just let the queue finish naturally.
     // document.getElementById('dialog-box').classList.add('hidden');
 }
