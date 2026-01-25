@@ -256,31 +256,69 @@ class GameClock {
         document.getElementById('meta-time').innerText = timeStr;
     }
 }
-// Dialog
-function showDialog(text, duration = 0) {
-    const box = document.getElementById('dialog-box');
-    const p = document.getElementById('dialog-text');
-    
-    // 1. Force High Z-Index (So it's on top of everything)
-    box.style.zIndex = "100000"; 
+// --- GLOBAL DIALOG QUEUE ---
+const dialogQueue = [];
+let isDialogPlaying = false;
 
-    // 2. Force Position Lower (The Fix)
-    // 'fixed' ensures it ignores scrolling/containers
-    box.style.position = 'fixed'; 
-    // 75% pushes it down to the bottom quarter of the screen
-    box.style.top = "75%"; 
-    // Keeps it perfectly centered horizontally
-    box.style.left = "50%"; 
-    box.style.transform = "translate(-50%, -50%)"; 
+function showDialog(text, duration = 3000) {
+    // 1. Remove any old-style dynamically created boxes (Cleanup)
+    const oldBox = document.getElementById('game-dialog');
+    if (oldBox) oldBox.remove();
 
-    box.classList.remove('hidden');
-    p.innerText = text;
-    
-    if (duration > 0) {
-        setTimeout(() => box.classList.add('hidden'), duration);
+    // 2. Add message to the queue
+    dialogQueue.push({ text, duration });
+
+    // 3. If nothing is showing right now, start the player
+    if (!isDialogPlaying) {
+        processDialogQueue();
     }
 }
 
+function processDialogQueue() {
+    const box = document.getElementById('dialog-box');
+    const p = document.getElementById('dialog-text');
+
+    // A. Stop if queue is empty
+    if (dialogQueue.length === 0) {
+        box.classList.add('hidden');
+        isDialogPlaying = false;
+        return;
+    }
+
+    // B. Start playing
+    isDialogPlaying = true;
+    const current = dialogQueue.shift(); // Get next message
+
+    // C. Update UI
+    p.innerText = current.text;
+    box.classList.remove('hidden');
+    
+    // --- POSITIONING ---
+    box.style.zIndex = "30000"; 
+    box.style.position = 'fixed'; 
+    box.style.top = "75%"; 
+    box.style.left = "50%"; 
+    box.style.transform = "translate(-50%, -50%)";
+
+    // D. SMART TIMING (The "Fast Forward" Fix)
+    // If we have a huge backlog (lots of enemies died), show messages faster
+    let displayTime = current.duration;
+    
+    if (dialogQueue.length > 2) {
+        displayTime = 1000; // 1.0s if 3+ messages waiting
+    }
+    if (dialogQueue.length > 5) {
+        displayTime = 500;  // 0.5s if 6+ messages waiting (Super Fast)
+    }
+
+    // E. Schedule next message
+    setTimeout(() => {
+        processDialogQueue();
+    }, displayTime);
+}
+
 function hideDialog() {
-    document.getElementById('dialog-box').classList.add('hidden');
+    // Optional: Forces the box hidden, but keeps the queue running in background
+    // usually we just let the queue finish naturally.
+    // document.getElementById('dialog-box').classList.add('hidden');
 }
