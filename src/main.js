@@ -32,7 +32,6 @@ let isPaused = false;
 let gameSpeed = 1.0;
 let needsUIUpdate = false;
 let catchCombo = { species: null, count: 0 };
-let dungeonSystem = null; // Will be initialized if DungeonSystem class exists
 
 // --- OPTIMIZATION VARIABLES ---
 // We use these to throttle heavy logic (AI, HUD updates)
