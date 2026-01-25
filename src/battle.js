@@ -310,18 +310,26 @@ class BattleSystem {
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
 
         // --- SHINY COMBO CHECK ---
-        let shinyThreshold = 0.02; // Base 1/50ish
+        let shinyThreshold = 1 / 3000; 
+        
         let isComboMatch = false;
 
         if (typeof rpgSystem !== 'undefined') {
             if (rpgSystem.comboSpecies === id) {
                 isComboMatch = true;
-                if (rpgSystem.comboCount >= 50) shinyThreshold = 0.20; // 10x Boost
+                
+                // COMBO BONUSES
+                if (rpgSystem.comboCount >= 10) shinyThreshold *= 2;  // 1 in 1500
+                if (rpgSystem.comboCount >= 20) shinyThreshold *= 3;  // 1 in 1000
+                if (rpgSystem.comboCount >= 31) shinyThreshold *= 4;  // 1 in 750 (Max normal scaling)
+                
+                // Super Bonus for dedicated grinders (50+ Combo)
+                if (rpgSystem.comboCount >= 50) shinyThreshold = 0.01; // 1 in 100
             }
         }
 
         const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < shinyThreshold;
-
+        
         try {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
             let data = await res.json();
