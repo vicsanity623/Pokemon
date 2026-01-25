@@ -372,25 +372,42 @@ class EnemySystem {
     killEnemy(index) {
         const e = this.enemies[index];
 
-        // Bonus loot for stronger enemies
-        const bonusLoot = Math.floor((e.levelMultiplier || 1) - 1);
+        // 1. CALCULATE BONUS (Based on Level Multiplier)
+        // Stronger enemies give more stuff naturally
+        const multiplier = e.levelMultiplier || 1;
 
-        // Loot Drop
+        // 2. RANDOMIZE ITEM COUNT (1 to 3, plus bonus for high levels)
+        // Math.random() gives 0.0-0.99. Multiply by 3 gives 0-2.99. Floor it gives 0-2. Add 1 gives 1-3.
+        const baseCount = Math.floor(Math.random() * 3) + 1; 
+        const totalItems = Math.floor(baseCount * multiplier);
+
+        // 3. RANDOMIZE MONEY DROP ($5 to $25)
+        // Range is 20 (25-5). +5 sets the minimum.
+        const moneyDrop = Math.floor((Math.random() * 21) + 5) * Math.floor(multiplier);
+        this.player.money += moneyDrop;
+
+        // 4. GIVE LOOT
+        let lootName = "";
         if (e.type === 'skeleton') {
+            lootName = 'Bone';
             if (!this.player.bag['Bone']) this.player.bag['Bone'] = 0;
-            this.player.bag['Bone'] += 1 + bonusLoot;
-            showDialog(`Skeleton crumbled! Got ${1 + bonusLoot} Bone(s).`, 1500);
+            this.player.bag['Bone'] += totalItems;
+            
+            showDialog(`Skeleton crumbled! Found ${totalItems} Bone(s) & $${moneyDrop}.`, 2000);
         } else {
+            lootName = 'Shadow Essence';
             if (!this.player.bag['Shadow Essence']) this.player.bag['Shadow Essence'] = 0;
-            this.player.bag['Shadow Essence'] += 1 + bonusLoot;
-            showDialog(`Shadow purged! Got ${1 + bonusLoot} Essence(s).`, 1500);
+            this.player.bag['Shadow Essence'] += totalItems;
+            
+            showDialog(`Shadow purged! Found ${totalItems} Essence(s) & $${moneyDrop}.`, 2000);
         }
 
-        // Scaled XP based on enemy strength
-        const baseXP = 20;
-        const scaledXP = Math.floor(baseXP * (e.levelMultiplier || 1));
+        // 5. GIVE XP
+        const baseXP = 23;
+        const scaledXP = Math.floor(baseXP * multiplier);
         if (typeof rpgSystem !== 'undefined') rpgSystem.gainXP(scaledXP);
 
+        // Remove from list
         this.enemies.splice(index, 1);
     }
 
