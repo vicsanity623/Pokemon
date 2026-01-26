@@ -66,9 +66,12 @@ class BountySystem {
         }
     }
 
-    updateProgress(type, amount = 1) {
+    updateProgress(type, amount = 1, itemName = null) {
         this.tasks.forEach(t => {
             if (!t.completed && t.type === type) {
+                // For collect tasks, match the item name
+                if (type === 'collect' && t.reqItem !== itemName) return;
+
                 t.current += amount;
                 if (t.current >= t.target) {
                     t.current = t.target;
@@ -166,6 +169,7 @@ class DungeonSystem {
         this.sessionXP = 0;
         this.sessionMoney = 0;
         this.isLevelCleared = false;
+        this.isSpawningWave = false;
     }
 
     spawnEntrance(world, houseX, houseY) {
@@ -188,6 +192,7 @@ class DungeonSystem {
         this.sessionXP = 0;
         this.sessionMoney = 0;
         this.isLevelCleared = false;
+        this.isSpawningWave = false;
 
         // Generate Level Content
         for (let i = 0; i < 15; i++) {
@@ -233,6 +238,7 @@ class DungeonSystem {
 
     spawnWave() {
         if (this.wave > 10) return;
+        this.isSpawningWave = false;
 
         const count = 2 + Math.floor(this.dungeonLevel / 2);
         for (let i = 0; i < count; i++) {
@@ -248,8 +254,6 @@ class DungeonSystem {
     }
 
     spawnLevelClear() {
-        this.dungeonLevel++;
-        this.wave = 1;
         this.isLevelCleared = true;
         showDialog("The Exit revealed itself!", 3000);
     }
@@ -344,7 +348,8 @@ class DungeonSystem {
         }
 
         // Wave Logic
-        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= 10 && !this.isLevelCleared) {
+        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= 10 && !this.isLevelCleared && !this.isSpawningWave) {
+            this.isSpawningWave = true;
             this.wave++;
             if (this.wave <= 10) {
                 setTimeout(() => this.spawnWave(), 2000);
@@ -354,7 +359,7 @@ class DungeonSystem {
         }
 
         // 4. Exit Door
-        if (this.wave > 10 && Math.abs(this.playerX - this.exitDoorX) < 2) {
+        if (this.isLevelCleared && Math.abs(this.playerX - this.exitDoorX) < 2) {
             this.exit(true);
         }
     }
@@ -484,7 +489,7 @@ class DungeonSystem {
         });
 
         // 5. Draw Exit
-        if (this.wave > 10) {
+        if (this.isLevelCleared) {
             let dx = getX(this.exitDoorX);
             if (dx > -100 && dx < canvas.width + 100) {
                 ctx.fillStyle = 'white';

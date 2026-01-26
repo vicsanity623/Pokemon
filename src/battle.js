@@ -46,7 +46,7 @@ class BattleSystem {
             const img = document.createElement('img');
             img.id = 'pokeball-anim';
             img.className = 'hidden';
-            img.src = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+            img.src = 'assets/sprites/items/poke-ball.png';
             img.style.position = 'absolute';
             img.style.left = '50%';
             img.style.bottom = '150px';
@@ -1018,6 +1018,14 @@ class BattleSystem {
         // Update Combo
         this.registerCombo(this.enemy.id, this.enemy.name, 'catch');
 
+        // Update Bounty Board
+        if (typeof bountySystem !== 'undefined') {
+            bountySystem.updateProgress('kill');
+            if (this.enemy.isShiny || this.enemy.isBoss) {
+                bountySystem.updateProgress('rare');
+            }
+        }
+
         document.getElementById('new-catch-overlay').classList.remove('hidden');
     }
 
@@ -1052,6 +1060,14 @@ class BattleSystem {
 
         // Update Combo
         this.registerCombo(this.enemy.id, this.enemy.name, 'defeat');
+
+        // Update Bounty Board
+        if (typeof bountySystem !== 'undefined') {
+            bountySystem.updateProgress('kill');
+            if (this.enemy.isShiny || this.enemy.isBoss) {
+                bountySystem.updateProgress('rare');
+            }
+        }
 
         // 3. ANIME XP SEQUENCE
         // A. Add the "Explosive" class to all visible XP bars in the squad list

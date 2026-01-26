@@ -2,14 +2,14 @@ class ResourceSystem {
     constructor(player, world) {
         this.player = player;
         this.world = world;
-        
+
         // Storage format: "x,y" => { type, hp, maxHp, state }
-        this.nodes = {}; 
-        this.crops = {}; 
-        this.respawnQueue = []; 
+        this.nodes = {};
+        this.crops = {};
+        this.respawnQueue = [];
 
         // NEW: Tracks which areas we have already populated
-        this.generatedChunks = new Set(); 
+        this.generatedChunks = new Set();
         this.CHUNK_SIZE = 16; // 16x16 tiles per chunk
 
         this.TYPES = {
@@ -78,7 +78,7 @@ class ResourceSystem {
         // ---------------------------------------------
 
         const chunkKey = `${cx},${cy}`;
-        
+
         if (this.generatedChunks.has(chunkKey)) return;
 
         // Loop through every tile in this 16x16 chunk
@@ -100,19 +100,19 @@ class ResourceSystem {
                 const rand = Math.random();
 
                 // --- BIOME SPECIFIC LOGIC ---
-                
+
                 if (tile === 'snow' || tile === 'snow_tall') {
                     // SNOW BIOME: High Iron, Low Stone
                     if (rand < 0.60) type = 'ore_iron';  // 60% Iron
                     else if (rand < 0.90) type = 'tree'; // 30% Trees (Snowy)
                     else type = 'rock';                  // 10% Stone
-                } 
+                }
                 else if (tile === 'sand' || tile === 'sand_tall') {
                     // DESERT BIOME: High Obsidian, Coal, Stone
                     if (rand < 0.10) type = 'ore_obsidian'; // 10% Obsidian (High!)
                     else if (rand < 0.50) type = 'ore_coal'; // 40% Coal
                     else type = 'rock';                      // 50% Stone
-                } 
+                }
                 else {
                     // GRASS / DEFAULT
                     if (rand < 0.60) type = 'tree';
@@ -142,10 +142,10 @@ class ResourceSystem {
         const node = this.nodes[key];
         if (node) {
             node.hp -= damage;
-            if (typeof renderer !== 'undefined') renderer.addParticle(x, y); 
-            playSFX('sfx-attack2'); 
+            if (typeof renderer !== 'undefined') renderer.addParticle(x, y);
+            playSFX('sfx-attack2');
             if (node.hp <= 0) this.harvest(key, node);
-            return true; 
+            return true;
         }
         return false;
     }
@@ -155,9 +155,12 @@ class ResourceSystem {
         if (!this.player.bag[data.loot]) this.player.bag[data.loot] = 0;
         this.player.bag[data.loot]++;
         if (typeof rpgSystem !== 'undefined') rpgSystem.gainXP(data.xp);
-        
+
+        // Update Bounty Board
+        if (typeof bountySystem !== 'undefined') bountySystem.updateProgress('collect', 1, data.loot);
+
         showDialog(`Harvested 1 ${data.loot}! (+${data.xp} XP)`, 1000);
-        
+
         // Add to respawn queue (30s)
         this.respawnQueue.push({ key: key, type: node.type, timer: 30.0 });
         delete this.nodes[key];
@@ -178,7 +181,7 @@ class ResourceSystem {
         const crop = this.crops[key];
         if (crop && crop.ready) {
             if (!this.player.bag['Berry']) this.player.bag['Berry'] = 0;
-            this.player.bag['Berry'] += 3; 
+            this.player.bag['Berry'] += 3;
             delete this.crops[key];
             showDialog("Harvested 3 Berries!", 2000);
             return true;
@@ -187,12 +190,12 @@ class ResourceSystem {
     }
 
     getSaveData() {
-        return { 
-            nodes: this.nodes, 
-            crops: this.crops, 
+        return {
+            nodes: this.nodes,
+            crops: this.crops,
             respawnQueue: this.respawnQueue,
             // Convert Set to Array for JSON saving
-            generatedChunks: Array.from(this.generatedChunks) 
+            generatedChunks: Array.from(this.generatedChunks)
         };
     }
 
@@ -200,7 +203,7 @@ class ResourceSystem {
         this.nodes = data.nodes || {};
         this.crops = data.crops || {};
         this.respawnQueue = data.respawnQueue || [];
-        
+
         // Load generated chunks list to prevent re-spawning in old areas
         if (data.generatedChunks) {
             this.generatedChunks = new Set(data.generatedChunks);

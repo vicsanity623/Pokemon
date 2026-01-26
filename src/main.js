@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.2.3'; // Bumped Version
+const VERSION = 'v3.2.4'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -794,7 +794,18 @@ function processAutoAttackEnemy(dt, timestamp) {
 
                 if (autoAttackEnemyTarget.hp <= 0) {
                     const idx = enemySystem.enemies.indexOf(autoAttackEnemyTarget);
-                    if (idx !== -1) enemySystem.killEnemy(idx);
+                    if (idx !== -1) {
+                        const enemy = enemySystem.enemies[idx];
+                        enemySystem.killEnemy(idx);
+
+                        // Update Bounty Board
+                        if (typeof bountySystem !== 'undefined') {
+                            bountySystem.updateProgress('kill');
+                            if (enemy.isShiny || enemy.isBoss) {
+                                bountySystem.updateProgress('rare');
+                            }
+                        }
+                    }
                     autoAttackEnemyTarget = null;
                 }
 
