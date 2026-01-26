@@ -5,14 +5,14 @@ class MultiplayerSystem {
         this.conn = null;
         this.myId = null;
         this.isConnected = false;
-        
+
         // The other player's data
         this.otherPlayer = {
             active: false,
             x: 0,
             y: 0,
             dir: 'down',
-            spriteUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/heartgold-soulsilver/25.png',
+            spriteUrl: 'assets/sprites/pokemon/25.png',
             lastUpdate: Date.now()
         };
 
@@ -28,7 +28,7 @@ class MultiplayerSystem {
         this.peer.on('open', (id) => {
             this.myId = id;
             console.log('My ID is: ' + id);
-            
+
             // Show ID to user
             prompt("Copy this ID and send it to your friend:", id);
             showDialog("Waiting for friend to join...", 5000);
@@ -47,7 +47,7 @@ class MultiplayerSystem {
         if (!hostId) return;
 
         this.peer = new Peer();
-        
+
         this.peer.on('open', () => {
             const conn = this.peer.connect(hostId);
             this.setupConnection(conn);

@@ -310,26 +310,26 @@ class BattleSystem {
         const level = this.calculateEnemyLevel(bossLevelBonus, bossConfig);
 
         // --- SHINY COMBO CHECK ---
-        let shinyThreshold = 1 / 3000; 
-        
+        let shinyThreshold = 1 / 3000;
+
         let isComboMatch = false;
 
         if (typeof rpgSystem !== 'undefined') {
             if (rpgSystem.comboSpecies === id) {
                 isComboMatch = true;
-                
+
                 // COMBO BONUSES
                 if (rpgSystem.comboCount >= 10) shinyThreshold *= 2;  // 1 in 1500
                 if (rpgSystem.comboCount >= 20) shinyThreshold *= 3;  // 1 in 1000
                 if (rpgSystem.comboCount >= 31) shinyThreshold *= 4;  // 1 in 750 (Max normal scaling)
-                
+
                 // Super Bonus for dedicated grinders (50+ Combo)
                 if (rpgSystem.comboCount >= 50) shinyThreshold = 0.01; // 1 in 100
             }
         }
 
         const isShiny = (isArenaBoss && bossConfig) ? Math.random() < 0.5 : Math.random() < shinyThreshold;
-        
+
         try {
             let res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
             let data = await res.json();
@@ -948,7 +948,7 @@ class BattleSystem {
         }
         this.catchSuccess();
     }
-    
+
     // --- NEW COMBO LOGIC ---
     registerCombo(id, name, method) {
         if (typeof rpgSystem === 'undefined') return;
@@ -966,11 +966,11 @@ class BattleSystem {
                     showDialog(`Combo Broken! (Caught ${name})`, 2000);
                 }
                 // Start New Streak with ID
-                rpgSystem.comboSpecies = id; 
+                rpgSystem.comboSpecies = id;
                 rpgSystem.comboCount = 1;
             }
         }
-        
+
         // 2. LOGIC FOR DEFEATING (Preserves the Streak)
         else if (method === 'defeat') {
             // We do NOTHING here. The streak remains safe.
@@ -997,8 +997,8 @@ class BattleSystem {
             hp: this.enemy.maxHp,
             exp: 0,
             backSprite: this.enemy.isShiny
-                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/shiny/${this.enemy.id}.png`
-                : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${this.enemy.id}.png`
+                ? `assets/sprites/pokemon/shiny/back/${this.enemy.id}.png`
+                : `assets/sprites/pokemon/back/${this.enemy.id}.png`
         };
 
         this.player.addPokemon(caughtPokemon);

@@ -6,14 +6,14 @@ class RPGSystem {
         this.level = 1;
         this.maxHp = 100;
         this.hp = 100;
-        
+
         // --- STAMINA SCALING ---
         this.maxStamina = 100 + (this.level * 10);
         this.stamina = this.maxStamina;
-        
+
         this.xp = 0;
         this.comboCount = 0;
-        this.comboSpecies = null; 
+        this.comboSpecies = null;
 
         this.isAttacking = false;
         this.attackCooldown = 0;
@@ -23,12 +23,12 @@ class RPGSystem {
 
         // CACHE DOM ELEMENTS FOR PERFORMANCE
         this.domCache = {};
-        
+
         this.createHUD();
     }
 
     getDamage() {
-        let base = 1; 
+        let base = 1;
         if (this.equipment.weapon) base = this.equipment.weapon.damage;
         return Math.floor(base * (1 + (this.level * 0.1)));
     }
@@ -61,6 +61,18 @@ class RPGSystem {
     respawn() {
         if (this.isRespawning) return;
         this.isRespawning = true;
+
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.isActive) {
+            // Let DungeonSystem handle the exit and teleport
+            dungeonSystem.exit(false);
+            // We just heal them so they aren't stuck at 0 HP
+            this.hp = this.maxHp;
+            this.maxStamina = 100 + (this.level * 10);
+            this.stamina = this.maxStamina;
+            this.updateHUD();
+            this.isRespawning = false;
+            return;
+        }
 
         showDialog("Passed out! Teleported home.", 3000);
 
@@ -148,7 +160,7 @@ class RPGSystem {
 
     update(dt) {
         const regenRate = 28 + (this.level * 2);
-        
+
         if (this.stamina < this.maxStamina) this.stamina += dt * regenRate;
         if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
 
@@ -268,16 +280,16 @@ class RPGSystem {
         if (!itemData) return;
 
         const equippedItem = { ...itemData };
-        equippedItem.id = itemId; 
+        equippedItem.id = itemId;
 
         if (suffix === 'rare') {
             equippedItem.name = `Rare ${itemData.name}`;
-            equippedItem.color = '#3498db'; 
+            equippedItem.color = '#3498db';
             if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 1.25);
             if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 1.25);
         } else if (suffix === 'legendary') {
             equippedItem.name = `Legendary ${itemData.name}`;
-            equippedItem.color = '#f1c40f'; 
+            equippedItem.color = '#f1c40f';
             if (equippedItem.damage) equippedItem.damage = Math.floor(equippedItem.damage * 2.0);
             if (equippedItem.defense) equippedItem.defense = Math.floor(equippedItem.defense * 2.0);
         }

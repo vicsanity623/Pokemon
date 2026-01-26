@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.0.9'; // Bumped Version
+const VERSION = 'v3.2.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -82,7 +82,7 @@ function playSFX(id) {
     if (!sfxCache[id]) {
         sfxCache[id] = document.getElementById(id);
     }
-    
+
     const sfx = sfxCache[id];
     if (sfx) {
         // Reset and play immediately
@@ -168,8 +168,9 @@ gameCanvas.addEventListener('pointerdown', (e) => {
         // Calculate clickX relative to canvas
         const rect = gameCanvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        
-        dungeonSystem.handleTap(clickX, gameCanvas.width); 
+
+        const canvasEl = /** @type {HTMLCanvasElement} */ (gameCanvas);
+        dungeonSystem.handleTap(clickX, canvasEl.width);
         return; // STOP HERE! Don't run auto-harvest logic
     }
     // 1. Ignore clicks if menus are open
@@ -222,6 +223,8 @@ gameCanvas.addEventListener('pointerdown', (e) => {
             if (nearbyBuilding.type === 'pokecenter') handlePokeCenterInteraction();
             else if (nearbyBuilding.type === 'arena') arenaSystem.enter();
             else if (nearbyBuilding.type === 'home' || homeSystem.isNearHome(player.x, player.y)) homeSystem.interact();
+            else if (nearbyBuilding.type === 'bounty_board') bountySystem.interact();
+            else if (nearbyBuilding.type === 'dungeon_entrance') dungeonSystem.enter();
             return;
         }
     }
@@ -238,7 +241,7 @@ gameCanvas.addEventListener('pointerdown', (e) => {
 
     // 4. Resource Node (Auto-Harvest)
     const tx = Math.round(worldClickX), ty = Math.round(worldClickY);
-    const candidates = [`${tx},${ty}`, `${tx+1},${ty}`, `${tx-1},${ty}`, `${tx},${ty+1}`, `${tx},${ty-1}`];
+    const candidates = [`${tx},${ty}`, `${tx + 1},${ty}`, `${tx - 1},${ty}`, `${tx},${ty + 1}`, `${tx},${ty - 1}`];
     for (let key of candidates) {
         if (resourceSystem.nodes[key]) {
             const parts = key.split(',').map(Number);
@@ -275,7 +278,7 @@ function runIntro() {
         // I increased the time slightly to 3000 (3 seconds) so people can read the longer text
         showDialog(introText[introIndex], 0);
         introIndex++;
-        setTimeout(runIntro, 3000); 
+        setTimeout(runIntro, 3000);
     } else {
         hideDialog();
         showDialog('Tap to interact .', 3000);
@@ -370,7 +373,7 @@ function gameLoop(timestamp) {
 
     // 2. Update Systems that need smooth movement/projectiles
     // Send my position to friend
-if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
+    if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
     if (typeof enemySystem !== 'undefined') enemySystem.update(dt);
     if (typeof guardianSystem !== 'undefined') guardianSystem.update(dt);
     if (typeof defenseSystem !== 'undefined' && defenseSystem.active) {
@@ -466,8 +469,8 @@ if (typeof multiplayerSystem !== 'undefined') multiplayerSystem.update();
                     p.name = p.species || "PIKACHU";
 
                     // Restore Sprites (Back and Front)
-                    p.backSprite = p.storedSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png';
-                    p.sprite = p.storedFrontSprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png'; // <--- RESTORE ICON
+                    p.backSprite = p.storedSprite || 'assets/sprites/pokemon/back/25.png';
+                    p.sprite = p.storedFrontSprite || 'assets/sprites/pokemon/25.png'; // <--- RESTORE ICON
 
                     // Initialize Stats if they don't exist
                     if (!p.stats) p.stats = generatePokemonStats();
@@ -774,7 +777,7 @@ function processAutoAttackEnemy(dt, timestamp) {
             if (typeof rpgSystem !== 'undefined' && rpgSystem.stamina >= 10) {
                 rpgSystem.stamina -= 10;
                 const damage = rpgSystem.getDamage();
-                
+
                 autoAttackEnemyTarget.hp -= damage;
                 playSFX('sfx-attack1');
 
@@ -797,7 +800,7 @@ function processAutoAttackEnemy(dt, timestamp) {
 
                 rpgSystem.updateHUD();
             } else {
-                if(!document.getElementById('dialog-box') || document.getElementById('dialog-box').classList.contains('hidden')) {
+                if (!document.getElementById('dialog-box') || document.getElementById('dialog-box').classList.contains('hidden')) {
                     showDialog("Out of stamina!", 500);
                 }
             }
@@ -821,7 +824,7 @@ input.press = (key) => {
         }
 
         // --- PRIORITY 1: BUILDINGS ---
-        
+
         // Check Bounty Board
         if (typeof bountySystem !== 'undefined' && bountySystem.boardLocation) {
             const bx = bountySystem.boardLocation.x;
@@ -837,7 +840,7 @@ input.press = (key) => {
             const dx = dungeonSystem.entranceLocation.x - player.x;
             const dy = dungeonSystem.entranceLocation.y - player.y;
             if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5) {
-                if(confirm("Enter the Dungeon? Enemies are strong!")) dungeonSystem.enter();
+                if (confirm("Enter the Dungeon? Enemies are strong!")) dungeonSystem.enter();
                 return;
             }
         }
@@ -846,7 +849,7 @@ input.press = (key) => {
         let nearbyPokeCenter = world.buildings.find((b) => {
             let dx = b.x - player.x;
             let dy = b.y - player.y;
-            return (dx*dx + dy*dy) < 2.25 && b.type === 'pokecenter';
+            return (dx * dx + dy * dy) < 2.25 && b.type === 'pokecenter';
         });
         if (nearbyPokeCenter) {
             handlePokeCenterInteraction();
@@ -857,7 +860,7 @@ input.press = (key) => {
         let nearbyArena = world.buildings.find((b) => {
             let dx = b.x - player.x;
             let dy = b.y - player.y;
-            return (dx*dx + dy*dy) < 2.25 && b.type === 'arena';
+            return (dx * dx + dy * dy) < 2.25 && b.type === 'arena';
         });
         if (nearbyArena) {
             arenaSystem.enter();
@@ -879,21 +882,21 @@ input.press = (key) => {
         if (storeSystem.location) {
             let dx = storeSystem.location.x - player.x;
             let dy = storeSystem.location.y - player.y;
-            if ((dx*dx + dy*dy) < 2.25) {
+            if ((dx * dx + dy * dy) < 2.25) {
                 storeSystem.interact();
                 return;
             }
         }
 
         // --- PRIORITY 2: TRIGGERS ---
-        
+
         // Liminal Phone Trigger
         if (typeof liminalSystem !== 'undefined' && homeSystem.houseLocation && !liminalSystem.active) {
             const doorX = homeSystem.houseLocation.x;
             const doorY = homeSystem.houseLocation.y + 666;
             let dx = doorX - player.x;
             let dy = doorY - player.y;
-            if ((dx*dx + dy*dy) < 2.25) {
+            if ((dx * dx + dy * dy) < 2.25) {
                 if (confirm("Answer the call?")) liminalSystem.enter();
                 return;
             }
@@ -1518,8 +1521,8 @@ function handleNPCInteraction(npc) {
                     exp: 0,
                     type: p1.type,
                     // --- FIX: ADD ICONS AND STORAGE ---
-                    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
-                    backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-world/egg.png',
+                    sprite: 'assets/sprites/pokemon/egg.png',
+                    backSprite: 'assets/sprites/pokemon/egg.png',
                     storedSprite: p1.backSprite,
                     storedFrontSprite: p1.sprite, // SAVE PARENT ICON FOR HATCHING
                     // ----------------------------------
@@ -1585,8 +1588,8 @@ window.onload = async () => {
             exp: 0,
             type: 'electric',
             // --- FIX: ADDED FRONT SPRITE ---
-            sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
-            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            sprite: 'assets/sprites/pokemon/25.png',
+            backSprite: 'assets/sprites/pokemon/back/25.png',
             stats: starterStats
         });
 
@@ -1601,13 +1604,13 @@ window.onload = async () => {
             exp: 0,
             type: 'electric',
             // --- FIX: ADDED FRONT SPRITE ---
-            sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
-            backSprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png',
+            sprite: 'assets/sprites/pokemon/25.png',
+            backSprite: 'assets/sprites/pokemon/back/25.png',
             stats: p2Stats
         });
 
         runIntro();
-        
+
         // 3. GENERATE RESOURCES (Trees/Rocks)
         resourceSystem.generate();
 
@@ -1620,7 +1623,7 @@ window.onload = async () => {
                 // Check if inside circle
                 if ((x * x) + (y * y) < (SAFE_RADIUS * SAFE_RADIUS)) {
                     const key = `${x},${y}`;
-                    
+
                     // A. DELETE RESOURCES (Trees/Rocks)
                     if (resourceSystem.nodes[key]) {
                         delete resourceSystem.nodes[key];
@@ -1628,9 +1631,8 @@ window.onload = async () => {
 
                     // B. FORCE GRASS TILES (Remove Water/Tall Grass)
                     // Checks if map is stored in world.map or world.tiles
-                    if (world.map) world.map[key] = 'grass';
-                    else if (world.tiles) world.tiles[key] = 'grass';
-                    
+                    if (world.tileCache) world.tileCache[key] = 'grass';
+
                     // C. DELETE GROUND ITEMS
                     if (world.items && world.items[key]) delete world.items[key];
                 }
@@ -1640,7 +1642,7 @@ window.onload = async () => {
         // 5. REMOVE ENEMIES FROM SAFE ZONE
         if (typeof enemySystem !== 'undefined' && enemySystem.enemies) {
             enemySystem.enemies = enemySystem.enemies.filter(e => {
-                const dist = Math.sqrt(e.x*e.x + e.y*e.y);
+                const dist = Math.sqrt(e.x * e.x + e.y * e.y);
                 // Only keep enemies that are FARTHER than safe radius
                 return dist > SAFE_RADIUS;
             });
@@ -1679,7 +1681,7 @@ window.onload = async () => {
     if (mainMusic && battleMusic) {
         // Only play music if NOT in Liminal Space
         if (!liminalSystem.active) {
-            mainMusic.play().catch((err) => {});
+            mainMusic.play().catch((err) => { });
         }
     }
 
@@ -1827,11 +1829,11 @@ function loadGame() {
         if (data.world.buildings) {
             world.buildings = data.world.buildings;
         }
-        
+
         // --- SAFE LOADING FOR NEW SYSTEMS ---
         // We use || {} to prevent crashing if data is missing
         if (typeof bountySystem !== 'undefined') {
-            bountySystem.loadSaveData(data.bounty || {}); 
+            bountySystem.loadSaveData(data.bounty || {});
         }
         if (typeof dungeonSystem !== 'undefined') {
             dungeonSystem.loadSaveData(data.dungeon || {});
@@ -2081,7 +2083,7 @@ function updateHUD() {
 
                 if (DOM.hudXpText) DOM.hudXpText.innerText = `XP: ${p.exp} / ${maxExp}`;
                 if (DOM.hudXpFill) DOM.hudXpFill.style.width = `${pct}%`;
-                
+
                 lastXP = p.exp;
             }
         }
@@ -2214,8 +2216,8 @@ function showPokedexTab(tab) {
             // Choose sprite based on tab
             let spriteUrl =
                 tab === 'shiny'
-                    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
-                    : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+                    ? `assets/sprites/pokemon/shiny/${i}.png`
+                    : `assets/sprites/pokemon/${i}.png`;
 
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
@@ -2242,8 +2244,8 @@ function showPokedexTab(tab) {
             div.className += ' unknown';
             let spriteUrl =
                 tab === 'shiny'
-                    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i}.png`
-                    : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i}.png`;
+                    ? `assets/sprites/pokemon/shiny/${i}.png`
+                    : `assets/sprites/pokemon/${i}.png`;
 
             div.innerHTML = `
                 <div class="dex-num">#${i}</div>
@@ -2625,7 +2627,7 @@ function cancelPCSelection() {
 }
 
 // Global var to cache the sidebar HTML (add this near top of file or just before this function)
-let lastSidebarHTML = ""; 
+let lastSidebarHTML = "";
 
 function updatePartySidebar() {
     const sb = document.getElementById('party-sidebar');
@@ -2644,7 +2646,7 @@ function updatePartySidebar() {
         sb.innerHTML = ''; // Clear initial state
         toggleBtn = document.createElement('button');
         toggleBtn.id = 'party-toggle-btn';
-        
+
         // Toggle Logic
         toggleBtn.onpointerdown = (e) => {
             e.preventDefault();
@@ -2673,9 +2675,9 @@ function updatePartySidebar() {
         let hpClass = hpPct < 20 ? 'low' : hpPct < 50 ? 'mid' : '';
         const xpNeeded = p.level * 100;
         const xpPct = Math.min(100, (p.exp / xpNeeded) * 100);
-        
+
         // Use the new Sprite property (or fallback)
-        let iconUrl = p.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png';
+        let iconUrl = p.sprite || 'assets/sprites/items/poke-ball.png';
         let activeClass = index === 0 ? 'active-lead' : '';
 
         newHTML += `
@@ -2709,7 +2711,8 @@ function updatePartySidebar() {
         // Re-attach listeners to new elements
         const items = listContainer.querySelectorAll('.party-sidebar-item');
         items.forEach(item => {
-            item.onpointerdown = (e) => {
+            const htmlItem = /** @type {HTMLElement} */ (item);
+            htmlItem.onpointerdown = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const index = parseInt(item.getAttribute('data-index'));
@@ -2724,9 +2727,9 @@ function updatePartySidebar() {
                 player.team[index] = temp;
 
                 showDialog(`Switched to ${player.team[0].name}!`, 1500);
-                
+
                 // Force immediate redraw
-                lastSidebarHTML = ""; 
+                lastSidebarHTML = "";
                 updatePartySidebar();
                 updateHUD();
             };
@@ -2737,8 +2740,8 @@ function updatePartySidebar() {
 // --- OPTIMIZED RESOURCE HUD ---
 // 1. Define list OUTSIDE the function so it's created only once
 const RESOURCE_TRACK_LIST = {
-    'Wood': '🌲', 'Stone': '🪨', 'Coal': '⚫', 
-    'Iron Ore': '🔩', 'Gold Ore': '🧈', 'Obsidian': '🔮', 
+    'Wood': '🌲', 'Stone': '🪨', 'Coal': '⚫',
+    'Iron Ore': '🔩', 'Gold Ore': '🧈', 'Obsidian': '🔮',
     'Bone': '🦴', 'Shadow Essence': '👻', 'Berry': '🍒'
 };
 
@@ -2770,7 +2773,7 @@ function updateResourceDisplay() {
     if (html !== lastResourceHTML) {
         resContainer.innerHTML = html;
         lastResourceHTML = html;
-        
+
         // Handle Visibility
         if (hasResources) {
             if (resContainer.style.display !== 'flex') resContainer.style.display = 'flex';

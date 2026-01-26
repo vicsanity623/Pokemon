@@ -4,7 +4,7 @@ class BountySystem {
         this.tasks = [];
         this.lastGenerated = 0;
         this.boardLocation = null;
-        
+
         // Generate initial tasks if empty
         this.checkDailyRefresh();
     }
@@ -31,12 +31,12 @@ class BountySystem {
 
         // Task Types
         const types = [
-            { type: 'kill', label: 'Hunt', target: 5 + Math.floor(level/2), reward: 'Money' },
+            { type: 'kill', label: 'Hunt', target: 5 + Math.floor(level / 2), reward: 'Money' },
             { type: 'collect', label: 'Supply', target: 10 + level, item: 'Wood', reward: 'Item' },
             { type: 'rare', label: 'Elite', target: 1, reward: 'Rare' }
         ];
 
-        for(let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
             let t = types[i];
             let task = {
                 id: Date.now() + i,
@@ -54,7 +54,7 @@ class BountySystem {
                 task.desc = `Defeat ${task.target} Wild Pokemon`;
                 task.reward = { money: 500 * level };
             } else if (t.type === 'collect') {
-                const res = ['Wood', 'Stone', 'Iron Ore'][Math.floor(Math.random()*3)];
+                const res = ['Wood', 'Stone', 'Iron Ore'][Math.floor(Math.random() * 3)];
                 task.reqItem = res;
                 task.desc = `Collect ${task.target} ${res}`;
                 task.reward = { money: 200 * level, item: 'Great Ball', qty: 5 };
@@ -66,7 +66,7 @@ class BountySystem {
         }
     }
 
-    updateProgress(type, amount=1) {
+    updateProgress(type, amount = 1) {
         this.tasks.forEach(t => {
             if (!t.completed && t.type === type) {
                 t.current += amount;
@@ -96,7 +96,7 @@ class BountySystem {
                         <div class="bounty-card ${t.completed ? 'done' : ''} ${t.claimed ? 'claimed' : ''}">
                             <div class="bounty-title">${t.desc}</div>
                             <div class="bounty-progress">
-                                <div class="bar" style="width:${(t.current/t.target)*100}%"></div>
+                                <div class="bar" style="width:${(t.current / t.target) * 100}%"></div>
                             </div>
                             <div class="bounty-status">${t.current} / ${t.target}</div>
                             <button onclick="bountySystem.claim(${i})" ${t.completed && !t.claimed ? '' : 'disabled'}>
@@ -116,7 +116,7 @@ class BountySystem {
         if (!t.completed || t.claimed) return;
 
         t.claimed = true;
-        
+
         // Give Rewards
         if (t.reward.money) this.player.money += t.reward.money;
         if (t.reward.item) {
@@ -135,21 +135,36 @@ class BountySystem {
     loadSaveData(data) { this.tasks = data.tasks || []; this.lastGenerated = data.lastGenerated || 0; }
 }
 
+/**
+ * @typedef {Object} DungeonEnemy
+ * @property {number} x
+ * @property {number} hp
+ * @property {number} maxHp
+ * @property {string} type
+ * @property {number} attackTimer
+ */
+
 class DungeonSystem {
     constructor(player) {
         this.player = player;
         this.isActive = false;
         this.dungeonLevel = 1; // Roman Numerals I, II, III...
-        
+
         // State
         this.playerX = 0; // Linear distance
         this.wave = 1;
         this.maxWaves = 10;
+        /** @type {DungeonEnemy[]} */
         this.enemies = []; // {x, type, hp...}
         this.chests = [];  // {x, opened}
         this.exitDoorX = 200; // Far right
-        
+
         this.entranceLocation = null;
+        this.playerAttackTimer = 0; // Timer for auto-combat
+
+        this.sessionXP = 0;
+        this.sessionMoney = 0;
+        this.isLevelCleared = false;
     }
 
     spawnEntrance(world, houseX, houseY) {
@@ -168,36 +183,47 @@ class DungeonSystem {
         this.enemies = [];
         this.chests = [];
         this.exitDoorX = 300; // Long road
-        
+
+        this.sessionXP = 0;
+        this.sessionMoney = 0;
+        this.isLevelCleared = false;
+
         // Generate Level Content
-        for(let i=0; i<15; i++) {
+        for (let i = 0; i < 15; i++) {
             // Random Chests along the path
-            this.chests.push({ x: 30 + (i * 20) + Math.random()*10, opened: false });
+            this.chests.push({ x: 30 + (i * 20) + Math.random() * 10, opened: false });
         }
-        
+
         // Initial Wave
         this.spawnWave();
-        
+
         showDialog(`Entered Cave ${this.toRoman(this.dungeonLevel)}`, 3000);
-        
+
         // Music Switch
-        const mainMusic = document.getElementById('main-music');
-        if(mainMusic) mainMusic.pause();
+        /** @type {HTMLAudioElement} */
+        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        if (mainMusic) mainMusic.pause();
     }
 
     exit(completed) {
         this.isActive = false;
+
+        let summaryMsg = `CAVE SUMMARY: +${this.sessionXP} XP, +$${this.sessionMoney} Money.`;
+
         if (completed) {
-            this.dungeonLevel++;
-            showDialog("Dungeon Cleared! Level Increased.", 3000);
+            if (!this.isLevelCleared) this.dungeonLevel++;
+            showDialog(`Dungeon Cleared! Level Increased.\n${summaryMsg}`, 5000);
         } else {
-            showDialog("Escaped the dungeon...", 2000);
+            const isDead = (typeof rpgSystem !== 'undefined' && rpgSystem.hp <= 0);
+            const status = isDead ? "KNOCKED OUT!" : "Escaped the dungeon...";
+            showDialog(`${status}\n${summaryMsg}`, 5000);
         }
-        
+
         // Resume Music
-        const mainMusic = document.getElementById('main-music');
-        if(mainMusic && !liminalSystem.active) mainMusic.play().catch(e=>{});
-        
+        /** @type {HTMLAudioElement} */
+        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        if (mainMusic && !liminalSystem.active) mainMusic.play().catch(e => { });
+
         // Teleport back to entrance
         this.player.x = this.entranceLocation.x;
         this.player.y = this.entranceLocation.y + 2;
@@ -206,11 +232,11 @@ class DungeonSystem {
 
     spawnWave() {
         if (this.wave > 10) return;
-        
+
         const count = 2 + Math.floor(this.dungeonLevel / 2);
-        for(let i=0; i<count; i++) {
+        for (let i = 0; i < count; i++) {
             this.enemies.push({
-                x: this.playerX + 20 + (i*5), // Spawn ahead
+                x: this.playerX + 20 + (i * 5), // Spawn ahead
                 hp: 50 * this.dungeonLevel,
                 maxHp: 50 * this.dungeonLevel,
                 type: 'shadow_beast',
@@ -220,16 +246,57 @@ class DungeonSystem {
         showDialog(`Wave ${this.wave}/10 Incoming!`, 2000);
     }
 
+    spawnLevelClear() {
+        this.dungeonLevel++;
+        this.wave = 1;
+        this.isLevelCleared = true;
+        showDialog("The Exit revealed itself!", 3000);
+    }
+
     update(dt) {
         if (!this.isActive) return;
 
-        // 1. Controls (Side Scroller - Only Right/Left)
-        if (input.isDown('ArrowRight') || input.isDown('d')) {
-            this.playerX += 5 * dt;
+        // 1. Check Player Health
+        if (typeof rpgSystem !== 'undefined' && rpgSystem.hp <= 0) {
+            this.exit(false);
+            return;
         }
+
+        // 1. Controls (Side Scroller - Only Right/Left)
         if (input.isDown('ArrowLeft') || input.isDown('a')) {
             this.playerX -= 5 * dt;
         }
+
+        // --- AUTO BATTLE / AUTO MOVE ---
+        let nearestEnemy = null;
+        let minDist = Infinity;
+        this.enemies.forEach(e => {
+            let d = e.x - this.playerX;
+            if (d > 0 && d < minDist) {
+                minDist = d;
+                nearestEnemy = e;
+            }
+        });
+
+        // 1. Auto Attack
+        if (nearestEnemy && minDist < 2.0) {
+            this.playerAttackTimer += dt;
+            if (this.playerAttackTimer > 0.5) {
+                let dmg = (typeof rpgSystem !== 'undefined') ? rpgSystem.getDamage() : 10;
+                nearestEnemy.hp -= dmg;
+                playSFX('sfx-attack1');
+                this.playerAttackTimer = 0;
+            }
+        }
+
+        // 2. Auto Move Forward
+        // Move if: No enemies OR nearest enemy is far OR wave is done
+        const shouldMove = (!nearestEnemy || minDist > 1.5) && (this.wave <= 10 || this.playerX < this.exitDoorX);
+
+        if (shouldMove) {
+            this.playerX += 4 * dt; // Slightly slower than manual
+        }
+
         if (this.playerX < 0) this.playerX = 0; // Wall
 
         // 2. Camera Follow (Simplified)
@@ -238,14 +305,27 @@ class DungeonSystem {
         // 3. Enemy Logic
         // They move left towards player
         let enemiesAlive = false;
-        for(let i = this.enemies.length-1; i>=0; i--) {
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i];
             if (e.hp <= 0) {
                 this.enemies.splice(i, 1);
+
+                // Rewards
+                const xpGain = 100 * this.dungeonLevel;
+                const goldGain = 50 * this.dungeonLevel;
+
+                this.sessionXP += xpGain;
+                this.sessionMoney += goldGain;
+
+                if (typeof rpgSystem !== 'undefined') {
+                    rpgSystem.gainXP(xpGain);
+                    this.player.money += goldGain;
+                }
+
                 continue;
             }
             enemiesAlive = true;
-            
+
             // Move left
             if (e.x > this.playerX + 1) {
                 e.x -= 3 * dt;
@@ -263,12 +343,12 @@ class DungeonSystem {
         }
 
         // Wave Logic
-        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= 10) {
+        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= 10 && !this.isLevelCleared) {
             this.wave++;
             if (this.wave <= 10) {
                 setTimeout(() => this.spawnWave(), 2000);
             } else {
-                showDialog("The Exit revealed itself!", 3000);
+                this.spawnLevelClear();
             }
         }
 
@@ -281,19 +361,19 @@ class DungeonSystem {
     // Handle Tap Interactions inside Dungeon
     handleTap(screenX, canvasWidth) {
         if (!this.isActive) return;
-        
+
         // Convert screen X to dungeon X
         // In draw(), player is at center. 
         // drawX = (objX - playerX) * 48 + centerX
         // So: clickX = (objX - playerX) * 48 + centerX
         // objX = ((clickX - centerX) / 48) + playerX
-        
+
         const centerX = canvasWidth / 2;
         const TILE = 64; // Scale used in draw
         const worldClickX = ((screenX - centerX) / TILE) + this.playerX;
 
         // Check Chests
-        for(let c of this.chests) {
+        for (let c of this.chests) {
             if (!c.opened && Math.abs(worldClickX - c.x) < 1.0) {
                 this.openChest(c);
                 return;
@@ -301,13 +381,13 @@ class DungeonSystem {
         }
 
         // Attack Enemies (Tap to hit)
-        for(let i=0; i<this.enemies.length; i++) {
+        for (let i = 0; i < this.enemies.length; i++) {
             let e = this.enemies[i];
             if (Math.abs(worldClickX - e.x) < 1.5) {
                 let dmg = (typeof rpgSystem !== 'undefined') ? rpgSystem.getDamage() : 10;
                 e.hp -= dmg;
                 playSFX('sfx-attack1');
-                
+
                 // Visual feedback
                 // (Simplified)
                 return;
@@ -318,17 +398,18 @@ class DungeonSystem {
     openChest(c) {
         c.opened = true;
         playSFX('sfx-pickup');
-        
+
         // RNG Loot
         const rand = Math.random();
         let msg = "";
-        
+
         if (rand < 0.3) {
             const gold = Math.floor(Math.random() * 2700) + 300;
             this.player.money += gold;
+            this.sessionMoney += gold;
             msg = `Found $${gold}!`;
         } else if (rand < 0.7) {
-            const resType = ['Obsidian', 'Gold Ore', 'Iron Ore'][Math.floor(Math.random()*3)];
+            const resType = ['Obsidian', 'Gold Ore', 'Iron Ore'][Math.floor(Math.random() * 3)];
             const qty = Math.floor(Math.random() * 80) + 20;
             if (!this.player.bag[resType]) this.player.bag[resType] = 0;
             this.player.bag[resType] += qty;
@@ -339,7 +420,7 @@ class DungeonSystem {
             this.player.bag['Rare Candy'] += 1;
             msg = `Found a Rare Candy!`;
         }
-        
+
         showDialog(msg, 1500);
         updateHUD();
     }
@@ -364,7 +445,7 @@ class DungeonSystem {
         const pImg = new Image();
         // Use active pokemon or player sprite? Let's use active pokemon
         if (this.player.team[0]) {
-            pImg.src = this.player.team[0].backSprite; 
+            pImg.src = this.player.team[0].backSprite;
             ctx.drawImage(pImg, centerX - 32, centerY - 32, 64, 64);
         } else {
             ctx.fillStyle = 'white';
@@ -389,12 +470,12 @@ class DungeonSystem {
                 ctx.fillStyle = 'red';
                 ctx.font = "30px Arial";
                 ctx.fillText("👾", ex, centerY);
-                
+
                 // HP Bar
                 ctx.fillStyle = 'black';
                 ctx.fillRect(ex - 20, centerY - 40, 40, 5);
                 ctx.fillStyle = 'red';
-                ctx.fillRect(ex - 20, centerY - 40, 40 * (e.hp/e.maxHp), 5);
+                ctx.fillRect(ex - 20, centerY - 40, 40 * (e.hp / e.maxHp), 5);
             }
         });
 
@@ -417,13 +498,13 @@ class DungeonSystem {
             // Night Vision Mode: Green Tint overlay
             ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // Scanlines
             ctx.fillStyle = 'rgba(0, 50, 0, 0.2)';
-            for(let i=0; i<canvas.height; i+=4) {
+            for (let i = 0; i < canvas.height; i += 4) {
                 ctx.fillRect(0, i, canvas.width, 1);
             }
-            
+
             ctx.fillStyle = '#0f0';
             ctx.font = "12px monospace";
             ctx.fillText("NVG ACTIVE", 10, 20);
@@ -431,7 +512,7 @@ class DungeonSystem {
         } else {
             // Darkness Mode: Radial Gradient
             // We draw a black rectangle over everything, but cut a hole in the middle
-            
+
             const grad = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, 300);
             grad.addColorStop(0, "rgba(0,0,0,0)"); // Clear center
             grad.addColorStop(0.5, "rgba(0,0,0,0.8)");
@@ -440,7 +521,7 @@ class DungeonSystem {
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-        
+
         // HUD
         ctx.fillStyle = 'white';
         ctx.font = "20px monospace";

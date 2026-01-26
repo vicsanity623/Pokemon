@@ -1,10 +1,10 @@
 // A simple Q-Learning Brain
 class QBrain {
     constructor() {
-        this.qTable = {}; 
+        this.qTable = {};
         this.learningRate = 0.1;
         this.discountFactor = 0.9;
-        this.explorationRate = 0.2; 
+        this.explorationRate = 0.2;
     }
 
     getStateKey(inputs) {
@@ -14,7 +14,7 @@ class QBrain {
     getAction(state) {
         const key = this.getStateKey(state);
         if (!this.qTable[key]) {
-            this.qTable[key] = [0, 0, 0, 0]; 
+            this.qTable[key] = [0, 0, 0, 0];
         }
 
         if (Math.random() < this.explorationRate) {
@@ -44,9 +44,9 @@ class LiminalEntity {
         this.x = x;
         this.y = y;
         this.isParent = isParent;
-        
-        this.speed = isParent ? 0.040 : 0.060; 
-        this.size = isParent ? 0.4 : 0.25; 
+
+        this.speed = isParent ? 0.040 : 0.060;
+        this.size = isParent ? 0.4 : 0.25;
 
         // THE BRAIN
         this.brain = new QBrain();
@@ -64,7 +64,7 @@ class LiminalEntity {
 
         let dx = player.x - this.x;
         let dy = player.y - this.y;
-        
+
         let quadrant = 0;
         if (dx >= 0 && dy < 0) quadrant = 1;
         if (dx < 0 && dy >= 0) quadrant = 2;
@@ -86,24 +86,24 @@ class LiminalEntity {
 
         const nextX = this.x + vx;
         const nextY = this.y + vy;
-        let reward = -0.1; 
+        let reward = -0.1;
 
         // 4. CHECK COLLISION & CALCULATE REWARD
         let hitWall = false;
         if (this.checkWallCollision(nextX, nextY, system)) {
             hitWall = true;
-            reward = -10; 
+            reward = -10;
             this.x -= vx * 2;
             this.y -= vy * 2;
         } else {
             this.x = nextX;
             this.y = nextY;
-            
-            const newDist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
-            const oldDist = Math.sqrt((player.x - (this.x-vx))**2 + (player.y - (this.y-vy))**2);
-            
-            if (newDist < oldDist) reward += 2; 
-            else reward -= 1; 
+
+            const newDist = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
+            const oldDist = Math.sqrt((player.x - (this.x - vx)) ** 2 + (player.y - (this.y - vy)) ** 2);
+
+            if (newDist < oldDist) reward += 2;
+            else reward -= 1;
         }
 
         // 5. LEARN
@@ -115,7 +115,7 @@ class LiminalEntity {
         this.lastAction = action;
 
         // --- DEATH CHECK ---
-        const distToPlayer = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+        const distToPlayer = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
         if (distToPlayer < 0.6 && !system.isHidden) {
             system.corruptSaveFile("CONSUMED");
         }
@@ -123,10 +123,10 @@ class LiminalEntity {
 
     checkWallCollision(x, y, system) {
         const points = [
-            {cx: x - this.size/2, cy: y - this.size/2},
-            {cx: x + this.size/2, cy: y - this.size/2},
-            {cx: x - this.size/2, cy: y + this.size/2},
-            {cx: x + this.size/2, cy: y + this.size/2}
+            { cx: x - this.size / 2, cy: y - this.size / 2 },
+            { cx: x + this.size / 2, cy: y - this.size / 2 },
+            { cx: x - this.size / 2, cy: y + this.size / 2 },
+            { cx: x + this.size / 2, cy: y + this.size / 2 }
         ];
         for (let p of points) {
             if (system.getLiminalTile(p.cx, p.cy) === 'liminal_wall') return true;
@@ -140,10 +140,10 @@ class LiminalSystem {
         this.player = player;
         this.world = world;
         this.active = false;
-        
+
         this.state = 'MIRROR';
         this.stateTimer = 0;
-        
+
         this.visitedTiles = new Set();
         this.uniqueStepCount = 0;
         this.hasEscaped = false;
@@ -153,7 +153,7 @@ class LiminalSystem {
         this.hiddenY = 0;
 
         this.mainEntity = null;
-        this.offspring = []; 
+        this.offspring = [];
     }
 
     // --- NEW HELPER: FIND SAFE SPAWN ---
@@ -162,7 +162,7 @@ class LiminalSystem {
         for (let i = 0; i < 20; i++) {
             let rx = centerX + (Math.random() * 20 - 10);
             let ry = centerY + (Math.random() * 20 - 10);
-            
+
             // Check tile type (Must not be wall or locker)
             let tile = this.getLiminalTile(rx, ry);
             if (tile !== 'liminal_wall' && tile !== 'liminal_locker') {
@@ -176,12 +176,12 @@ class LiminalSystem {
     enter() {
         if (this.active || this.hasEscaped) return;
         this.active = true;
-        
-        const mainMusic = document.getElementById('main-music');
+
+        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
         if (mainMusic) { mainMusic.pause(); mainMusic.currentTime = 0; }
 
         // 50002 is safe (floor)
-        this.player.x = 50002; 
+        this.player.x = 50002;
         this.player.y = 50002;
         this.visitedTiles.clear();
         this.uniqueStepCount = 0;
@@ -189,10 +189,10 @@ class LiminalSystem {
         // Spawn Main Entity (Safe Spot)
         let mainPos = this.findSafeSpawn(50002, 50002);
         this.mainEntity = new LiminalEntity(mainPos.x, mainPos.y, true);
-        
+
         // Spawn 10 Offspring (Safe Spots)
         this.offspring = [];
-        for(let i=0; i<10; i++) {
+        for (let i = 0; i < 10; i++) {
             let kidPos = this.findSafeSpawn(50002, 50002);
             this.offspring.push(new LiminalEntity(kidPos.x, kidPos.y, false));
         }
@@ -203,7 +203,7 @@ class LiminalSystem {
         document.getElementById('bottom-hud').classList.add('hidden');
         document.getElementById('quest-tracker').classList.add('hidden');
         document.getElementById('hamburger-btn').classList.add('hidden');
-        document.body.style.backgroundColor = '#1a1a00'; 
+        document.body.style.backgroundColor = '#1a1a00';
 
         showDialog("... CONNECTION LOST ...", 4000);
     }
@@ -231,7 +231,7 @@ class LiminalSystem {
                 this.stateTimer = 0;
                 showDialog("IT SEES YOU.", 3000);
             }
-        } 
+        }
         else if (this.state === 'HUNT') {
             if (this.isHidden) {
                 this.state = 'SEARCH';
@@ -249,7 +249,7 @@ class LiminalSystem {
 
         // 3. UPDATE ENTITIES
         if (this.mainEntity) this.mainEntity.update(dt, this.player, this, this.state);
-        
+
         this.offspring.forEach(child => {
             child.update(dt, this.player, this, this.state);
         });
@@ -271,14 +271,14 @@ class LiminalSystem {
             this.toggleHide();
             return true;
         }
-        
+
         return false;
     }
 
     toggleHide() {
         this.isHidden = !this.isHidden;
-        this.player.moving = false; 
-        
+        this.player.moving = false;
+
         if (this.isHidden) {
             showDialog("Hiding in locker...", 1000);
         } else {
@@ -293,21 +293,21 @@ class LiminalSystem {
 
     escape() {
         this.active = false;
-        this.hasEscaped = true; 
+        this.hasEscaped = true;
         this.player.x = 0;
-        this.player.y = -300; 
+        this.player.y = -300;
 
         document.getElementById('bottom-hud').classList.remove('hidden');
         document.getElementById('quest-tracker').classList.remove('hidden');
         document.getElementById('hamburger-btn').classList.remove('hidden');
-        document.body.style.backgroundColor = 'black'; 
+        document.body.style.backgroundColor = 'black';
 
         if (typeof saveGame === 'function') saveGame();
 
         showDialog("You escaped the void... The phone is gone.", 5000);
-        
-        const mainMusic = document.getElementById('main-music');
-        if (mainMusic) mainMusic.play().catch(e=>{});
+
+        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        if (mainMusic) mainMusic.play().catch(e => { });
     }
 
     corruptSaveFile(reason) {
@@ -325,6 +325,11 @@ class LiminalSystem {
         window.location.replace(window.location.href);
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {'liminal_wall' | 'liminal_floor' | 'liminal_locker' | 'liminal_exit'}
+     */
     getLiminalTile(x, y) {
         let ix = Math.floor(x);
         let iy = Math.floor(y);
@@ -334,29 +339,29 @@ class LiminalSystem {
         // ----------------------------------------------
 
         if (this.uniqueStepCount >= 10000) {
-             if (Math.abs(ix % 50) === 25 && Math.abs(iy % 50) === 25) return 'liminal_exit';
+            if (Math.abs(ix % 50) === 25 && Math.abs(iy % 50) === 25) return 'liminal_exit';
         }
 
         // Standard Locker every 20 tiles
         if (Math.abs(ix % 20) === 5 && Math.abs(iy % 20) === 5) {
             return 'liminal_locker';
         }
-        
+
         // ... rest of wall logic ...
         let roomX = Math.abs(ix) % 10;
         let roomY = Math.abs(iy) % 10;
         if (roomX === 0 && roomY !== 5) return 'liminal_wall';
         if (roomY === 0 && roomX !== 5) return 'liminal_wall';
-        if (roomX === 5 && roomY === 5) return 'liminal_wall'; 
+        if (roomX === 5 && roomY === 5) return 'liminal_wall';
 
         return 'liminal_floor';
     }
 
     getColor(tile) {
-        if (tile === 'liminal_wall') return '#d4c572'; 
-        if (tile === 'liminal_floor') return '#bfb48f'; 
-        if (tile === 'liminal_locker') return '#555'; 
-        if (tile === 'liminal_exit') return '#fff'; 
+        if (tile === 'liminal_wall') return '#d4c572';
+        if (tile === 'liminal_floor') return '#bfb48f';
+        if (tile === 'liminal_locker') return '#555';
+        if (tile === 'liminal_exit') return '#fff';
         return '#000';
     }
 
@@ -372,26 +377,26 @@ class LiminalSystem {
             let color = ent.isParent ? 'rgba(0,0,0,0.95)' : 'rgba(50,0,0,0.8)';
             let eyeColor = '#fff';
 
-            if (this.state === 'HUNT') { 
+            if (this.state === 'HUNT') {
                 color = ent.isParent ? '#000' : '#500';
-                eyeColor = '#ff0000'; 
+                eyeColor = '#ff0000';
             }
 
             const size = ent.size * tileSize;
 
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(drawX + tileSize/2, drawY + tileSize/2, size, 0, Math.PI * 2);
+            ctx.arc(drawX + tileSize / 2, drawY + tileSize / 2, size, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = eyeColor;
             ctx.shadowBlur = 10;
             ctx.shadowColor = eyeColor;
             const eyeSize = ent.isParent ? 5 : 3;
-            const eyeOffset = ent.isParent ? tileSize/4 : tileSize/6;
-            
-            ctx.fillRect(drawX + tileSize/2 - eyeOffset, drawY + tileSize/2 - eyeOffset/2, eyeSize, eyeSize);
-            ctx.fillRect(drawX + tileSize/2 + eyeOffset - eyeSize, drawY + tileSize/2 - eyeOffset/2, eyeSize, eyeSize);
+            const eyeOffset = ent.isParent ? tileSize / 4 : tileSize / 6;
+
+            ctx.fillRect(drawX + tileSize / 2 - eyeOffset, drawY + tileSize / 2 - eyeOffset / 2, eyeSize, eyeSize);
+            ctx.fillRect(drawX + tileSize / 2 + eyeOffset - eyeSize, drawY + tileSize / 2 - eyeOffset / 2, eyeSize, eyeSize);
             ctx.shadowBlur = 0;
         };
 
@@ -424,18 +429,18 @@ class LiminalSystem {
             document.getElementById('quest-tracker').classList.add('hidden');
             document.getElementById('hamburger-btn').classList.add('hidden');
             document.body.style.backgroundColor = '#1a1a00';
-            
+
             // Respawn Safely on Load
             let mainPos = this.findSafeSpawn(50002, 50002);
             this.mainEntity = new LiminalEntity(mainPos.x, mainPos.y, true);
-            
+
             this.offspring = [];
-            for(let i=0; i<10; i++) {
+            for (let i = 0; i < 10; i++) {
                 let kidPos = this.findSafeSpawn(50002, 50002);
                 this.offspring.push(new LiminalEntity(kidPos.x, kidPos.y, false));
             }
 
-            const mainMusic = document.getElementById('main-music');
+            const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
             if (mainMusic) mainMusic.pause();
         }
     }

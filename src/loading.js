@@ -1,5 +1,8 @@
 class AssetLoader {
     constructor() {
+        // We use Key-Value pairs now. 
+        // Key = How the code finds it (e.g. 'bounty_board')
+        // Value = Where the file is (e.g. './assets/...')
         this.assets = {
             audio: [
                 'music.mp3',
@@ -9,17 +12,32 @@ class AssetLoader {
                 'attack2.mp3',
                 'attack3.mp3'
             ],
-            images: [
-                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',
-                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png',
-                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/potion.png'
-            ]
+            images: {
+                // REQUIRED FOR GAMEPLAY (The ones that were missing)
+                'bounty_board': './assets/sprites/bounty_board.png',
+                'dungeon_entrance': './assets/sprites/cave_entrance.png',
+
+                // ITEMS (Changed to local to stop GitHub blocking you)
+                'poke-ball': './assets/sprites/items/poke-ball.png',
+                'great-ball': './assets/sprites/items/great-ball.png',
+                'ultra-ball': './assets/sprites/items/ultra-ball.png',
+                'master-ball': './assets/sprites/items/master-ball.png',
+                'potion': './assets/sprites/items/potion.png',
+                'super-potion': './assets/sprites/items/super-potion.png',
+                'hyper-potion': './assets/sprites/items/hyper-potion.png',
+                'max-potion': './assets/sprites/items/max-potion.png',
+            }
         };
+
+        // This is where the loaded HTMLImageElements live
+        this.imgs = {};
+
         this.cache = {
-            audio: {},
-            images: {}
+            audio: {}
         };
-        this.totalAssets = this.assets.audio.length + this.assets.images.length;
+
+        // Calculate total: Audio array length + Image Object keys length
+        this.totalAssets = this.assets.audio.length + Object.keys(this.assets.images).length;
         this.loadedCount = 0;
         this.loadingScreen = null;
         this.progressBar = null;
@@ -27,50 +45,33 @@ class AssetLoader {
     }
 
     initUI() {
-        // Create Loading Screen Overlay
         this.loadingScreen = document.createElement('div');
         this.loadingScreen.id = 'loading-screen';
-        this.loadingScreen.style.position = 'fixed';
-        this.loadingScreen.style.top = '0';
-        this.loadingScreen.style.left = '0';
-        this.loadingScreen.style.width = '100%';
-        this.loadingScreen.style.height = '100%';
-        this.loadingScreen.style.backgroundColor = '#000';
-        this.loadingScreen.style.zIndex = '9999';
-        this.loadingScreen.style.display = 'flex';
-        this.loadingScreen.style.flexDirection = 'column';
-        this.loadingScreen.style.justifyContent = 'center';
-        this.loadingScreen.style.alignItems = 'center';
-        this.loadingScreen.style.color = '#fff';
-        this.loadingScreen.style.fontFamily =
-            "'Courier New', Courier, monospace";
+        Object.assign(this.loadingScreen.style, {
+            position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+            backgroundColor: '#000', zIndex: '9999', display: 'flex',
+            flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+            color: '#fff', fontFamily: "'Courier New', Courier, monospace"
+        });
 
-        // Title
         const title = document.createElement('h1');
         title.innerText = 'POKEMON';
         title.style.marginBottom = '20px';
-        title.style.textShadow = '2px 2px #333';
         this.loadingScreen.appendChild(title);
 
-        // Progress Bar Container
         const barContainer = document.createElement('div');
-        barContainer.style.width = '300px';
-        barContainer.style.height = '20px';
-        barContainer.style.border = '2px solid #fff';
-        barContainer.style.borderRadius = '10px';
-        barContainer.style.overflow = 'hidden';
-        barContainer.style.marginBottom = '10px';
+        Object.assign(barContainer.style, {
+            width: '300px', height: '20px', border: '2px solid #fff',
+            borderRadius: '10px', overflow: 'hidden', marginBottom: '10px'
+        });
         this.loadingScreen.appendChild(barContainer);
 
-        // Progress Bar Fill
         this.progressBar = document.createElement('div');
-        this.progressBar.style.width = '0%';
-        this.progressBar.style.height = '100%';
-        this.progressBar.style.backgroundColor = '#2ecc71';
-        this.progressBar.style.transition = 'width 0.2s';
+        Object.assign(this.progressBar.style, {
+            width: '0%', height: '100%', backgroundColor: '#2ecc71', transition: 'width 0.2s'
+        });
         barContainer.appendChild(this.progressBar);
 
-        // Text
         this.progressText = document.createElement('div');
         this.progressText.innerText = 'Loading assets... 0%';
         this.loadingScreen.appendChild(this.progressText);
@@ -82,82 +83,77 @@ class AssetLoader {
         this.loadedCount++;
         const pct = Math.floor((this.loadedCount / this.totalAssets) * 100);
         if (this.progressBar) this.progressBar.style.width = `${pct}%`;
-        if (this.progressText)
-            this.progressText.innerText = `Loading assets... ${pct}%`;
+        if (this.progressText) this.progressText.innerText = `Loading assets... ${pct}%`;
     }
 
     async loadAll() {
         this.initUI();
-
-        // Load Player Team Sprites (if save exists)
-        this.loadSaveDataSprites();
+        this.loadSaveDataSprites(); // Pre-load saved team sprites
 
         const promises = [];
 
-        // Load Audio
+        // 1. Load Audio
         this.assets.audio.forEach((src) => {
-            promises.push(
-                new Promise((resolve) => {
-                    const audio = new Audio();
-                    audio.oncanplaythrough = () => {
-                        this.updateProgress();
-                        resolve();
-                    };
-                    audio.onerror = () => {
-                        console.warn(`Failed to load audio: ${src}`);
-                        this.updateProgress(); // Count it anyway to avoid hanging
-                        resolve();
-                    };
-                    audio.src = src;
-                    audio.load();
-                    this.cache.audio[src] = audio;
-                })
-            );
+            promises.push(new Promise((resolve) => {
+                const audio = new Audio();
+                audio.oncanplaythrough = () => { this.updateProgress(); resolve(); };
+                audio.onerror = () => { console.warn(`Audio missing: ${src}`); this.updateProgress(); resolve(); };
+                audio.src = src;
+                audio.load();
+                this.cache.audio[src] = audio;
+            }));
         });
 
-        // Load Images
-        this.assets.images.forEach((src) => {
-            promises.push(
-                new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        this.updateProgress();
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        console.warn(`Failed to load image: ${src}`);
-                        this.updateProgress();
-                        resolve();
-                    };
-                    img.src = src;
-                    this.cache.images[src] = img;
-                })
-            );
+        // 2. Load Images (Updated Logic for Object keys)
+        Object.entries(this.assets.images).forEach(([key, src]) => {
+            promises.push(new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    this.imgs[key] = img; // Store accessible by Name
+                    this.updateProgress();
+                    resolve();
+                };
+                img.onerror = () => {
+                    console.warn(`Image missing: ${src} (Key: ${key})`);
+                    // Create a placeholder pink square so game doesn't crash
+                    this.imgs[key] = new Image();
+                    this.imgs[key].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+                    this.updateProgress();
+                    resolve();
+                };
+                img.src = src;
+            }));
         });
 
         await Promise.all(promises);
-
-        // Small delay for UX
         await new Promise((r) => setTimeout(r, 500));
-
         this.hide();
     }
 
     loadSaveDataSprites() {
+        // This handles extra sprites from save files (Pokemon team)
         try {
             const raw = localStorage.getItem('poke_save');
             if (raw) {
                 const data = JSON.parse(raw);
                 if (data.player && data.player.team) {
+                    const extraImages = [];
                     data.player.team.forEach((p) => {
-                        if (p.sprite) this.assets.images.push(p.sprite);
-                        if (p.backSprite) this.assets.images.push(p.backSprite);
-                        if (p.animatedSprite)
-                            this.assets.images.push(p.animatedSprite);
+                        if (p.sprite) extraImages.push(p.sprite);
+                        if (p.backSprite) extraImages.push(p.backSprite);
                     });
-                    // Update total count
-                    this.totalAssets =
-                        this.assets.audio.length + this.assets.images.length;
+
+                    // Add these to total count so bar doesn't look stuck
+                    this.totalAssets += extraImages.length;
+
+                    // Load them dynamically
+                    extraImages.forEach(src => {
+                        const img = new Image();
+                        img.onload = () => this.updateProgress();
+                        img.onerror = () => this.updateProgress();
+                        img.src = src;
+                        // We don't need to name these, browser cache handles them
+                    });
                 }
             }
         } catch (e) {
@@ -169,9 +165,7 @@ class AssetLoader {
         if (this.loadingScreen) {
             this.loadingScreen.style.opacity = '0';
             this.loadingScreen.style.transition = 'opacity 0.5s';
-            setTimeout(() => {
-                this.loadingScreen.remove();
-            }, 500);
+            setTimeout(() => { this.loadingScreen.remove(); }, 500);
         }
     }
 }

@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v3.1.1';
+const GAME_VERSION = 'v3.2.0';
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
@@ -24,7 +24,24 @@ const ASSETS = [
     './src/arena.js',
     './src/home.js',
     './src/store.js',
-    './src/defense.js'
+    './src/defense.js',
+    './src/expansion.js',
+    './src/liminal.js',
+    './src/multiplayer.js',
+    './290pxhouse.png',
+    './daycare.png',
+    './herbalist.png',
+    './villager.png',
+    './music.mp3',
+    './battle.mp3',
+    './attack1.mp3',
+    './attack2.mp3',
+    './attack3.mp3',
+    './pickup.mp3',
+    './assets/sprites/bounty_board.png',
+    './assets/sprites/cave_entrance.png',
+    './assets/sprites/pokemon/25.png',
+    './assets/sprites/pokemon/egg.png'
 ];
 
 // 1. INSTALL: Cache files and force activation

@@ -8,7 +8,7 @@ class World {
         this.items = {};
         this.npcs = [];
         this.buildings = [];
-        
+
         // --- LAG FIX: TILE CACHE ---
         // This remembers calculated tiles so we don't do heavy math every frame.
         this.tileCache = {};
@@ -150,7 +150,7 @@ class World {
         let result = 'grass'; // Default
 
         // --- SAFE ZONE FORCE CHECK ---
-        if ((x * x) + (y * y) < 625) { 
+        if ((x * x) + (y * y) < 625) {
             result = 'grass';
         } else {
             // 2. Temperature & Biome Noise
@@ -328,7 +328,7 @@ class World {
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) {
             // Check if this tile is a wall or void
             const tile = liminalSystem.getLiminalTile(x, y);
-            if (tile === 'liminal_wall' || tile === 'liminal_void') return true;
+            if (tile === 'liminal_wall') return true;
 
             // Allow walking on floor
             return false;
@@ -510,19 +510,23 @@ class Renderer {
 
         // Load Player Sprite (Ash style)
         this.sprite = new Image();
-        this.sprite.src = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/heartgold-soulsilver/25.png';
+        this.sprite.src = 'assets/sprites/pokemon/25.png';
 
         // Load Building Sprites
         this.houseImg = new Image();
         this.houseImg.src = '290pxhouse.png';
         this.daycareImg = new Image();
         this.daycareImg.src = 'daycare.png';
-        
+
         // Load NPC Sprites
         this.villagerImg = new Image();
         this.villagerImg.src = 'villager.png';
         this.herbalistImg = new Image();
         this.herbalistImg.src = 'herbalist.png';
+        this.bountyBoardImg = new Image();
+        this.bountyBoardImg.src = 'assets/sprites/bounty_board.png';
+        this.caveEntranceImg = new Image();
+        this.caveEntranceImg.src = 'assets/sprites/cave_entrance.png';
 
         this.particles = [];
     }
@@ -540,7 +544,7 @@ class Renderer {
         this.particles.push({
             x: x,
             y: y,
-            life: 0.8, 
+            life: 0.8,
             vx: (Math.random() - 0.5) * 0.2,
             vy: (Math.random() - 0.5) * 0.2,
             color: color
@@ -584,7 +588,7 @@ class Renderer {
             for (let x = 0; x < cx; x++) {
                 let worldX = startTileX + x;
                 let worldY = startTileY + y;
-                
+
                 // Use cached tile getter
                 let tile = this.world.getTile(worldX, worldY);
 
@@ -600,10 +604,10 @@ class Renderer {
 
                 if (tile === 'grass' || tile === 'grass_tall') {
                     this.ctx.fillStyle = (tile === 'grass_tall') ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)';
-                    let ox = (seed & 15) * 4; 
+                    let ox = (seed & 15) * 4;
                     let oy = ((seed >> 4) & 15) * 4;
                     this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 4, 4);
-                    
+
                     if (tile === 'grass_tall') {
                         this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 10, TILE_SIZE - 20, TILE_SIZE - 20);
                     }
@@ -614,7 +618,7 @@ class Renderer {
                     }
                 } else if (tile === 'sand') {
                     this.ctx.fillStyle = '#FBC02D';
-                    let ox = (seed & 15) * 4; 
+                    let ox = (seed & 15) * 4;
                     let oy = ((seed >> 4) & 15) * 4;
                     this.ctx.fillRect(Math.floor(drawX) + ox, Math.floor(drawY) + oy, 3, 3);
                 } else if (tile === 'snow') {
@@ -648,7 +652,7 @@ class Renderer {
         this.world.npcs.forEach(npc => {
             renderList.push({ type: 'npc', y: npc.y, data: npc });
         });
-        
+
         // Add Other Player (Multiplayer)
         if (typeof multiplayerSystem !== 'undefined' && multiplayerSystem.otherPlayer.active) {
             renderList.push({ type: 'multiplayer', y: multiplayerSystem.otherPlayer.y, data: null });
@@ -665,14 +669,14 @@ class Renderer {
         // 6. Add Resources (FIXED)
         if (typeof resourceSystem !== 'undefined') {
             // Optimization: Only add resources that are ON SCREEN
-            const range = VIEW_W + 2; 
+            const range = VIEW_W + 2;
             for (let key in resourceSystem.nodes) {
                 const node = resourceSystem.nodes[key];
-                
+
                 // --- FIX STARTS HERE ---
                 // We MUST parse the key to get x/y, because node.x doesn't exist
                 const [nx, ny] = key.split(',').map(Number);
-                
+
                 // View Culling using the parsed coordinates
                 if (Math.abs(nx - this.player.x) < range && Math.abs(ny - this.player.y) < range) {
                     // Inject x and y into the data object for drawing
@@ -680,7 +684,7 @@ class Renderer {
                 }
                 // --- FIX ENDS HERE ---
             }
-            
+
             for (let key in resourceSystem.crops) {
                 const crop = resourceSystem.crops[key];
                 // Same fix for crops
@@ -835,8 +839,12 @@ class Renderer {
             this.ctx.fillText('MART', Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 18);
             this.ctx.fillStyle = '#87CEEB';
             this.ctx.fillRect(Math.floor(drawX) + 10, Math.floor(drawY) + 35, 25, 20);
-            this.ctx.fillStyle = '#34495e'; 
+            this.ctx.fillStyle = '#34495e';
             this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
+        } else if (building.type === 'bounty_board') {
+            this.ctx.drawImage(this.bountyBoardImg, Math.floor(drawX) - TILE_SIZE, Math.floor(drawY) - TILE_SIZE, TILE_SIZE * 3, TILE_SIZE * 3);
+        } else if (building.type === 'dungeon_entrance') {
+            this.ctx.drawImage(this.caveEntranceImg, Math.floor(drawX) - TILE_SIZE * 1.5, Math.floor(drawY) - TILE_SIZE * 2, TILE_SIZE * 4, TILE_SIZE * 4);
         }
     }
 
@@ -1013,7 +1021,7 @@ class Renderer {
                     defenseSystem.enemies.forEach(e => {
                         let ex = (e.x - this.player.x) * TILE_SIZE + this.canvas.width / 2 - TILE_SIZE / 2;
                         let ey = (e.y - this.player.y) * TILE_SIZE + this.canvas.height / 2 - TILE_SIZE / 2;
-                        
+
                         this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
                         this.ctx.beginPath();
                         this.ctx.ellipse(ex + TILE_SIZE / 2, ey + TILE_SIZE - 5, 20, 8, 0, 0, Math.PI * 2);
@@ -1021,7 +1029,7 @@ class Renderer {
 
                         this.ctx.fillStyle = '#8e44ad';
                         this.ctx.fillRect(ex + 10, ey + 10, TILE_SIZE - 20, TILE_SIZE - 20);
-                        
+
                         let ehp = Math.max(0, e.hp / e.maxHp);
                         this.ctx.fillStyle = 'red';
                         this.ctx.fillRect(ex + 10, ey - 5, (TILE_SIZE - 20) * ehp, 4);
