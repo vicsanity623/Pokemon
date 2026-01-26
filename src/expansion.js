@@ -149,9 +149,10 @@ class DungeonSystem {
         this.player = player;
         this.isActive = false;
         this.dungeonLevel = 1; // Roman Numerals I, II, III...
+        this.imageRepo = {}; // Cache for pokemon sprites
+        this.playerX = 10; // Linear distance
 
         // State
-        this.playerX = 0; // Linear distance
         this.wave = 1;
         this.maxWaves = 10;
         /** @type {DungeonEnemy[]} */
@@ -442,11 +443,14 @@ class DungeonSystem {
         ctx.fillRect(0, centerY + 30, canvas.width, 100);
 
         // 2. Draw Player (Always Center)
-        const pImg = new Image();
         // Use active pokemon or player sprite? Let's use active pokemon
         if (this.player.team[0]) {
-            pImg.src = this.player.team[0].backSprite;
-            ctx.drawImage(pImg, centerX - 32, centerY - 32, 64, 64);
+            const src = this.player.team[0].backSprite;
+            if (!this.imageRepo[src]) {
+                this.imageRepo[src] = new Image();
+                this.imageRepo[src].src = src;
+            }
+            ctx.drawImage(this.imageRepo[src], centerX - 32, centerY - 32, 64, 64);
         } else {
             ctx.fillStyle = 'white';
             ctx.fillRect(centerX - 10, centerY - 10, 20, 20);

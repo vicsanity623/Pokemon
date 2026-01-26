@@ -99,6 +99,10 @@ class EnemySystem {
     }
 
     update(dt) {
+        // --- FIX: NO WORLD UPDATES IN DUNGEONS ---
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.isActive) return;
+        // ----------------------------------------
+
         // 1. Spawning Logic (Distance-based interval)
         const spawnMultiplier = this.getSpawnRateMultiplier();
         const adjustedInterval = this.baseSpawnInterval / spawnMultiplier;
@@ -159,11 +163,11 @@ class EnemySystem {
             if (p.source === 'enemy') {
                 const dx = this.player.x - p.x;
                 const dy = this.player.y - p.y;
-                
+
                 // Pre-check with simple math (bounding box) to avoid Sqrt
                 if (Math.abs(dx) < 0.8 && Math.abs(dy) < 0.8) {
-                     const distSq = dx * dx + dy * dy;
-                     if (distSq < 0.25) { // 0.5 * 0.5
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < 0.25) { // 0.5 * 0.5
                         if (typeof rpgSystem !== 'undefined') {
                             const baseDamage = 10;
                             const scaledDamage = Math.floor(baseDamage * this.getDistanceStatMultiplier() * this.getPlayerLevelMultiplier());
@@ -171,7 +175,7 @@ class EnemySystem {
                             rpgSystem.updateHUD();
                             showDialog(`Hit by Shadow Ball! (-${scaledDamage} HP)`, 1000);
                             const canvas = document.getElementById('gameCanvas');
-                            if(canvas) {
+                            if (canvas) {
                                 canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
                                 setTimeout(() => canvas.style.transform = 'none', 100);
                             }
@@ -247,9 +251,10 @@ class EnemySystem {
         const maxEnemies = this.getMaxEnemies();
         if (this.enemies.length >= maxEnemies) return;
 
-        // --- FIX: NO SPAWNS IN LIMINAL SPACE ---
+        // --- FIX: NO SPAWNS IN LIMINAL SPACE OR DUNGEONS ---
         if (typeof liminalSystem !== 'undefined' && liminalSystem.active) return;
-        // ---------------------------------------
+        if (typeof dungeonSystem !== 'undefined' && dungeonSystem.isActive) return;
+        // ---------------------------------------------------
 
         // Spawn distance scales with how far from home (closer spawns when far from home)
         const distFromHome = this.getDistanceFromHome();
@@ -378,7 +383,7 @@ class EnemySystem {
 
         // 2. RANDOMIZE ITEM COUNT (1 to 3, plus bonus for high levels)
         // Math.random() gives 0.0-0.99. Multiply by 3 gives 0-2.99. Floor it gives 0-2. Add 1 gives 1-3.
-        const baseCount = Math.floor(Math.random() * 3) + 1; 
+        const baseCount = Math.floor(Math.random() * 3) + 1;
         const totalItems = Math.floor(baseCount * multiplier);
 
         // 3. RANDOMIZE MONEY DROP ($5 to $25)
@@ -392,13 +397,13 @@ class EnemySystem {
             lootName = 'Bone';
             if (!this.player.bag['Bone']) this.player.bag['Bone'] = 0;
             this.player.bag['Bone'] += totalItems;
-            
+
             showDialog(`Skeleton crumbled! Found ${totalItems} Bone(s) & $${moneyDrop}.`, 2000);
         } else {
             lootName = 'Shadow Essence';
             if (!this.player.bag['Shadow Essence']) this.player.bag['Shadow Essence'] = 0;
             this.player.bag['Shadow Essence'] += totalItems;
-            
+
             showDialog(`Shadow purged! Found ${totalItems} Essence(s) & $${moneyDrop}.`, 2000);
         }
 
