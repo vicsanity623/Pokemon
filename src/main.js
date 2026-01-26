@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.0.2'; // Bumped Version
+const VERSION = 'v4.0.3'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
