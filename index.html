@@ -11,11 +11,21 @@
 
 <body>
     <div id="game-container">
+        <!-- Main Menu Screen -->
+        <div id="main-menu" class="full-screen-modal">
+            <div class="main-menu-content">
+                <img src="assets/sprites/pokemon/25.png" alt="Pikachu" class="menu-pikachu">
+                <h1 class="menu-title">POKEMON SURVIVAL</h1>
+                <div class="menu-buttons">
+                    <button id="btn-start-new" onclick="startNewGame()">START NEW</button>
+                    <button id="btn-google-signin" onclick="signInWithGoogle()">SIGN IN WITH GOOGLE</button>
+                </div>
+            </div>
+        </div>
+
         <canvas id="gameCanvas"></canvas>
 
-        <img id="rival-sprite" class="hidden" 
-             src="daycare.png"
-             alt="Rival">
+        <img id="rival-sprite" class="hidden" src="daycare.png" alt="Rival">
 
         <div id="ui-layer">
             <div id="flash-overlay"></div>
@@ -219,9 +229,10 @@
                             <button onclick="setGameSpeed(2)" id="speed-2" ontouchstart="setGameSpeed(2)">x2</button>
                         </div>
                     </div>
-                    
+
                     <!-- MOVED OUTSIDE THE ROW -->
-                    <button onclick="teleportToLiminal()" class="menu-item" style="background:#444; color:#888; font-size:10px; margin-top:10px; width:100%;">
+                    <button onclick="teleportToLiminal()" class="menu-item"
+                        style="background:#444; color:#888; font-size:10px; margin-top:10px; width:100%;">
                         [DEV] FIND SIGNAL
                     </button>
 
@@ -377,6 +388,8 @@
     <script src="src/defense.js"></script>
     <script src="src/loading.js"></script>
     <script src="src/expansion.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="src/google-drive.js"></script>
     <script src="src/main.js"></script>
 </body>
 

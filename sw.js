@@ -1,4 +1,4 @@
-const GAME_VERSION = 'v3.2.5';
+const GAME_VERSION = 'v4.0.0';
 const CACHE_NAME = `pokeworld-${GAME_VERSION}`;
 
 const ASSETS = [
@@ -26,6 +26,7 @@ const ASSETS = [
     './src/store.js',
     './src/defense.js',
     './src/expansion.js',
+    './src/google-drive.js',
     './src/liminal.js',
     './src/multiplayer.js',
     './290pxhouse.png',

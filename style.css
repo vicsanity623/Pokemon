@@ -3105,3 +3105,78 @@ body {
 }
 
 .bounty-card button:disabled { background: #555; color: #888; }
+
+/* Main Menu Styles */
+#main-menu {
+    background: #000 !important;
+    z-index: 100000; /* Above everything */
+}
+
+.main-menu-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+}
+
+.menu-pikachu {
+    width: 200px;
+    height: 200px;
+    image-rendering: pixelated;
+    margin-bottom: 20px;
+    animation: bounce-pikachu 2s infinite ease-in-out;
+}
+
+@keyframes bounce-pikachu {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.menu-title {
+    font-size: 24px;
+    color: gold;
+    margin-bottom: 40px;
+    text-align: center;
+    text-shadow: 4px 4px 0px #333;
+    line-height: 1.5;
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 80%;
+    max-width: 300px;
+}
+
+.menu-buttons button {
+    padding: 15px 30px;
+    font-size: 12px;
+    font-family: 'Press Start 2P', cursive;
+    cursor: pointer;
+    background: #fff;
+    border: 4px solid #444;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.menu-buttons button:hover {
+    background: #eee;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3);
+}
+
+.menu-buttons button:active {
+    transform: translateY(0);
+}
+
+#btn-google-signin {
+    background: #4285F4;
+    color: white;
+    border-color: #357ae8;
+}
+
+#btn-google-signin:hover {
+    background: #357ae8;
+}

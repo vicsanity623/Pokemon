@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v3.2.4'; // Bumped Version
+const VERSION = 'v4.0.0'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -1576,9 +1576,20 @@ window.onload = async () => {
     const verEl = document.getElementById('game-version');
     if (verEl) verEl.innerText = `Version: ${VERSION}`;
 
-    // Start Loading Assets
+    // The game is now paused at the Main Menu.
+    // assetLoader.loadAll() and startGameLogic() will be called when the user selects an option.
+}
+
+// --- NEW startGameLogic ---
+let gameStarted = false;
+async function startGameLogic() {
+    if (gameStarted) return;
+    gameStarted = true;
+
+    // 1. Start Loading Assets
     await assetLoader.loadAll();
 
+    // 2. Initialize Game Systems & Load Data
     if (!loadGame()) {
         console.log("New Game: clearing spawn area...");
 
@@ -1598,13 +1609,12 @@ window.onload = async () => {
             hp: starterMaxHp,
             exp: 0,
             type: 'electric',
-            // --- FIX: ADDED FRONT SPRITE ---
             sprite: 'assets/sprites/pokemon/25.png',
             backSprite: 'assets/sprites/pokemon/back/25.png',
             stats: starterStats
         });
 
-        // Pikachu 2 (Different Stats for breeding test)
+        // Pikachu 2
         const p2Stats = generatePokemonStats();
         const p2MaxHp = 5 * 5 + p2Stats.hp;
         player.team.push({
@@ -1614,7 +1624,6 @@ window.onload = async () => {
             hp: p2MaxHp,
             exp: 0,
             type: 'electric',
-            // --- FIX: ADDED FRONT SPRITE ---
             sprite: 'assets/sprites/pokemon/25.png',
             backSprite: 'assets/sprites/pokemon/back/25.png',
             stats: p2Stats
@@ -1622,29 +1631,17 @@ window.onload = async () => {
 
         runIntro();
 
-        // 3. GENERATE RESOURCES (Trees/Rocks)
+        // 3. GENERATE RESOURCES
         resourceSystem.generate();
 
-        // 4. CLEAN THE SAFE ZONE (The Fix)
-        // This runs AFTER generation to wipe the center clean
-        const SAFE_RADIUS = 25; // 25 radius = 50 tiles wide
-
+        // 4. CLEAN THE SAFE ZONE
+        const SAFE_RADIUS = 25;
         for (let y = -SAFE_RADIUS; y <= SAFE_RADIUS; y++) {
             for (let x = -SAFE_RADIUS; x <= SAFE_RADIUS; x++) {
-                // Check if inside circle
                 if ((x * x) + (y * y) < (SAFE_RADIUS * SAFE_RADIUS)) {
                     const key = `${x},${y}`;
-
-                    // A. DELETE RESOURCES (Trees/Rocks)
-                    if (resourceSystem.nodes[key]) {
-                        delete resourceSystem.nodes[key];
-                    }
-
-                    // B. FORCE GRASS TILES (Remove Water/Tall Grass)
-                    // Checks if map is stored in world.map or world.tiles
+                    if (resourceSystem.nodes[key]) delete resourceSystem.nodes[key];
                     if (world.tileCache) world.tileCache[key] = 'grass';
-
-                    // C. DELETE GROUND ITEMS
                     if (world.items && world.items[key]) delete world.items[key];
                 }
             }
@@ -1654,11 +1651,9 @@ window.onload = async () => {
         if (typeof enemySystem !== 'undefined' && enemySystem.enemies) {
             enemySystem.enemies = enemySystem.enemies.filter(e => {
                 const dist = Math.sqrt(e.x * e.x + e.y * e.y);
-                // Only keep enemies that are FARTHER than safe radius
                 return dist > SAFE_RADIUS;
             });
         }
-
     } else {
         // Welcomes are now handled inside loadGame internally
     }
@@ -1666,15 +1661,12 @@ window.onload = async () => {
     // Spawn player's house at exact center
     homeSystem.spawnHouse(world, 0, -4);
 
+    // Start Game Loop
     requestAnimationFrame(gameLoop);
 
     // Initialize Music
-    const mainMusic = /** @type {HTMLAudioElement} */ (
-        document.getElementById('main-music')
-    );
-    const battleMusic = /** @type {HTMLAudioElement} */ (
-        document.getElementById('battle-music')
-    );
+    const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+    const battleMusic = /** @type {HTMLAudioElement} */ (document.getElementById('battle-music'));
 
     if (mainMusic && battleMusic) {
         mainMusic.volume = musicVolume;
@@ -1784,6 +1776,11 @@ function saveGame() {
 
     localStorage.setItem('poke_save', JSON.stringify(data));
     console.log('Game Saved');
+
+    // Sync with Google Drive if signed in
+    if (typeof gdSync !== 'undefined' && gdSync.accessToken) {
+        gdSync.saveToDrive(data);
+    }
 }
 
 function loadGame() {
@@ -2805,4 +2802,36 @@ function teleportToLiminal() {
     } else {
         showDialog("No House Found!", 1000);
     }
+}
+
+// --- MAIN MENU HANDLERS ---
+function startNewGame() {
+    console.log('startNewGame called');
+    const menu = document.getElementById('main-menu');
+    if (menu) menu.classList.add('hidden');
+
+    if (typeof startGameLogic === 'function') {
+        startGameLogic();
+    }
+}
+
+function signInWithGoogle() {
+    console.log('signInWithGoogle called');
+    if (typeof gdSync !== 'undefined') {
+        gdSync.signIn();
+    } else {
+        alert('Google Drive sync system not loaded yet.');
+    }
+}
+
+// Attach Drive sync callback
+if (typeof gdSync !== 'undefined') {
+    gdSync.onUserAuthenticated = async () => {
+        const driveData = await gdSync.loadFromDrive();
+        if (driveData) {
+            localStorage.setItem('poke_save', JSON.stringify(driveData));
+            if (typeof showDialog === 'function') showDialog('Synced with Google Drive!', 2000);
+        }
+        startNewGame();
+    };
 }
