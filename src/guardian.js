@@ -1,13 +1,15 @@
 class GuardianSystem {
     constructor(player) {
         this.player = player;
-        this.activeGuardian = null; // The Pokemon Data
-        this.entity = { x: 0, y: 0 }; // World Position
+        this.activeGuardian = null; 
+        this.entity = { x: 0, y: 0 }; 
         
         // Track rotation for asteroids
         this.asteroidAngle = 0;
 
-        // ✅ FIX: Cached sprite image (preloaded once)
+        // ✅ NEW: Add a timer for healing
+        this.healTimer = 0; 
+
         this.guardianImage = null;
         this.guardianImageLoaded = false;
 
@@ -18,7 +20,6 @@ class GuardianSystem {
         };
     }
 
-    // ✅ FIX: Preload guardian sprite once
     preloadGuardianSprite() {
         if (!this.activeGuardian) return;
 
@@ -35,7 +36,6 @@ class GuardianSystem {
         this.guardianImage.src = src;
     }
 
-    // Call this from a UI button to convert a party member
     assignGuardian(partyIndex) {
         if (this.activeGuardian) {
             showDialog("You already have a Guardian! Dismiss it first.", 2000);
@@ -50,19 +50,15 @@ class GuardianSystem {
         const p = this.player.team[partyIndex];
         
         if (confirm(`Pact: Make ${p.name} your Guardian?\nIt will leave your party FOREVER to protect you in real-time.`)) {
-            // Remove from Party
             this.activeGuardian = p;
             this.player.team.splice(partyIndex, 1);
             
-            // Spawn next to player
             this.entity.x = this.player.x;
             this.entity.y = this.player.y;
 
-            // Reset Skills
             this.skills.fireball.unlocked = false;
             this.skills.asteroid.unlocked = false;
 
-            // ✅ FIX: Preload sprite immediately
             this.preloadGuardianSprite();
 
             showDialog(`${p.name} is now your Guardian!`, 3000);
@@ -88,12 +84,21 @@ class GuardianSystem {
             this.entity.y += dy * 2.0 * dt;
         }
 
-        // --- HEAL ---
-        if (this.skills.heal.unlocked && Math.random() < 0.001) { 
-            if (typeof rpgSystem !== 'undefined' && rpgSystem.hp < rpgSystem.maxHp) {
-                let healAmt = 5 + (this.skills.heal.level * 2);
-                rpgSystem.hp = Math.min(rpgSystem.maxHp, rpgSystem.hp + healAmt);
-                showDialog(`${this.activeGuardian.name} cast Heal Pulse! (+${healAmt} HP)`, 1000);
+        // --- ✅ FIX: HEAL EVERY 5 SECONDS ---
+        if (this.skills.heal.unlocked) { 
+            // 1. Add delta time to our timer
+            this.healTimer += dt;
+
+            // 2. Check if 5 seconds passed AND player exists AND hp is low
+            if (this.healTimer >= 5.0) {
+                if (typeof rpgSystem !== 'undefined' && rpgSystem.hp < rpgSystem.maxHp) {
+                    let healAmt = 5 + (this.skills.heal.level * 2);
+                    rpgSystem.hp = Math.min(rpgSystem.maxHp, rpgSystem.hp + healAmt);
+                    showDialog(`${this.activeGuardian.name} cast Heal Pulse! (+${healAmt} HP)`, 1000);
+                    
+                    // 3. Reset timer ONLY after a successful heal
+                    this.healTimer = 0; 
+                }
             }
         }
 
@@ -180,13 +185,11 @@ class GuardianSystem {
         const drawX = (this.entity.x - this.player.x) * tileSize + centerScreenX - tileSize / 2;
         const drawY = (this.entity.y - this.player.y) * tileSize + centerScreenY - tileSize / 2;
 
-        // Aura (always visible)
         ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
         ctx.beginPath();
         ctx.arc(drawX + tileSize / 2, drawY + tileSize / 2 + 5, tileSize / 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // ✅ FIX: Draw cached sprite (no async load)
         if (this.guardianImage && this.guardianImageLoaded) {
             const bounce = Math.abs(Math.sin(Date.now() / 200)) * 5;
             ctx.drawImage(this.guardianImage, drawX, drawY - bounce, tileSize, tileSize);
@@ -249,7 +252,6 @@ class GuardianSystem {
         this.skills = data.skills || this.skills;
         this.entity = data.entity || { x: 0, y: 0 };
 
-        // ✅ FIX: Reload sprite after save load
         if (this.activeGuardian) {
             this.preloadGuardianSprite();
         }
