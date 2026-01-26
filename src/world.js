@@ -843,6 +843,25 @@ class Renderer {
             this.ctx.fillRect(Math.floor(drawX) + TILE_SIZE - 30, Math.floor(drawY) + 45, 20, 35);
         } else if (building.type === 'bounty_board') {
             this.ctx.drawImage(this.bountyBoardImg, Math.floor(drawX) - TILE_SIZE, Math.floor(drawY) - TILE_SIZE, TILE_SIZE * 3, TILE_SIZE * 3);
+
+            // --- NEW: WORLD PROGRESS TEXT ---
+            if (typeof bountySystem !== 'undefined') {
+                const completed = bountySystem.tasks.filter(t => t.completed).length;
+                const total = bountySystem.tasks.length;
+                const claimed = bountySystem.tasks.filter(t => t.claimed).length;
+
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                this.ctx.fillRect(Math.floor(drawX) - 20, Math.floor(drawY) + 50, TILE_SIZE + 40, 25);
+
+                this.ctx.fillStyle = (completed === total && total > 0) ? '#2ecc71' : '#f1c40f';
+                this.ctx.font = 'bold 10px Arial';
+                this.ctx.textAlign = 'center';
+                let statusText = `DAILY OPS: ${completed}/${total}`;
+                if (claimed === total && total > 0) statusText = "ALL CLAIMED!";
+                else if (completed === total) statusText = "REWARDS READY!";
+
+                this.ctx.fillText(statusText, Math.floor(drawX) + TILE_SIZE / 2, Math.floor(drawY) + 67);
+            }
         } else if (building.type === 'dungeon_entrance') {
             this.ctx.drawImage(this.caveEntranceImg, Math.floor(drawX) - TILE_SIZE * 1.5, Math.floor(drawY) - TILE_SIZE * 2, TILE_SIZE * 4, TILE_SIZE * 4);
         }

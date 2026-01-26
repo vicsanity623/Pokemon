@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.0.0'; // Bumped Version
+const VERSION = 'v4.0.1'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -161,17 +161,17 @@ window.addEventListener('keyup', (e) => {
 });
 
 // --- SMART TOUCH INTERACTION (REPLACES ALL POINTERDOWN LISTENERS) ---
-const gameCanvas = document.getElementById('gameCanvas');
+/** @type {HTMLCanvasElement} */
+const gameCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
 gameCanvas.addEventListener('pointerdown', (e) => {
     // --- 0. DUNGEON TAP LOGIC (Priority) ---
     if (typeof dungeonSystem !== 'undefined' && dungeonSystem.isActive) {
         // Calculate clickX relative to canvas
         const rect = gameCanvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-
-        const canvasEl = /** @type {HTMLCanvasElement} */ (gameCanvas);
-        dungeonSystem.handleTap(clickX, canvasEl.width);
-        return; // STOP HERE! Don't run auto-harvest logic
+        const clickX = (e.clientX - rect.left) * (gameCanvas.width / rect.width);
+        const clickY = (e.clientY - rect.top) * (gameCanvas.height / rect.height);
+        dungeonSystem.handleTap(clickX, clickY, gameCanvas.width, gameCanvas.height);
+        return;
     }
     // 1. Ignore clicks if menus are open
     if (storeSystem.isOpen || isPaused || document.getElementById('crafting-ui')) return;
@@ -2830,8 +2830,14 @@ if (typeof gdSync !== 'undefined') {
         const driveData = await gdSync.loadFromDrive();
         if (driveData) {
             localStorage.setItem('poke_save', JSON.stringify(driveData));
-            if (typeof showDialog === 'function') showDialog('Synced with Google Drive!', 2000);
+            if (typeof showDialog === 'function') {
+                showDialog('Synced with Google Drive! Reloading...', 2000);
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                window.location.reload();
+            }
+        } else {
+            startNewGame();
         }
-        startNewGame();
     };
 }

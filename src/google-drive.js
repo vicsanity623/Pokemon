@@ -1,3 +1,4 @@
+/* global google */
 /**
  * GoogleDriveSync handles OAuth2 authentication with Google Identity Services
  * and provides methods to save/load game data from the user's App Data folder in Google Drive.

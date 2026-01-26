@@ -127,6 +127,11 @@ class BountySystem {
             this.player.bag[t.reward.item] += t.reward.qty;
         }
 
+        let msg = `Claimed: ${t.desc}!`;
+        if (t.reward.money) msg += ` +$${t.reward.money}`;
+        if (t.reward.item) msg += ` +${t.reward.qty} ${t.reward.item}`;
+        showDialog(msg, 3000);
+
         playSFX('sfx-pickup');
         document.getElementById('bounty-ui').remove();
         this.openUI(); // Refresh
@@ -237,7 +242,7 @@ class DungeonSystem {
     }
 
     spawnWave() {
-        if (this.wave > 10) return;
+        if (this.wave > this.maxWaves) return;
         this.isSpawningWave = false;
 
         const count = 2 + Math.floor(this.dungeonLevel / 2);
@@ -250,7 +255,7 @@ class DungeonSystem {
                 attackTimer: 0
             });
         }
-        showDialog(`Wave ${this.wave}/10 Incoming!`, 2000);
+        showDialog(`Wave ${this.wave}/${this.maxWaves} Incoming!`, 2000);
     }
 
     spawnLevelClear() {
@@ -273,6 +278,7 @@ class DungeonSystem {
         }
 
         // --- AUTO BATTLE / AUTO MOVE ---
+        /** @type {any} */
         let nearestEnemy = null;
         let minDist = Infinity;
         this.enemies.forEach(e => {
@@ -348,10 +354,10 @@ class DungeonSystem {
         }
 
         // Wave Logic
-        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= 10 && !this.isLevelCleared && !this.isSpawningWave) {
+        if (!enemiesAlive && this.enemies.length === 0 && this.wave <= this.maxWaves && !this.isLevelCleared && !this.isSpawningWave) {
             this.isSpawningWave = true;
-            this.wave++;
-            if (this.wave <= 10) {
+            if (this.wave < this.maxWaves) {
+                this.wave++;
                 setTimeout(() => this.spawnWave(), 2000);
             } else {
                 this.spawnLevelClear();
@@ -365,14 +371,17 @@ class DungeonSystem {
     }
 
     // Handle Tap Interactions inside Dungeon
-    handleTap(screenX, canvasWidth) {
+    handleTap(screenX, screenY, canvasWidth, canvasHeight) {
         if (!this.isActive) return;
 
-        // Convert screen X to dungeon X
-        // In draw(), player is at center. 
-        // drawX = (objX - playerX) * 48 + centerX
-        // So: clickX = (objX - playerX) * 48 + centerX
-        // objX = ((clickX - centerX) / 48) + playerX
+        // --- CHECK EXIT BUTTON FIRST ---
+        if (this.exitBtnRect) {
+            if (screenX >= this.exitBtnRect.x && screenX <= this.exitBtnRect.x + this.exitBtnRect.w &&
+                screenY >= this.exitBtnRect.y && screenY <= this.exitBtnRect.y + this.exitBtnRect.h) {
+                this.exit(false);
+                return;
+            }
+        }
 
         const centerX = canvasWidth / 2;
         const TILE = 64; // Scale used in draw
@@ -535,7 +544,27 @@ class DungeonSystem {
         ctx.fillStyle = 'white';
         ctx.font = "20px monospace";
         ctx.textAlign = "left";
-        ctx.fillText(`CAVE ${this.toRoman(this.dungeonLevel)} - WAVE ${this.wave}/10`, 20, 50);
+        const displayWave = Math.min(this.wave, this.maxWaves);
+        ctx.fillText(`CAVE ${this.toRoman(this.dungeonLevel)} - WAVE ${displayWave}/${this.maxWaves}`, 20, 50);
+
+        // --- NEW: EXIT BUTTON (BOTTOM LEFT) ---
+        const btnW = 100;
+        const btnH = 40;
+        const btnX = 20;
+        const btnY = canvas.height - 60;
+
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.8)'; // Red-ish
+        ctx.fillRect(btnX, btnY, btnW, btnH);
+        ctx.strokeStyle = 'white';
+        ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+        ctx.fillStyle = 'white';
+        ctx.font = "bold 16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("EXIT CAVE", btnX + btnW / 2, btnY + btnH / 1.5);
+
+        // Save button rect for tap detection
+        this.exitBtnRect = { x: btnX, y: btnY, w: btnW, h: btnH };
     }
 
     toRoman(num) {
