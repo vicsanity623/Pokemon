@@ -64,23 +64,33 @@ class GoogleDriveSync {
         }
 
         try {
-            // 1. Search for existing file in appDataFolder
+            // 1. Search for existing file
             const listUrl = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='poke_save.json'`;
             const listResponse = await fetch(listUrl, {
                 headers: { 'Authorization': `Bearer ${this.accessToken}` }
             });
             const listData = await listResponse.json();
-
             const fileId = listData.files.length > 0 ? listData.files[0].id : null;
+
+            // 2. Prepare Multipart Body
+            const boundary = '-------314159265358979323846';
+            const delimiter = "\r\n--" + boundary + "\r\n";
+            const close_delim = "\r\n--" + boundary + "--";
+
             const metadata = {
                 name: 'poke_save.json',
-                parents: ['appDataFolder']
+                mimeType: 'application/json',
+                parents: fileId ? [] : ['appDataFolder'] // Only needed for initial POST
             };
 
-            const contentBlob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-            const formData = new FormData();
-            formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-            formData.append('file', contentBlob);
+            const multipartRequestBody =
+                delimiter +
+                'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(data) +
+                close_delim;
 
             let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
             let method = 'POST';
@@ -92,15 +102,22 @@ class GoogleDriveSync {
 
             const saveResponse = await fetch(url, {
                 method: method,
-                headers: { 'Authorization': `Bearer ${this.accessToken}` },
-                body: formData
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`
+                },
+                body: multipartRequestBody
             });
 
             if (saveResponse.ok) {
                 console.log('Game saved to Google Drive');
                 return true;
             } else {
-                console.error('Failed to save to Drive:', await saveResponse.json());
+                const err = await saveResponse.json();
+                console.error('Failed to save to Drive:', err);
+                if (err.error && err.error.message) {
+                    showDialog(`Sync Error: ${err.error.message}`, 3000);
+                }
             }
         } catch (error) {
             console.error('Error saving to Drive:', error);

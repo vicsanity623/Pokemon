@@ -1,5 +1,5 @@
 // Global Instances
-const VERSION = 'v4.0.1'; // Bumped Version
+const VERSION = 'v4.0.2'; // Bumped Version
 const player = new Player();
 const world = new World(Date.now());
 /** @type {HTMLCanvasElement} */
@@ -1791,17 +1791,27 @@ function loadGame() {
         const data = JSON.parse(raw);
 
         // 1. Restore Player
-        player.x = data.player.x;
-        player.y = data.player.y;
+        if (!data.player) throw new Error("Missing player data");
+
+        player.x = data.player.x || 0;
+        player.y = data.player.y || 0;
         player.money = (typeof data.player.money !== 'undefined') ? data.player.money : 0;
-        player.pLevel = data.player.stats.level;
-        player.steps = data.player.stats.steps;
-        player.team = data.player.team;
-        player.bag = data.player.bag;
+
+        // Safety for stats
+        if (data.player.stats) {
+            player.pLevel = data.player.stats.level || 1;
+            player.steps = data.player.stats.steps || 0;
+        } else {
+            player.pLevel = 1;
+            player.steps = 0;
+        }
+
+        player.team = Array.isArray(data.player.team) ? data.player.team : [];
+        player.bag = data.player.bag || { Potion: 5, Pokeball: 10 };
 
         // Restore Defense System
         if (data.defense) {
-            defenseSystem.lastRaidDay = data.defense.lastRaidDay;
+            defenseSystem.lastRaidDay = data.defense.lastRaidDay || 0;
         }
 
         // Restore Storage & Pokedex
@@ -1813,8 +1823,8 @@ function loadGame() {
         player.team.forEach((p) => {
             if (!p.stats) {
                 p.stats = generatePokemonStats();
-                p.maxHp = p.level * 5 + p.stats.hp;
-                if (p.hp > p.maxHp) p.hp = p.maxHp;
+                p.maxHp = (p.level || 5) * 5 + p.stats.hp;
+                if (!p.hp || p.hp > p.maxHp) p.hp = p.maxHp;
             }
         });
 
@@ -1823,23 +1833,24 @@ function loadGame() {
         if (metaLevel) metaLevel.innerText = player.pLevel.toString();
 
         // 2. Restore World
+        if (!data.world) data.world = { items: {}, buildings: [], npcs: [] };
+
         if (data.world.seed) {
             world.rng = new SeededRandom(data.world.seed);
         }
-        world.items = data.world.items;
+        world.items = data.world.items || {};
 
         if (data.world.npcs) {
             world.npcs = data.world.npcs.map(
-                (npcData) => new NPC(npcData.x, npcData.y, npcData.name, npcData.type, npcData.dialog)
+                (npcData) => new NPC(npcData.x || 0, npcData.y || 0, npcData.name || "NPC", npcData.type || "talk", npcData.dialog || "...")
             );
+        } else {
+            world.npcs = [];
         }
 
-        if (data.world.buildings) {
-            world.buildings = data.world.buildings;
-        }
+        world.buildings = Array.isArray(data.world.buildings) ? data.world.buildings : [];
 
         // --- SAFE LOADING FOR NEW SYSTEMS ---
-        // We use || {} to prevent crashing if data is missing
         if (typeof bountySystem !== 'undefined') {
             bountySystem.loadSaveData(data.bounty || {});
         }
@@ -1855,10 +1866,9 @@ function loadGame() {
 
         // Restore Store System
         if (data.store) {
-            storeSystem.hasSpawned = data.store.hasSpawned;
-            storeSystem.location = data.store.location;
+            storeSystem.hasSpawned = data.store.hasSpawned || false;
+            storeSystem.location = data.store.location || null;
 
-            // Ensure it's in world.buildings if it was spawned
             if (storeSystem.hasSpawned && storeSystem.location) {
                 const hasStore = world.buildings.some(b => b.type === 'store');
                 if (!hasStore) {
@@ -1918,24 +1928,26 @@ function loadGame() {
 
         // --- 8. RESTORE RPG & GUARDIAN & RESOURCES ---
         if (data.rpg && typeof rpgSystem !== 'undefined') {
-            rpgSystem.loadSaveData(data.rpg);
+            rpgSystem.loadSaveData(data.rpg || {});
             rpgSystem.updateHUD();
         }
         if (data.guardian && typeof guardianSystem !== 'undefined') {
-            guardianSystem.loadSaveData(data.guardian);
+            guardianSystem.loadSaveData(data.guardian || {});
         }
         if (data.resources && typeof resourceSystem !== 'undefined') {
-            resourceSystem.loadSaveData(data.resources);
+            resourceSystem.loadSaveData(data.resources || {});
         }
         // ---------------------------------------------
 
         // 9. Restore Time
-        if (typeof data.gameDays !== 'undefined') {
-            clock.elapsedTime = data.time;
-            clock.gameDays = data.gameDays;
-        } else {
-            clock.gameDays = data.time;
-            clock.elapsedTime = clock.gameDays * 3600000;
+        if (typeof data.time !== 'undefined') {
+            if (typeof data.gameDays !== 'undefined') {
+                clock.elapsedTime = data.time;
+                clock.gameDays = data.gameDays;
+            } else {
+                clock.gameDays = data.time;
+                clock.elapsedTime = clock.gameDays * 3600000;
+            }
         }
 
         // 10. Restore Quest
@@ -2831,13 +2843,9 @@ if (typeof gdSync !== 'undefined') {
         if (driveData) {
             localStorage.setItem('poke_save', JSON.stringify(driveData));
             if (typeof showDialog === 'function') {
-                showDialog('Synced with Google Drive! Reloading...', 2000);
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                window.location.reload();
+                showDialog('Synced with Google Drive! Loading...', 2000);
             }
-        } else {
-            startNewGame();
         }
+        startNewGame();
     };
 }
