@@ -162,14 +162,16 @@ class DungeonSystem {
 
         // State
         this.wave = 1;
-        this.maxWaves = 10;
+        this.savedWave = 1; // Used to resume progress
+        this.maxWaves = 1000; // UPDATED: 1000 Waves
+        
         /** @type {DungeonEnemy[]} */
-        this.enemies = []; // {x, type, hp...}
-        this.chests = [];  // {x, opened}
-        this.exitDoorX = 200; // Far right
+        this.enemies = []; 
+        this.chests = [];  
+        this.exitDoorX = 200; 
 
         this.entranceLocation = null;
-        this.playerAttackTimer = 0; // Timer for auto-combat
+        this.playerAttackTimer = 0; 
 
         this.sessionXP = 0;
         this.sessionMoney = 0;
@@ -178,8 +180,6 @@ class DungeonSystem {
     }
 
     spawnEntrance(world, houseX, houseY) {
-        // Opposite of Arena (Left side? Arena is Right/Down)
-        // Let's put it Left/Up relative to house
         let ex = houseX - 15;
         let ey = houseY - 5;
         this.entranceLocation = { x: ex, y: ey };
@@ -188,11 +188,14 @@ class DungeonSystem {
 
     enter() {
         this.isActive = true;
-        this.playerX = 10; // Start slightly in
-        this.wave = 1;
+        this.playerX = 10; 
+        
+        // RESUME PROGRESS
+        this.wave = this.savedWave; 
+        
         this.enemies = [];
         this.chests = [];
-        this.exitDoorX = 300; // Long road
+        this.exitDoorX = 300; 
 
         this.sessionXP = 0;
         this.sessionMoney = 0;
@@ -201,41 +204,38 @@ class DungeonSystem {
 
         // Generate Level Content
         for (let i = 0; i < 15; i++) {
-            // Random Chests along the path
             this.chests.push({ x: 30 + (i * 20) + Math.random() * 10, opened: false });
         }
 
         // Initial Wave
         this.spawnWave();
 
-        showDialog(`Entered Cave ${this.toRoman(this.dungeonLevel)}`, 3000);
+        showDialog(`Entered Cave ${this.toRoman(this.dungeonLevel)} - Wave ${this.wave}`, 3000);
 
-        // Music Switch
-        /** @type {HTMLAudioElement} */
-        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        const mainMusic = document.getElementById('main-music');
         if (mainMusic) mainMusic.pause();
     }
 
     exit(completed) {
         this.isActive = false;
-
-        let summaryMsg = `CAVE SUMMARY: +${this.sessionXP} XP, +$${this.sessionMoney} Money.`;
-
+        
+        // SAVE PROGRESS on Exit
+        // If completed (finished wave 1000), reset to 1 for next level
+        // If retreated, save current wave to resume later
         if (completed) {
+            this.savedWave = 1;
             if (!this.isLevelCleared) this.dungeonLevel++;
-            showDialog(`Dungeon Cleared! Level Increased.\n${summaryMsg}`, 5000);
+            showDialog(`Dungeon Cleared! Level Increased.\nResult: +${this.sessionXP} XP, +$${this.sessionMoney}`, 5000);
         } else {
+            this.savedWave = this.wave; // Save progress
             const isDead = (typeof rpgSystem !== 'undefined' && rpgSystem.hp <= 0);
             const status = isDead ? "KNOCKED OUT!" : "Escaped the dungeon...";
-            showDialog(`${status}\n${summaryMsg}`, 5000);
+            showDialog(`${status}\nProgress Saved (Wave ${this.savedWave})\nResult: +${this.sessionXP} XP, +$${this.sessionMoney}`, 4000);
         }
 
-        // Resume Music
-        /** @type {HTMLAudioElement} */
-        const mainMusic = /** @type {HTMLAudioElement} */ (document.getElementById('main-music'));
+        const mainMusic = document.getElementById('main-music');
         if (mainMusic && !liminalSystem.active) mainMusic.play().catch(e => { });
 
-        // Teleport back to entrance
         this.player.x = this.entranceLocation.x;
         this.player.y = this.entranceLocation.y + 2;
         saveGame();
@@ -245,12 +245,28 @@ class DungeonSystem {
         if (this.wave > this.maxWaves) return;
         this.isSpawningWave = false;
 
-        const count = 2 + Math.floor(this.dungeonLevel / 2);
-        for (let i = 0; i < count; i++) {
+        // --- UPDATED LOGIC ---
+        
+        // 1. Enemy Count: Starts at 2. Adds 1 enemy every 3 waves.
+        const baseCount = 2;
+        const extraEnemies = Math.floor(this.wave / 3);
+        const totalCount = baseCount + extraEnemies;
+
+        // 2. Difficulty: Doubles every wave.
+        // Formula: BaseHP * (2 ^ (wave-1))
+        // NOTE: We cap the power at 30 to prevent 'Infinity' crashing the game, 
+        // because 2^1000 is a number larger than the universe. 
+        // 2^30 is approx 1 Billion multiplier.
+        const safeExponent = Math.min(this.wave - 1, 30); 
+        const difficultyMult = Math.pow(2, safeExponent); 
+        
+        const enemyHP = (50 * this.dungeonLevel) * difficultyMult;
+
+        for (let i = 0; i < totalCount; i++) {
             this.enemies.push({
-                x: this.playerX + 20 + (i * 5), // Spawn ahead
-                hp: 50 * this.dungeonLevel,
-                maxHp: 50 * this.dungeonLevel,
+                x: this.playerX + 20 + (i * 5),
+                hp: enemyHP,
+                maxHp: enemyHP,
                 type: 'shadow_beast',
                 attackTimer: 0
             });
@@ -260,7 +276,8 @@ class DungeonSystem {
 
     spawnLevelClear() {
         this.isLevelCleared = true;
-        showDialog("The Exit revealed itself!", 3000);
+        // UPDATED TEXT
+        showDialog("You can exit whenever you want.", 3000);
     }
 
     update(dt) {
@@ -268,17 +285,16 @@ class DungeonSystem {
 
         // 1. Check Player Health
         if (typeof rpgSystem !== 'undefined' && rpgSystem.hp <= 0) {
-            this.exit(false);
+            this.exit(false); // Die = Exit but save wave progress? Or reset? Usually die = reset, but let's keep progress for now.
             return;
         }
 
-        // 1. Controls (Side Scroller - Only Right/Left)
+        // 1. Controls
         if (input.isDown('ArrowLeft') || input.isDown('a')) {
             this.playerX -= 5 * dt;
         }
 
         // --- AUTO BATTLE / AUTO MOVE ---
-        /** @type {any} */
         let nearestEnemy = null;
         let minDist = Infinity;
         this.enemies.forEach(e => {
@@ -301,20 +317,15 @@ class DungeonSystem {
         }
 
         // 2. Auto Move Forward
-        // Move if: No enemies OR nearest enemy is far OR wave is done
-        const shouldMove = (!nearestEnemy || minDist > 1.5) && (this.wave <= 10 || this.playerX < this.exitDoorX);
+        const shouldMove = (!nearestEnemy || minDist > 1.5) && (this.wave <= this.maxWaves || this.playerX < this.exitDoorX);
 
         if (shouldMove) {
-            this.playerX += 4 * dt; // Slightly slower than manual
+            this.playerX += 4 * dt; 
         }
 
-        if (this.playerX < 0) this.playerX = 0; // Wall
-
-        // 2. Camera Follow (Simplified)
-        // Player is visually centered, world moves around them in draw()
+        if (this.playerX < 0) this.playerX = 0; 
 
         // 3. Enemy Logic
-        // They move left towards player
         let enemiesAlive = false;
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i];
@@ -370,24 +381,22 @@ class DungeonSystem {
         }
     }
 
-    // Handle Tap Interactions inside Dungeon
     handleTap(screenX, screenY, canvasWidth, canvasHeight) {
         if (!this.isActive) return;
 
-        // --- CHECK EXIT BUTTON FIRST ---
+        // --- CHECK EXIT BUTTON ---
         if (this.exitBtnRect) {
             if (screenX >= this.exitBtnRect.x && screenX <= this.exitBtnRect.x + this.exitBtnRect.w &&
                 screenY >= this.exitBtnRect.y && screenY <= this.exitBtnRect.y + this.exitBtnRect.h) {
-                this.exit(false);
+                this.exit(false); // Manual exit saves progress
                 return;
             }
         }
 
         const centerX = canvasWidth / 2;
-        const TILE = 64; // Scale used in draw
+        const TILE = 64; 
         const worldClickX = ((screenX - centerX) / TILE) + this.playerX;
 
-        // Check Chests
         for (let c of this.chests) {
             if (!c.opened && Math.abs(worldClickX - c.x) < 1.0) {
                 this.openChest(c);
@@ -395,16 +404,12 @@ class DungeonSystem {
             }
         }
 
-        // Attack Enemies (Tap to hit)
         for (let i = 0; i < this.enemies.length; i++) {
             let e = this.enemies[i];
             if (Math.abs(worldClickX - e.x) < 1.5) {
                 let dmg = (typeof rpgSystem !== 'undefined') ? rpgSystem.getDamage() : 10;
                 e.hp -= dmg;
                 playSFX('sfx-attack1');
-
-                // Visual feedback
-                // (Simplified)
                 return;
             }
         }
@@ -414,7 +419,6 @@ class DungeonSystem {
         c.opened = true;
         playSFX('sfx-pickup');
 
-        // RNG Loot
         const rand = Math.random();
         let msg = "";
 
@@ -430,7 +434,6 @@ class DungeonSystem {
             this.player.bag[resType] += qty;
             msg = `Found ${qty} ${resType}!`;
         } else {
-            // Rare
             if (!this.player.bag['Rare Candy']) this.player.bag['Rare Candy'] = 0;
             this.player.bag['Rare Candy'] += 1;
             msg = `Found a Rare Candy!`;
@@ -441,7 +444,6 @@ class DungeonSystem {
     }
 
     draw(ctx, canvas) {
-        // Clear Black
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -449,15 +451,13 @@ class DungeonSystem {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        // Helper to get screen X
         const getX = (wx) => (wx - this.playerX) * TILE + centerX;
 
-        // 1. Draw Floor (Grey Road)
+        // 1. Draw Floor
         ctx.fillStyle = '#333';
         ctx.fillRect(0, centerY + 30, canvas.width, 100);
 
-        // 2. Draw Player (Always Center)
-        // Use active pokemon or player sprite? Let's use active pokemon
+        // 2. Draw Player
         if (this.player.team[0]) {
             const src = this.player.team[0].backSprite;
             if (!this.imageRepo[src]) {
@@ -473,7 +473,6 @@ class DungeonSystem {
         // 3. Draw Chests
         this.chests.forEach(c => {
             let cx = getX(c.x);
-            // Only draw if visible on screen
             if (cx > -50 && cx < canvas.width + 50) {
                 ctx.font = "30px Arial";
                 ctx.textAlign = "center";
@@ -488,8 +487,6 @@ class DungeonSystem {
                 ctx.fillStyle = 'red';
                 ctx.font = "30px Arial";
                 ctx.fillText("👾", ex, centerY);
-
-                // HP Bar
                 ctx.fillStyle = 'black';
                 ctx.fillRect(ex - 20, centerY - 40, 40, 5);
                 ctx.fillStyle = 'red';
@@ -508,52 +505,41 @@ class DungeonSystem {
             }
         }
 
-        // 6. LIGHTING / FOG (The Secret Sauce)
-        // Check for Night Vision Goggles
+        // 6. Lighting/HUD
         const hasGoggles = (typeof rpgSystem !== 'undefined' && rpgSystem.equipment.accessory && rpgSystem.equipment.accessory.id === 'acc_goggles');
 
         if (hasGoggles) {
-            // Night Vision Mode: Green Tint overlay
             ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Scanlines
             ctx.fillStyle = 'rgba(0, 50, 0, 0.2)';
             for (let i = 0; i < canvas.height; i += 4) {
                 ctx.fillRect(0, i, canvas.width, 1);
             }
-
             ctx.fillStyle = '#0f0';
             ctx.font = "12px monospace";
             ctx.fillText("NVG ACTIVE", 10, 20);
-
         } else {
-            // Darkness Mode: Radial Gradient
-            // We draw a black rectangle over everything, but cut a hole in the middle
-
             const grad = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, 300);
-            grad.addColorStop(0, "rgba(0,0,0,0)"); // Clear center
+            grad.addColorStop(0, "rgba(0,0,0,0)");
             grad.addColorStop(0.5, "rgba(0,0,0,0.8)");
-            grad.addColorStop(1, "rgba(0,0,0,1)"); // Solid black edges
-
+            grad.addColorStop(1, "rgba(0,0,0,1)");
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // HUD
         ctx.fillStyle = 'white';
         ctx.font = "20px monospace";
         ctx.textAlign = "left";
         const displayWave = Math.min(this.wave, this.maxWaves);
         ctx.fillText(`CAVE ${this.toRoman(this.dungeonLevel)} - WAVE ${displayWave}/${this.maxWaves}`, 20, 50);
 
-        // --- NEW: EXIT BUTTON (BOTTOM LEFT) ---
+        // EXIT BUTTON
         const btnW = 100;
         const btnH = 40;
         const btnX = 20;
         const btnY = canvas.height - 60;
 
-        ctx.fillStyle = 'rgba(231, 76, 60, 0.8)'; // Red-ish
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
         ctx.fillRect(btnX, btnY, btnW, btnH);
         ctx.strokeStyle = 'white';
         ctx.strokeRect(btnX, btnY, btnW, btnH);
@@ -563,7 +549,6 @@ class DungeonSystem {
         ctx.textAlign = "center";
         ctx.fillText("EXIT CAVE", btnX + btnW / 2, btnY + btnH / 1.5);
 
-        // Save button rect for tap detection
         this.exitBtnRect = { x: btnX, y: btnY, w: btnW, h: btnH };
     }
 
@@ -576,6 +561,16 @@ class DungeonSystem {
         return num.toString();
     }
 
-    getSaveData() { return { level: this.dungeonLevel }; }
-    loadSaveData(data) { this.dungeonLevel = data.level || 1; }
+    getSaveData() { 
+        // Save both the Level AND the exact wave you are on
+        return { 
+            level: this.dungeonLevel, 
+            wave: this.savedWave 
+        }; 
+    }
+    
+    loadSaveData(data) { 
+        this.dungeonLevel = data.level || 1; 
+        this.savedWave = data.wave || 1;
+    }
 }
